@@ -19,7 +19,8 @@ compile the code; I'm also assuming in these instructions that you're familiar
 enough with computers to know how to change a path if you get a file not found
 error):
 
-1. Download the graph files from .... (TODO)
+1. Download the graph files from http://rtw.ml.cmu.edu/emnlp2013_pra/ (note:
+   those files aren't actually there yet...)
 2. Run the command found in the tar file .... (TODO)
 
 License
