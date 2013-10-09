@@ -9,7 +9,7 @@ but there is more to come of that later.
 The code is pretty well documented, I believe, and so I'm not going to put much
 here.  Just compile it with ant (`ant compile`), and run it with `java -cp
 lib/*:classes/ edu.cmu.ml.rtw.pra.PraDriver`.  If you have any questions I'm
-happy to help.
+happy to help (contact me at mg1 at cs dot cmu dot edu).
 
 EMNLP 2013
 ==========
