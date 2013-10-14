@@ -14,13 +14,34 @@ happy to help (contact me at mg1 at cs dot cmu dot edu).
 EMNLP 2013
 ==========
 
-How to reproduce the results for the EMNLP 2013 paper (after downloading and
-compile the code; I'm also assuming in these instructions that you're familiar
-enough with computers to know how to change a path if you get a file not found
-error):
+The code that was used to run the experiments in the EMNLP 2013 paper
+(http://rtw.ml.cmu.edu/emnlp2013_pra/) was a slightly earlier version of the
+code found in the initial commit of this repository.  I'm pretty sure that the
+only substantive thing that changed was the handling of negative evidence
+(other things changed, like cleaning up the API and making it faster, but none
+that affected the behavior of the algorithm).  In the paper I subsampled the
+negative examples to match the number of positive examples.  Now I do something
+more fancy, trying to balance the feature weight from the positive and negative
+examples.  If you really want to reproduce the results from the paper, you
+should be able to fix that pretty easily (in `PraDriver.learnFeatureWeights()`);
+I'm pretty confident that the change in handling negative evidence wouldn't
+produce any substantial difference in the results of the paper - it might make
+the performance of all methods slightly better, but I really doubt it would
+change the relative performance of the methods.
 
-1. Download the graph files from .... (TODO)
-2. Run the command found in the tar file .... (TODO)
+All you should need to do to reproduce the results of the paper (after
+downloading the two tar files found on rtw.ml.cmu.edu/emnlp2013_pra) is pass
+the right parameters into `PraDriver` when invoking it as described above.
+`data.tar.gz` gives the data files that you need to use as some of the arguments,
+and `run_experiments.py` in `scripts.tar.gz` gives you both the parameters that
+constitute the remainder of the arguments and how you should specify them.  You
+should be able to change a few paths (and probably uncomment some of the lines,
+as directed in the code) and just run `run_experiments.py`, and hopefully it
+will work.  I'm quite willing to help you get this running, but until there is
+actual demand for exactly reproducing the results as found in the paper, I'll
+leave these instructions vague.  If you just want to use the PRA code in some
+new application, you shouldn't try to use the scripts I used for this paper;
+just look at the documentation in the code.
 
 License
 =======
