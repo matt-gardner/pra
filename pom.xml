@@ -14,13 +14,22 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>graphchi-java-mvn-repo</id>
+      <url>https://raw.github.com/matt-gardner/graphchi-java/mvn-repo/</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
-      <groupId>graphchi-matt-fork</groupId>
+      <groupId>groupId</groupId>
       <artifactId>graphchi-java</artifactId>
       <version>0.2</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/lib/graphchi-java-0.2.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -54,22 +63,6 @@
         <configuration>
           <source>1.6</source>
           <target>1.6</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
         </configuration>
       </plugin>
     </plugins>
