@@ -1,6 +1,8 @@
 PRA (Path Ranking Algorithm)
 ============================
 
+TODO(matt): update this README
+
 An efficient implementation of Ni Lao's Path Ranking Algorithm (PRA), using
 GraphChi, a library for efficient processing of large graphs on a single
 machine.  This also has the beginnings of my own improvements to the algorithm,
