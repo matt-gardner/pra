@@ -107,27 +107,37 @@ public class KbPraDriver {
     }
 
     public static void runPra(CommandLine cmdLine) throws IOException, InterruptedException {
-        long start = System.currentTimeMillis();
-        PraConfig.Builder baseBuilder = new PraConfig.Builder();
-
         String outputBase = cmdLine.getOptionValue("outdir");
         if (!outputBase.endsWith("/")) outputBase += "/";
-        if (new File(outputBase).exists()) {
-            throw new RuntimeException("Output directory already exists!  Exiting...");
-        }
-        new File(outputBase).mkdirs();
 
         String kbDirectory = cmdLine.getOptionValue("kb-files");
         if (!kbDirectory.endsWith("/")) kbDirectory += "/";
 
         String graphDirectory = cmdLine.getOptionValue("graph-files");
         if (!graphDirectory.endsWith("/")) graphDirectory += "/";
-        parseGraphFiles(graphDirectory, baseBuilder);
 
         String splitsDirectory = cmdLine.getOptionValue("split");
         if (!splitsDirectory.endsWith("/")) splitsDirectory += "/";
 
         String parameterFile = cmdLine.getOptionValue("param-file");
+
+        runPra(kbDirectory, graphDirectory, splitsDirectory, paramterFile, outputBase);
+    }
+
+    public static void runPra(String kbDirectory,
+                              String graphDirectory,
+                              String splitsDirectory,
+                              String paramterFile,
+                              String outputBase) throws IOException, InterruptedException {
+        long start = System.currentTimeMillis();
+        PraConfig.Builder baseBuilder = new PraConfig.Builder();
+
+        if (new File(outputBase).exists()) {
+            throw new RuntimeException("Output directory already exists!  Exiting...");
+        }
+        new File(outputBase).mkdirs();
+
+        parseGraphFiles(graphDirectory, baseBuilder);
 
         FileWriter writer = new FileWriter(outputBase + "settings.txt");
         writer.write("KB used: " + kbDirectory + "\n");
@@ -238,7 +248,8 @@ public class KbPraDriver {
             builder.setAllData(datasetFactory.fromFile(kbDirectory + "relations/" + fixed,
                                                        builder.nodeDict));
             String percent_training_file = splitsDirectory + "percent_training.tsv";
-            builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0));
+            BufferedReader reader = new BufferedReader(new FileReader(percent_training_file));
+            builder.setPercentTraining(Double.parseDouble(reader.readLine()));
             return true;
         }
     }
@@ -380,13 +391,21 @@ public class KbPraDriver {
                                                      Map<String, List<String>> embeddings,
                                                      Dictionary edgeDict) {
         List<Integer> unallowedEdges = new ArrayList<Integer>();
+
+        // The relation itself is an unallowed edge type.
         int relIndex = edgeDict.getIndex(relation);
+        unallowedEdges.add(relIndex);
+
+        // If the relation has an inverse, it's an unallowed edge type.
         Integer inverseIndex = inverses.get(relIndex);
         String inverse = null;
         if (inverseIndex != null) {
+            unallowedEdges.add(inverseIndex);
             inverse = edgeDict.getString(inverseIndex);
         }
 
+        // And if the relation has an embedding (really a set of cluster ids), those should be
+        // added to the unallowed edge type list.
         if (embeddings != null) {
             List<String> relationEmbeddings = embeddings.get(relation);
             if (relationEmbeddings != null) {
@@ -403,17 +422,12 @@ public class KbPraDriver {
                 }
             }
         }
-        unallowedEdges.add(relIndex);
-        if (inverse != null) {
-            unallowedEdges.add(inverseIndex);
-        }
         return unallowedEdges;
     }
 
-
     /**
      * Reads a file containing a mapping between relations and their inverses, and returns the
-     * result as a map.  Note that the file should be in terms of edge _indexes_, not edge _names_.
+     * result as a map.
      */
     public static Map<Integer, Integer> createInverses(String filename,
                                                        Dictionary dict) throws IOException {
