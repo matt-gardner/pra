@@ -121,13 +121,13 @@ public class KbPraDriver {
 
         String parameterFile = cmdLine.getOptionValue("param-file");
 
-        runPra(kbDirectory, graphDirectory, splitsDirectory, paramterFile, outputBase);
+        runPra(kbDirectory, graphDirectory, splitsDirectory, parameterFile, outputBase);
     }
 
     public static void runPra(String kbDirectory,
                               String graphDirectory,
                               String splitsDirectory,
-                              String paramterFile,
+                              String parameterFile,
                               String outputBase) throws IOException, InterruptedException {
         long start = System.currentTimeMillis();
         PraConfig.Builder baseBuilder = new PraConfig.Builder();
@@ -248,8 +248,7 @@ public class KbPraDriver {
             builder.setAllData(datasetFactory.fromFile(kbDirectory + "relations/" + fixed,
                                                        builder.nodeDict));
             String percent_training_file = splitsDirectory + "percent_training.tsv";
-            BufferedReader reader = new BufferedReader(new FileReader(percent_training_file));
-            builder.setPercentTraining(Double.parseDouble(reader.readLine()));
+            builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0));
             return true;
         }
     }
