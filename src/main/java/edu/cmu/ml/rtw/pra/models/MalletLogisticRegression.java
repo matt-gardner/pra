@@ -111,6 +111,7 @@ public class MalletLogisticRegression {
     }
 
     public MalletLogisticRegression(Alphabet alphabet) {
+        this.alphabet = alphabet;
         this.sFeatures = new int[0];
         this.sParams = new double[0];
 

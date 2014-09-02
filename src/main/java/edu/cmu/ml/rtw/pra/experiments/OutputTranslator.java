@@ -252,6 +252,9 @@ public class OutputTranslator {
             if (lineFields.length == 1) {
                 writer.write(sourceString + "\t\t\t\n");
                 continue;
+            } else if (lineFields[1].isEmpty()) {
+                writer.write(sourceString + "\t\t\t" + lineFields[3] + "\n");
+                continue;
             }
             String target = lineFields[1];
             String score = lineFields[2];

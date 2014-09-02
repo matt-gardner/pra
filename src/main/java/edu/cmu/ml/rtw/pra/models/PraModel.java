@@ -281,36 +281,36 @@ public class PraModel {
      *
      * @param filename Place to write the output file
      * @param sourceScores The set of scores for each of the sources
-     * @param testingSourcesMap This map is used only to iterate over its keys.  We need to know
-     *     which sources were used as test sources, so that we can get an accurate picture of
-     *     performance.  We can't just use sourceScores for that, because it may be missing sources
-     *     that did not have any paths to a target.  This parameter gives us the complete list, so
-     *     we can mark source nodes that had no predictions.
-     * @param allSourcesMap This map gives us a list of all known (source, target) instances for a
-     *     particular source, including training and testing data.  This way we can see if we
-     *     ranked positive instances above (presumed) negative instances.
-     * @param trainingSourcesMap This map gives us the list of (source, target) pairs that were
-     *     used as training data.  This way we can distinguish in the output between correct
-     *     instances that we trained on and correct answers that were hidden and we predicted
-     *     anyway.
+     * @param config We use this to get to the training and testing data, so we know which sources
+     *     score and how well we did on them.
      */
     public void outputScores(String filename,
             Map<Integer, List<Pair<Integer, Double>>> sourceScores,
             PraConfig config) throws IOException {
+        // These first few lines are for finding out if our prediction was _correct_ or not.
         Map<Integer, Set<Integer>> trainingSourcesMap = config.trainingData.getPositiveSourceMap();
         Map<Integer, Set<Integer>> testingSourcesMap = config.testingData.getPositiveSourceMap();
-        Map<Integer, Set<Integer>> allSourcesMap =
+        Map<Integer, Set<Integer>> allPositiveSourcesMap =
                 CollectionsUtil.combineMapSets(trainingSourcesMap, testingSourcesMap);
+        Set<Integer> positiveTestSources = testingSourcesMap.keySet();
+
+        // And this is to know which tuples to _score_ (which might include negative test
+        // instances).
+        Set<Integer> allTestSources = config.testingData.getCombinedSourceMap().keySet();
         FileWriter writer = new FileWriter(filename);
-        for (int source : testingSourcesMap.keySet()) {
+        for (int source : allTestSources) {
             List<Pair<Integer, Double>> scores = sourceScores.get(source);
             if (scores == null) {
-                writer.write(source + "\t\t\t\n\n");
+                writer.write(source + "\t\t\t");
+                if (!positiveTestSources.contains(source)) {
+                    writer.write("-");
+                }
+                writer.write("\n\n");
                 continue;
             }
             Collections.sort(scores,
                     new PairComparator<Integer, Double>(PairComparator.Side.NEGRIGHT));
-            Set<Integer> targetSet = allSourcesMap.get(source);
+            Set<Integer> targetSet = allPositiveSourcesMap.get(source);
             if (targetSet == null) {
                 targetSet = new HashSet<Integer>();
             }
@@ -325,6 +325,9 @@ public class PraModel {
                 }
                 if (trainingTargetSet.contains(pair.getLeft().intValue())) {
                     writer.write("^");
+                }
+                if (!positiveTestSources.contains(source)) {
+                    writer.write("-");
                 }
                 writer.write("\n");
             }
