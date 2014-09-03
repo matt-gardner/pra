@@ -31,5 +31,4 @@ various open source licenses (notably the Apache License and the Common Public
 License).  You can see those dependencies listed in the pom.xml file.  The code
 under the src/ directory is distributed under the terms of the GNU General
 Public License, version 3 (or, at your choosing, any later version of that
-license).  You can find the text of that license at the following location:
-http://www.gnu.org/licenses/gpl-3.0.txt.
+license).  You can find the text of that license [here](http://www.gnu.org/licenses/gpl-3.0.txt).
