@@ -18,7 +18,7 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 import edu.cmu.ml.rtw.util.Pair;
 
-public class PraFeatureGeneratorTest extends TestCase {
+public class FeatureGeneratorTest extends TestCase {
 
     private Pair<Pair<Integer, Integer>, Integer> newTriple(int x, int y, int z) {
         return new Pair<Pair<Integer, Integer>, Integer>(new Pair<Integer, Integer>(x, y), z);
@@ -28,17 +28,40 @@ public class PraFeatureGeneratorTest extends TestCase {
         PathTypeFactory factory = new FakePathTypeFactory();
         // The paths here are of the form -1-2-3-.
         Map<PathType, Integer> pathCounts = Maps.newHashMap();
-        Map<Integer, Integer> inverses = Maps.newHashMap();
         pathCounts.put(factory.fromString("-1-2-3-"), 2);
         pathCounts.put(factory.fromString("-1-2-3- INVERSE"), 2);
+
+        Map<Integer, Integer> inverses = Maps.newHashMap();
         inverses.put(1, 2);
 
-        PraFeatureGenerator generator = new PraFeatureGenerator(new PraConfig.Builder()
+        FeatureGenerator generator = new FeatureGenerator(new PraConfig.Builder()
                                                                 .setPathTypeFactory(factory)
                                                                 .build());
         Map<PathType, Integer> collapsed = generator.collapseInverses(pathCounts, inverses);
         assertEquals(1, collapsed.size());
         assertEquals(4, collapsed.get(factory.fromString("-1-2-3- INVERSE")).intValue());
+    }
+
+    public void testCollapseInversesInCountMap() {
+        PathTypeFactory factory = new FakePathTypeFactory();
+        // The paths here are of the form -1-2-3-.
+        Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap = Maps.newHashMap();
+        Pair<Integer, Integer> pair = new Pair<Integer, Integer>(1, 1);
+        Map<PathType, Integer> pathCounts = Maps.newHashMap();
+        pathCountMap.put(pair, pathCounts);
+        pathCounts.put(factory.fromString("-1-2-3-"), 2);
+        pathCounts.put(factory.fromString("-1-2-3- INVERSE"), 2);
+
+        Map<Integer, Integer> inverses = Maps.newHashMap();
+        inverses.put(1, 2);
+
+        FeatureGenerator generator = new FeatureGenerator(new PraConfig.Builder()
+                                                                .setPathTypeFactory(factory)
+                                                                .build());
+        Map<Pair<Integer, Integer>, Map<PathType, Integer>> collapsed =
+            generator.collapseInversesInCountMap(pathCountMap, inverses);
+        assertEquals(1, collapsed.size());
+        assertEquals(4, collapsed.get(pair).get(factory.fromString("-1-2-3- INVERSE")).intValue());
     }
 
     public void testCreateEdgesToExclude() throws IOException {
@@ -53,7 +76,7 @@ public class PraFeatureGeneratorTest extends TestCase {
         int node4Index = nodeDict.getIndex(node4);
         List<Integer> unallowedEdges = Arrays.asList(1, 3, 2);
         PraConfig config = new PraConfig.Builder().setUnallowedEdges(unallowedEdges).build();
-        PraFeatureGenerator generator = new PraFeatureGenerator(config);
+        FeatureGenerator generator = new FeatureGenerator(config);
         String dataFile = "";
         dataFile += node1 + "\t" + node2 + "\n";
         dataFile += node3 + "\t" + node4 + "\n";

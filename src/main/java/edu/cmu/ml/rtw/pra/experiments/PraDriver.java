@@ -31,7 +31,7 @@ import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
 import edu.cmu.ml.rtw.pra.features.PathType;
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy;
-import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator;
+import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.models.PraModel;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.util.Pair;
@@ -76,37 +76,7 @@ public class PraDriver {
         Pair<Dataset, Dataset> splitData = config.allData.splitData(config.percentTraining);
         Dataset trainingData = splitData.getLeft();
         Dataset testingData = splitData.getRight();
-        if (config.outputBase != null) {
-            try {
-                FileWriter writer = new FileWriter(config.outputBase
-                                                   + "training_positive_examples.tsv");
-                for (Pair<Integer, Integer> pair : trainingData.getPositiveInstances()) {
-                    writer.write(pair.getLeft() + "\t" + pair.getRight() + "\n");
-                }
-                writer.close();
-                if (trainingData.getNegativeInstances() != null) {
-                    writer = new FileWriter(config.outputBase + "training_negative_examples.tsv");
-                    for (Pair<Integer, Integer> pair : trainingData.getNegativeInstances()) {
-                        writer.write(pair.getLeft() + "\t" + pair.getRight() + "\n");
-                    }
-                    writer.close();
-                }
-                writer = new FileWriter(config.outputBase + "testing_positive_examples.tsv");
-                for (Pair<Integer, Integer> pair : testingData.getPositiveInstances()) {
-                    writer.write(pair.getLeft() + "\t" + pair.getRight() + "\n");
-                }
-                writer.close();
-                if (testingData.getNegativeInstances() != null) {
-                    writer = new FileWriter(config.outputBase + "testing_negative_examples.tsv");
-                    for (Pair<Integer, Integer> pair : testingData.getNegativeInstances()) {
-                        writer.write(pair.getLeft() + "\t" + pair.getRight() + "\n");
-                    }
-                    writer.close();
-                }
-            } catch(IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData);
         PraConfig.Builder builder = new PraConfig.Builder(config);
         builder.setAllData(null);
         builder.setPercentTraining(0);
@@ -159,7 +129,7 @@ public class PraDriver {
      * @return A learned model encoded as a list of <code>Pair<PathType, Double></code> objects.
      */
     public static List<Pair<PathType, Double>> trainPraModel(PraConfig config) {
-        PraFeatureGenerator generator = new PraFeatureGenerator(config);
+        FeatureGenerator generator = new FeatureGenerator(config);
         List<PathType> pathTypes = generator.selectPathFeatures(config.trainingData);
         String matrixOutput = config.outputBase == null ? null : config.outputBase + "matrix.tsv";
         FeatureMatrix featureMatrix = generator.computeFeatureValues(pathTypes,
@@ -211,12 +181,18 @@ public class PraDriver {
             weights.add(model.get(i).getRight());
         }
         String output = config.outputBase == null ? null : config.outputBase + "test_matrix.tsv";
-        PraFeatureGenerator generator = new PraFeatureGenerator(config);
+        FeatureGenerator generator = new FeatureGenerator(config);
         FeatureMatrix featureMatrix = generator.computeFeatureValues(pathTypes,
                                                                      config.testingData,
                                                                      output);
         PraModel praModel = new PraModel(config);
-        return praModel.classifyInstances(featureMatrix, weights);
+        Map<Integer, List<Pair<Integer, Double>>> scores =
+            praModel.classifyInstances(featureMatrix, weights);
+        // TODO(matt): analyze the scores here and output a result to the command line?  At least
+        // it might be useful to have a "metrics.tsv" file, or something, that computes some
+        // metrics over these scores.
+        config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config);
+        return scores;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +215,10 @@ public class PraDriver {
     /**
      * Reads a file containing a mapping between relations and their inverses, and returns the
      * result as a map.  Note that the file should be in terms of edge _indexes_, not edge _names_.
+     *
+     * @deprecated use {@link KbPraDriver.createInverses} instead
      */
+    @Deprecated
     public static Map<Integer, Integer> createInverses(String filename) throws IOException {
         Map<Integer, Integer> inverses = new HashMap<Integer, Integer>();
         BufferedReader reader = new BufferedReader(new FileReader(filename));
@@ -263,50 +242,17 @@ public class PraDriver {
      */
     public static void processGraph(String baseFilename, int numShards)
             throws IOException {
-        FastSharder sharder = createSharder(baseFilename, numShards);
-        if (!new File(ChiFilenames.getFilenameIntervals(baseFilename, numShards)).exists()) {
-            sharder.shard(new FileInputStream(new File(baseFilename)), "edgelist");
-        } else {
-            logger.info("Found shards -- no need to pre-process");
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Some utility methods that you probably shouldn't use, because it's really pretty internal
-    // stuff.  They are kept public on the off-chance that they are useful, but they are not
-    // documented.
-    //
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    public static FastSharder createSharder(String graphName, int numShards) throws IOException {
-        return new FastSharder<EmptyType, Integer>(graphName, numShards, null,
+        FastSharder sharder = new FastSharder<EmptyType, Integer>(baseFilename, numShards, null,
                 new EdgeProcessor<Integer>() {
                     public Integer receiveEdge(int from, int to, String token) {
                         return Integer.parseInt(token);
                     }
                 }, null, new IntConverter());
-    }
-
-    public static List<Pair<Integer, Integer>> readSourceTargetPairs(String filename)
-            throws IOException {
-        return readSourceTargetPairs(new BufferedReader(new FileReader(new File(filename))));
-    }
-
-    public static List<Pair<Integer, Integer>> readSourceTargetPairs(BufferedReader reader)
-            throws IOException {
-        String line;
-        List<Pair<Integer, Integer>> data = new ArrayList<Pair<Integer, Integer>>();
-        while ((line = reader.readLine()) != null) {
-            // File format is a list of (source, target) pairs, both as integers.
-            String[] parts = line.split("\t");
-            int source = Integer.parseInt(parts[0]);
-            int target = Integer.parseInt(parts[1]);
-            data.add(new Pair<Integer, Integer>(source, target));
+        if (!new File(ChiFilenames.getFilenameIntervals(baseFilename, numShards)).exists()) {
+            sharder.shard(new FileInputStream(new File(baseFilename)), "edgelist");
+        } else {
+            logger.info("Found shards -- no need to pre-process");
         }
-        return data;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -374,6 +320,13 @@ public class PraDriver {
         return cmdLineOptions;
     }
 
+    /**
+     * @deprecated use {@link KbPraDriver.runPra} instead.  This class has methods to train and
+     * test PRA models, but the actual driver code, that reads in options and whatnot, is obsolete.
+     * This code doesn't cover all of the options that are available, and it is a pain to use.  So
+     * use KbPraDriver instead.
+     */
+    @Deprecated
     public static void runPra(CommandLine cmdLine) throws IOException, InterruptedException {
         PraConfig.Builder builder = new PraConfig.Builder();
         builder.setGraph(cmdLine.getOptionValue("graph"));

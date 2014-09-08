@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.users.matt.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -257,5 +258,15 @@ public class FileUtil {
 
     public boolean fileExists(String path) {
         return new File(path).exists();
+    }
+
+    /**
+     * Copies the lines in reader to writer.  Does not close writer.
+     */
+    public void copyLines(BufferedReader reader, FileWriter writer) throws IOException {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        writer.write(line + "\n");
+      }
     }
 }

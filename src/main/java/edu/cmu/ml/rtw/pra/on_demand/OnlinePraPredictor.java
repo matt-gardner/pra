@@ -19,7 +19,7 @@ import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRow;
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
 import edu.cmu.ml.rtw.pra.features.PathType;
-import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator;
+import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.models.PraModel;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -113,7 +113,7 @@ public class OnlinePraPredictor {
                 .setOutputBase(outputBase);
         if (pathTypeFactoryString != null) {
             try {
-                KbPraDriver.initializeVectorPathTypeFactory(builder, pathTypeFactoryString);
+                builder.initializeVectorPathTypeFactory(pathTypeFactoryString);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -244,7 +244,7 @@ public class OnlinePraPredictor {
         for (int i = 1; i < pathDict.getNextIndex(); i++) {
             mergedPathTypes.add(pathDict.getKey(i));
         }
-        PraFeatureGenerator generator = new PraFeatureGenerator(config);
+        FeatureGenerator generator = new FeatureGenerator(config);
         FeatureMatrix featureMatrix = generator.computeFeatureValues(mergedPathTypes,
                                                                      dataset,
                                                                      matrixOutput);

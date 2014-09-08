@@ -11,6 +11,7 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.users.matt.util.Index;
+import edu.cmu.ml.rtw.util.Pair;
 
 public class PathFinderCompanionTest extends TestCase {
     private BasicPathTypeFactory factory = new BasicPathTypeFactory();
@@ -28,20 +29,16 @@ public class PathFinderCompanionTest extends TestCase {
     private int type_2Index = pathDict.getIndex(type_2);
     private int type_3Index = pathDict.getIndex(type_3);
 
-    public void testGetPathCounts() throws RemoteException {
-        PathFinderCompanion companion = new PathFinderCompanion(1,
-                                                                1024,
-                                                                new FakeVertexIdTranslate(),
-                                                                pathDict,
-                                                                factory,
-                                                                PathTypePolicy.PAIRED_ONLY);
+    private int sourceNode = 1;
+    private int targetNode = 2;
+    private Pair<Integer, Integer> sourceTargetPair =
+        new Pair<Integer, Integer>(sourceNode, targetNode);
+    private int intermediateNode = 3;
 
+    private void setDistributionsForTest(PathFinderCompanion companion) {
         // We'll have one source, one target, and one intermediate node in this test.
         ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, DiscreteDistribution>> dists =
                 new ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, DiscreteDistribution>>();
-        int sourceNode = 1;
-        int targetNode = 2;
-        int intermediateNode = 3;
         DiscreteDistribution sourceTargetDist = new DiscreteDistribution(
                 new int[]{type1Index, type1Index});
         DiscreteDistribution targetSourceDist = new DiscreteDistribution(
@@ -58,12 +55,38 @@ public class PathFinderCompanionTest extends TestCase {
         dists.get(intermediateNode).put(sourceNode, sourceIntermDist);
         dists.get(intermediateNode).put(targetNode, targetIntermDist);  // will give ("-2-3-", 4)
         companion.setDistributions(dists);
+    }
+
+    public void testGetPathCounts() throws RemoteException {
+        PathFinderCompanion companion = new PathFinderCompanion(1,
+                                                                1024,
+                                                                new FakeVertexIdTranslate(),
+                                                                pathDict,
+                                                                factory,
+                                                                PathTypePolicy.PAIRED_ONLY);
+        setDistributionsForTest(companion);
         Map<PathType, Integer> pathCounts = companion.getPathCounts(Arrays.asList(sourceNode),
-                                                                  Arrays.asList(targetNode));
+                                                                    Arrays.asList(targetNode));
         assertEquals(3, pathCounts.size());
         assertEquals(4, pathCounts.get(type1).intValue());
         assertEquals(4, pathCounts.get(type2).intValue());
         assertEquals(4, pathCounts.get(type23).intValue());
+    }
+
+    public void testGetPathCountMap() throws RemoteException {
+        PathFinderCompanion companion = new PathFinderCompanion(1,
+                                                                1024,
+                                                                new FakeVertexIdTranslate(),
+                                                                pathDict,
+                                                                factory,
+                                                                PathTypePolicy.PAIRED_ONLY);
+        setDistributionsForTest(companion);
+        Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap =
+            companion.getPathCountMap(Arrays.asList(sourceNode), Arrays.asList(targetNode));
+        assertEquals(1, pathCountMap.size());
+        assertEquals(4, pathCountMap.get(sourceTargetPair).get(type1).intValue());
+        assertEquals(4, pathCountMap.get(sourceTargetPair).get(type2).intValue());
+        assertEquals(4, pathCountMap.get(sourceTargetPair).get(type23).intValue());
     }
 
     public void testIncrementCounts() throws RemoteException {

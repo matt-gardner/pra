@@ -138,6 +138,10 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
         return companion.getPathCounts(origSources, origTargets);
     }
 
+    public Map<Pair<Integer, Integer>, Map<PathType, Integer>> getPathCountMap() {
+        return companion.getPathCountMap(origSources, origTargets);
+    }
+
     public void shutDown() {
         logger.info("Path Finder shutting down");
         companion.close();

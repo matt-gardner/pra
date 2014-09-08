@@ -62,6 +62,7 @@ public class KbPraDriver {
 
   public static Options createOptionParser() {
     Options cmdLineOptions = new Options();
+
     // KB files directory must have the following:
     //
     // A relations/ directory, with one file per relation containing known instances
@@ -73,7 +74,8 @@ public class KbPraDriver {
     // All of these files are in strings, not integers.  They will be translated using the node
     // and edge dictionaries found in the graph directory.
     cmdLineOptions.addOption("k", "kb-files", true, "KB files directory");
-    // This directory must contain three things:
+
+    // This directory must contain four things:
     //
     // node_dict.tsv: a Dictionary mapping node names to integers
     // edge_dict.tsv: a Dictionary mapping edge names to integers
@@ -84,6 +86,7 @@ public class KbPraDriver {
     // The edge file is in a separate directory because GraphChi will create a bunch of
     // auxiliary files in the same directory as edges.tsv.
     cmdLineOptions.addOption("g", "graph-files", true, "Graph files directory");
+
     // The directory containing information on which relations to run, and how to split the
     // data into train and test sets.  This directory must contain the following:
     //
@@ -96,9 +99,11 @@ public class KbPraDriver {
     // in relations_to_run.tsv, we will just randomly split the known instances found in the
     // kb-files directory.
     cmdLineOptions.addOption("s", "split", true, "Split specification directory");
+
     // Parameters file: a tab-separated file that contains one option per line.  See the
     // parameter parsing method for more details on what can and must be in the file.
     cmdLineOptions.addOption("p", "param-file", true, "parameter file");
+
     // The directory where we store the results of this run.
     cmdLineOptions.addOption("o", "outdir", true, "base directory for output");
     return cmdLineOptions;
@@ -118,12 +123,14 @@ public class KbPraDriver {
                             String splitsDirectory,
                             String parameterFile,
                             String outputBase) throws IOException, InterruptedException {
+    FileUtil fileUtil = new FileUtil();
     if (!outputBase.endsWith("/")) outputBase += "/";
     if (!kbDirectory.endsWith("/")) kbDirectory += "/";
     if (!graphDirectory.endsWith("/")) graphDirectory += "/";
     if (!splitsDirectory.endsWith("/")) splitsDirectory += "/";
     long start = System.currentTimeMillis();
     PraConfig.Builder baseBuilder = new PraConfig.Builder();
+    baseBuilder.setFromParamFile(new BufferedReader(new FileReader(parameterFile)));
 
     if (new File(outputBase).exists()) {
       throw new RuntimeException("Output directory already exists!  Exiting...");
@@ -132,13 +139,20 @@ public class KbPraDriver {
 
     parseGraphFiles(graphDirectory, baseBuilder);
 
+    Map<String, String> nodeNames = null;
+    if (new File(kbDirectory + "node_names.tsv").exists()) {
+      nodeNames = fileUtil.readMapFromTsvFile(kbDirectory + "node_names.tsv", true);
+    }
+    Outputter outputter = new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames);
+    baseBuilder.setOutputter(outputter);
+
     FileWriter writer = new FileWriter(outputBase + "settings.txt");
     writer.write("KB used: " + kbDirectory + "\n");
     writer.write("Graph used: " + graphDirectory + "\n");
     writer.write("Splits used: " + splitsDirectory + "\n");
     writer.write("Parameter file used: " + parameterFile + "\n");
     writer.write("Parameters:\n");
-    parseParameterFile(new BufferedReader(new FileReader(parameterFile)), baseBuilder, writer);
+    fileUtil.copyLines(new BufferedReader(new FileReader(parameterFile)), writer);
     writer.write("End of parameters\n");
     writer.close();
 
@@ -146,16 +160,9 @@ public class KbPraDriver {
     // Make sure the graph is sharded
     PraDriver.processGraph(baseConfig.graph, baseConfig.numShards);
 
-    Map<String, String> nodeNames = null;
-    if (new File(kbDirectory + "node_names.tsv").exists()) {
-      nodeNames = FileUtil.readMapFromTsvFile(kbDirectory + "node_names.tsv", true);
-    }
     String relationsFile = splitsDirectory + "relations_to_run.tsv";
     String line;
     BufferedReader reader = new BufferedReader(new FileReader(relationsFile));
-    OutputTranslator translator = new OutputTranslator(baseConfig.nodeDict,
-                                                       baseConfig.edgeDict,
-                                                       nodeNames);
     while ((line = reader.readLine()) != null) {
       PraConfig.Builder builder = new PraConfig.Builder(baseConfig);
       String relation = line;
@@ -172,7 +179,7 @@ public class KbPraDriver {
                       relation,
                       builder,
                       new DatasetFactory(),
-                      new FileUtil());
+                      fileUtil);
 
       PraConfig config = builder.build();
       if (config.allData != null) {
@@ -185,26 +192,6 @@ public class KbPraDriver {
       } else {
         PraDriver.trainAndTest(config);
       }
-      translator.translatePathCountsFile(outdir + "found_path_counts.tsv");
-      translator.translatePathFile(outdir + "kept_paths.tsv");
-      translator.translateWeightFile(outdir + "weights.tsv");
-      translator.translateMatrixFile(outdir + "matrix.tsv",
-                                     outdir + "kept_paths.tsv.translated",
-                                     null);
-      translator.translateMatrixFile(outdir + "positive_matrix.tsv",
-                                     outdir + "kept_paths.tsv.translated",
-                                     null);
-      translator.translateMatrixFile(outdir + "negative_matrix.tsv",
-                                     outdir + "kept_paths.tsv.translated",
-                                     null);
-      translator.translateMatrixFile(outdir + "unseen_matrix.tsv",
-                                     outdir + "kept_paths.tsv.translated",
-                                     null);
-      translator.translateMatrixFile(outdir + "test_matrix.tsv",
-                                     outdir + "kept_paths.tsv.translated",
-                                     outdir + "weights.tsv.translated");
-      translator.translateScoreFile(outdir + "scores.tsv");
-      // TODO(matt): analyze the scores here and output a result to the command line.
     }
     long end = System.currentTimeMillis();
     long millis = end - start;
@@ -248,100 +235,18 @@ public class KbPraDriver {
 
   public static void parseGraphFiles(String directory, PraConfig.Builder builder)
       throws IOException {
-    if (!directory.endsWith("/")) directory += "/";
-    builder.setGraph(directory + "graph_chi/edges.tsv");
-    System.out.println("Loading node and edge dictionaries from graph directory: " + directory);
-    BufferedReader reader = new BufferedReader(new FileReader(directory + "num_shards.tsv"));
-    builder.setNumShards(Integer.parseInt(reader.readLine()));
-    Dictionary nodeDict = new Dictionary();
-    nodeDict.setFromFile(directory + "node_dict.tsv");
-    builder.setNodeDictionary(nodeDict);
-    Dictionary edgeDict = new Dictionary();
-    edgeDict.setFromFile(directory + "edge_dict.tsv");
-    builder.setEdgeDictionary(edgeDict);
-  }
-
-  public static void parseParameterFile(BufferedReader reader,
-                                        PraConfig.Builder builder,
-                                        FileWriter writer) throws IOException {
-    String line;
-    while ((line = reader.readLine()) != null) {
-      writer.write(line + "\n");
-      String[] fields = line.split("\t");
-      String parameter = fields[0];
-      String value = fields[1];
-      if (parameter.equalsIgnoreCase("L1 weight")) {
-        builder.setL1Weight(Double.parseDouble(value));
-      } else if (parameter.equalsIgnoreCase("L2 weight")) {
-        builder.setL2Weight(Double.parseDouble(value));
-      } else if (parameter.equalsIgnoreCase("walks per source")) {
-        builder.setWalksPerSource(Integer.parseInt(value));
-      } else if (parameter.equalsIgnoreCase("walks per path")) {
-        builder.setWalksPerPath(Integer.parseInt(value));
-      } else if (parameter.equalsIgnoreCase("path finding iterations")) {
-        builder.setNumIters(Integer.parseInt(value));
-      } else if (parameter.equalsIgnoreCase("number of paths to keep")) {
-        builder.setNumPaths(Integer.parseInt(value));
-      } else if (parameter.equalsIgnoreCase("only explicit negative evidence")) {
-        builder.onlyExplicitNegatives();
-      } else if (parameter.equalsIgnoreCase("matrix accept policy")) {
-        builder.setAcceptPolicy(MatrixRowPolicy.parseFromString(value));
-      } else if (parameter.equalsIgnoreCase("path accept policy")) {
-        builder.setPathTypePolicy(PathTypePolicy.parseFromString(value));
-      } else if (parameter.equalsIgnoreCase("path type embeddings")) {
-        initializeVectorPathTypeFactory(builder, value);
-      } else if (parameter.equalsIgnoreCase("path type selector")) {
-        initializePathTypeSelector(builder, value);
-      } else {
-        throw new RuntimeException("Unrecognized parameter specification: " + line);
+        if (!directory.endsWith("/")) directory += "/";
+        builder.setGraph(directory + "graph_chi/edges.tsv");
+        System.out.println("Loading node and edge dictionaries from graph directory: " + directory);
+        BufferedReader reader = new BufferedReader(new FileReader(directory + "num_shards.tsv"));
+        builder.setNumShards(Integer.parseInt(reader.readLine()));
+        Dictionary nodeDict = new Dictionary();
+        nodeDict.setFromFile(directory + "node_dict.tsv");
+        builder.setNodeDictionary(nodeDict);
+        Dictionary edgeDict = new Dictionary();
+        edgeDict.setFromFile(directory + "edge_dict.tsv");
+        builder.setEdgeDictionary(edgeDict);
       }
-    }
-  }
-
-  public static void initializeVectorPathTypeFactory(PraConfig.Builder builder,
-                                                     String paramString) throws IOException {
-    System.out.println("Initializing vector path type factory");
-    String[] params = paramString.split(",");
-    double spikiness = Double.parseDouble(params[0]);
-    double resetWeight = Double.parseDouble(params[1]);
-    Map<Integer, Vector> embeddings = Maps.newHashMap();
-    for (int embeddingsIndex = 2; embeddingsIndex < params.length; embeddingsIndex++) {
-      String embeddingsFile = params[embeddingsIndex];
-      System.out.println("Embeddings file: " + embeddingsFile);
-      BufferedReader reader = new BufferedReader(new FileReader(embeddingsFile));
-      String line;
-      // Embeddings files are formated as tsv, where the first column is the relation name
-      // and the rest of the columns make up the vector.
-      while ((line = reader.readLine()) != null) {
-        String[] fields = line.split("\t");
-        int relationIndex = builder.edgeDict.getIndex(fields[0]);
-        double[] vector = new double[fields.length - 1];
-        for (int i = 0; i < vector.length; i++) {
-          vector[i] = Double.parseDouble(fields[i + 1]);
-        }
-        embeddings.put(relationIndex, new Vector(vector));
-      }
-    }
-    builder.setPathTypeFactory(new VectorPathTypeFactory(builder.edgeDict,
-                                                         embeddings,
-                                                         spikiness,
-                                                         resetWeight));
-  }
-
-  public static void initializePathTypeSelector(PraConfig.Builder builder,
-                                                String paramString) {
-    if (paramString.startsWith("VectorClusteringPathTypeSelector")) {
-      System.out.println("Using VectorClusteringPathTypeSelector");
-      String[] params = paramString.split(",");
-      double similarityThreshold = Double.parseDouble(params[1]);
-      PathTypeSelector selector = new VectorClusteringPathTypeSelector(
-          (VectorPathTypeFactory) builder.pathTypeFactory,
-          similarityThreshold);
-      builder.setPathTypeSelector(selector);
-    } else {
-      throw new RuntimeException("Unrecognized path type selector parameter!");
-    }
-  }
 
   /**
    * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
