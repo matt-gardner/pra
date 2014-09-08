@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Sets;
+
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRow;
@@ -197,23 +199,42 @@ public class Outputter {
   public void outputPathCountMap(
       String baseDir,
       String filename,
-      Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap) {
+      Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap,
+      Dataset data) {
     if (baseDir == null) return;
     try {
       FileWriter writer = new FileWriter(baseDir + filename);
-      for (Pair<Integer, Integer> pair : pathCountMap.keySet()) {
-        Map<PathType, Integer> pathCounts = pathCountMap.get(pair);
-        writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
-        List<Map.Entry<PathType, Integer>> list = MapUtil.sortByValue(pathCounts, true);
-        for (Map.Entry<PathType, Integer> entry : list) {
-          writer.write("\t" + getPathType(entry.getKey()) + "\t" + entry.getValue() + "\n");
-        }
-        writer.write("\n");
+      for (Pair<Integer, Integer> pair : data.getPositiveInstances()) {
+        outputPathCountPair(pair, true, pathCountMap.get(pair), writer);
+      }
+      for (Pair<Integer, Integer> pair : data.getNegativeInstances()) {
+        outputPathCountPair(pair, false, pathCountMap.get(pair), writer);
       }
       writer.close();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private void outputPathCountPair(Pair<Integer, Integer> pair,
+                                   boolean isPositive,
+                                   Map<PathType, Integer> pathCounts,
+                                   FileWriter writer) throws IOException {
+    writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\t");
+    if (isPositive) {
+      writer.write("+\n");
+    } else {
+      writer.write("-\n");
+    }
+    if (pathCounts == null) {
+      writer.write("\n");
+      return;
+    }
+    List<Map.Entry<PathType, Integer>> list = MapUtil.sortByValue(pathCounts, true);
+    for (Map.Entry<PathType, Integer> entry : list) {
+      writer.write("\t" + getPathType(entry.getKey()) + "\t" + entry.getValue() + "\n");
+    }
+    writer.write("\n");
   }
 
   public void outputPaths(String baseDir, String filename, List<PathType> pathTypes) {

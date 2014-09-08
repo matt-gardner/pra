@@ -87,10 +87,6 @@ public class FeatureGenerator {
                                        config.walksPerSource,
                                        config.pathTypePolicy,
                                        config.pathTypeFactory);
-    for (Pair<Integer, Integer> pair : data.getPositiveInstances()) {
-      System.out.println(pair + "  ->  " + config.nodeDict.getString(pair.getLeft()) + ", " +
-                         config.nodeDict.getString(pair.getRight()));
-    }
     finder.execute(config.numIters);
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
     // reason I don't understand.
@@ -101,9 +97,8 @@ public class FeatureGenerator {
     }
     Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap = finder.getPathCountMap();
     finder.shutDown();
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap);
     pathCountMap = collapseInversesInCountMap(pathCountMap, config.relationInverses);
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map_collapsed.tsv", pathCountMap);
+    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, data);
     return pathCountMap;
   }
 
@@ -206,7 +201,7 @@ public class FeatureGenerator {
     }
     List<Integer> sources = data.getAllSources();
     List<Integer> targets = data.getAllTargets();
-    if (sources == null || targets == null) {
+    if (sources.size() == 0 || targets.size() == 0) {
       return edgesToExclude;
     }
     List<Pair<Integer, Integer>> dataPoints = CollectionsUtil.zipLists(data.getAllSources(),

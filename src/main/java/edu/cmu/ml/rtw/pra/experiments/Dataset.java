@@ -11,15 +11,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
+
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.util.Pair;
 
 /**
- * A collection of positive and negative (source, target) pairs.  Generally, it's assumed that
- * positive instances are specified before negative instances, and sources are specified before
- * targets.  So, for instance, if we check positiveTargets and it's null, we don't bother checking
- * negativeTargets.
+ * A collection of positive and negative (source, target) pairs.
  */
 public class Dataset {
   private final List<Integer> positiveSources;
@@ -96,12 +95,6 @@ public class Dataset {
       }
     }
     reader.close();
-    if (negativeSources.size() == 0) {
-      negativeSources = null;
-    }
-    if (negativeTargets.size() == 0) {
-      negativeTargets = null;
-    }
     return new Dataset.Builder()
         .setPositiveSources(positiveSources)
         .setPositiveTargets(positiveTargets)
@@ -203,21 +196,6 @@ public class Dataset {
       }
     }
     List<Pair<Integer, Integer>> negativeInstances = getNegativeInstances();
-    if (negativeInstances == null) {
-      Dataset trainingData = new Dataset.Builder()
-          .setPositiveSources(CollectionsUtil.unzipLeft(trainingPositive))
-          .setPositiveTargets(CollectionsUtil.unzipRight(trainingPositive))
-          .setNegativeSources(null)
-          .setNegativeTargets(null)
-          .build();
-      Dataset testingData = new Dataset.Builder()
-          .setPositiveSources(CollectionsUtil.unzipLeft(testingPositive))
-          .setPositiveTargets(CollectionsUtil.unzipRight(testingPositive))
-          .setNegativeSources(null)
-          .setNegativeTargets(null)
-          .build();
-      return new Pair<Dataset, Dataset>(trainingData, testingData);
-    }
     numTraining = (int) (percent * negativeInstances.size());
     Collections.shuffle(negativeInstances);
     List<Pair<Integer, Integer>> trainingNegative = new ArrayList<Pair<Integer, Integer>>();
@@ -249,9 +227,6 @@ public class Dataset {
   }
 
   public List<Pair<Integer, Integer>> getNegativeInstances() {
-    if (negativeSources == null) {
-      return null;
-    }
     return CollectionsUtil.zipLists(negativeSources, negativeTargets);
   }
 
@@ -266,9 +241,6 @@ public class Dataset {
 
   private Set<String> getInstancesAsStrings(List<Pair<Integer, Integer>> instances) {
     Set<String> instanceStrings = new HashSet<String>();
-    if (instances == null) {
-      return instanceStrings;
-    }
     for (Pair<Integer, Integer> instance : instances) {
       instanceStrings.add(instance.getLeft() + " " + instance.getRight());
     }
@@ -294,21 +266,14 @@ public class Dataset {
   public List<Integer> getAllSources() {
     List<Integer> allSources = new ArrayList<Integer>();
     allSources.addAll(positiveSources);
-    if (negativeSources != null) {
-      allSources.addAll(negativeSources);
-    }
+    allSources.addAll(negativeSources);
     return allSources;
   }
 
   public List<Integer> getAllTargets() {
-    if (positiveTargets == null) {
-      return null;
-    }
     List<Integer> allTargets = new ArrayList<Integer>();
     allTargets.addAll(positiveTargets);
-    if (negativeTargets != null) {
-      allTargets.addAll(negativeTargets);
-    }
+    allTargets.addAll(negativeTargets);
     return allTargets;
   }
 
@@ -336,10 +301,11 @@ public class Dataset {
   }
 
   public static class Builder {
-    private List<Integer> positiveSources;
-    private List<Integer> positiveTargets;
-    private List<Integer> negativeSources;
-    private List<Integer> negativeTargets;
+    // We default everything here to empty lists, so we don't get null pointer exceptions.
+    private List<Integer> positiveSources = Lists.newArrayList();
+    private List<Integer> positiveTargets = Lists.newArrayList();
+    private List<Integer> negativeSources = Lists.newArrayList();
+    private List<Integer> negativeTargets = Lists.newArrayList();
 
     public Builder() { }
 
