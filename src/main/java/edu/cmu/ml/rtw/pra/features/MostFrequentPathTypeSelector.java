@@ -7,9 +7,9 @@ import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 
 public class MostFrequentPathTypeSelector implements PathTypeSelector {
 
-    @Override
-    public List<PathType> selectPathTypes(Map<PathType, Integer> pathCounts, int numPathsToKeep) {
-        System.out.println("SELECTING PATH TYPES - MostFrequentPathTypeSelector");
-        return MapUtil.getTopKeys(pathCounts, numPathsToKeep);
-    }
+  @Override
+  public List<PathType> selectPathTypes(Map<PathType, Integer> pathCounts, int numPathsToKeep) {
+    System.out.println("SELECTING PATH TYPES - MostFrequentPathTypeSelector");
+    return MapUtil.getTopKeys(pathCounts, numPathsToKeep);
+  }
 }

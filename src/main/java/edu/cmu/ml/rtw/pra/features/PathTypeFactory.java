@@ -19,38 +19,38 @@ import edu.cmu.ml.rtw.users.matt.util.ObjectParser;
  */
 public interface PathTypeFactory extends ObjectParser<PathType> {
 
-    /**
-     * Converts the sequences of nodes and edges into the set of abstracted PathTypes that are
-     * compatible with the observed sequence.
-     *
-     * This uses an array instead of a List for efficiency reasons, as this is used during walks in
-     * the GraphChi code.
-     */
-    public PathType[] encode(Path path);
+  /**
+   * Converts the sequences of nodes and edges into the set of abstracted PathTypes that are
+   * compatible with the observed sequence.
+   *
+   * This uses an array instead of a List for efficiency reasons, as this is used during walks in
+   * the GraphChi code.
+   */
+  public PathType[] encode(Path path);
 
-    /**
-     * A PathType that is an identity with regards to the concatenatePathTypes and combinePathTypes
-     * operations (the latter is in the CombiningPathTypeFactory interface).
-     */
-    public PathType emptyPathType();
+  /**
+   * A PathType that is an identity with regards to the concatenatePathTypes and combinePathTypes
+   * operations (the latter is in the CombiningPathTypeFactory interface).
+   */
+  public PathType emptyPathType();
 
-    /**
-     * For use in the PathFinderCompanion, where we need to combine paths from two nodes that met
-     * at an intermediate node.  pathFromTarget should be reversed, then appended to pathToSource.
-     */
-    public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget);
+  /**
+   * For use in the PathFinderCompanion, where we need to combine paths from two nodes that met at
+   * an intermediate node.  pathFromTarget should be reversed, then appended to pathToSource.
+   */
+  public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget);
 
-    /**
-     * Given a PathType that may have redundantly encoded edge types, collapse the inverses into a
-     * less redundant version.
-     *
-     * Note that the only effect this has is to reduce redundancy in the feature space.  You should
-     * not rely on this inverse collapsing to handle the proper exclusion of edges (see
-     * EdgeExcluder).  Depending on the graph encoding, this could also be a bad idea - the only
-     * time this could actually be a good idea is when you are guaranteed to have an inverse edge
-     * for every edge in the graph.  So the default handling of this method is actually an
-     * identity.  But you have the option to reduce some redundancy, if you know some things about
-     * how your graph is constructed.
-     */
-    public PathType collapseEdgeInverses(PathType pathType, Map<Integer, Integer> edgeInverses);
+  /**
+   * Given a PathType that may have redundantly encoded edge types, collapse the inverses into a
+   * less redundant version.
+   *
+   * Note that the only effect this has is to reduce redundancy in the feature space.  You should
+   * not rely on this inverse collapsing to handle the proper exclusion of edges (see
+   * EdgeExcluder).  Depending on the graph encoding, this could also be a bad idea - the only time
+   * this could actually be a good idea is when you are guaranteed to have an inverse edge for
+   * every edge in the graph.  So the default handling of this method is actually an identity.  But
+   * you have the option to reduce some redundancy, if you know some things about how your graph is
+   * constructed.
+   */
+  public PathType collapseEdgeInverses(PathType pathType, Map<Integer, Integer> edgeInverses);
 }

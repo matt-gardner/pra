@@ -8,5 +8,5 @@ import java.util.Map;
  * this object determines which path types to keep, possibly merging some of them.
  */
 public interface PathTypeSelector {
-    List<PathType> selectPathTypes(Map<PathType, Integer> pathCounts, int numPathsToKeep);
+  List<PathType> selectPathTypes(Map<PathType, Integer> pathCounts, int numPathsToKeep);
 }

@@ -7,30 +7,30 @@ import java.util.Random;
  */
 public class BasicPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
 
-    private final BasicPathType emptyPathType = new BasicPathType();
+  private final BasicPathType emptyPathType = new BasicPathType();
 
-    @Override
-    public PathType emptyPathType() {
-        return emptyPathType;
+  @Override
+  public PathType emptyPathType() {
+    return emptyPathType;
+  }
+
+  @Override
+  protected BaseEdgeSequencePathType newInstance(int[] edgeTypes, boolean[] reverse) {
+    return new BasicPathType(edgeTypes, reverse);
+  }
+
+  private class BasicPathType extends BaseEdgeSequencePathType {
+    public BasicPathType(int[] edgeTypes, boolean[] reverse) {
+      super(edgeTypes, reverse);
     }
 
     @Override
-    protected BaseEdgeSequencePathType newInstance(int[] edgeTypes, boolean[] reverse) {
-        return new BasicPathType(edgeTypes, reverse);
+    protected int getNextEdgeType(int hopNum, Vertex vertex, Random random) {
+      return edgeTypes[hopNum];
     }
 
-    private class BasicPathType extends BaseEdgeSequencePathType {
-        public BasicPathType(int[] edgeTypes, boolean[] reverse) {
-            super(edgeTypes, reverse);
-        }
-
-        @Override
-        protected int getNextEdgeType(int hopNum, Vertex vertex, Random random) {
-            return edgeTypes[hopNum];
-        }
-
-        private BasicPathType() {
-            super(new int[0], new boolean[0]);
-        }
+    private BasicPathType() {
+      super(new int[0], new boolean[0]);
     }
+  }
 }

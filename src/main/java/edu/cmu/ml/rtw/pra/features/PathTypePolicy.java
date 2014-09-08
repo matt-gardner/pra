@@ -10,18 +10,18 @@ package edu.cmu.ml.rtw.pra.features;
  * paired, do we count it?
  */
 public enum PathTypePolicy {
-    // Accept all path types from any source to any target, no matter which (source, target) pair
-    // it is.
-    EVERYTHING,
-    // Only keep paths that connect (source, target) pairs in the training data.
-    PAIRED_ONLY;
+  // Accept all path types from any source to any target, no matter which (source, target) pair it
+  // is.
+  EVERYTHING,
+  // Only keep paths that connect (source, target) pairs in the training data.
+  PAIRED_ONLY;
 
-    public static PathTypePolicy parseFromString(String policy) {
-        if (policy.equals("everything")) {
-            return EVERYTHING;
-        } else if (policy.equals("paired-only")) {
-            return PAIRED_ONLY;
-        }
-        throw new RuntimeException("Unrecognized path type policy: " + policy);
+  public static PathTypePolicy parseFromString(String policy) {
+    if (policy.equals("everything")) {
+      return EVERYTHING;
+    } else if (policy.equals("paired-only")) {
+      return PAIRED_ONLY;
     }
+    throw new RuntimeException("Unrecognized path type policy: " + policy);
+  }
 }

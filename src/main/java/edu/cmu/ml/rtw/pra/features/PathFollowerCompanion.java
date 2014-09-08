@@ -22,163 +22,164 @@ import edu.cmu.ml.rtw.util.Pair;
 
 public class PathFollowerCompanion extends TwoKeyCompanion {
 
-    private MatrixRowPolicy acceptPolicy;
-    private Set<Integer> allowedTargets;
+  private MatrixRowPolicy acceptPolicy;
+  private Set<Integer> allowedTargets;
 
-    private VertexIdTranslate translate;
-    private int[] sourceVertexIds;
-    private PathType[] pathTypes;
+  private VertexIdTranslate translate;
+  private int[] sourceVertexIds;
+  private PathType[] pathTypes;
 
-    /**
-     * Creates the PathFollowerCompanion object
+  /**
+   * Creates the PathFollowerCompanion object
+   */
+  public PathFollowerCompanion(int numThreads,
+                               long maxMemoryBytes,
+                               VertexIdTranslate translate,
+                               PathType[] pathTypes,
+                               MatrixRowPolicy acceptPolicy,
+                               Set<Integer> allowedTargets) throws RemoteException {
+    super(numThreads, maxMemoryBytes);
+    this.translate = translate;
+    this.pathTypes = pathTypes;
+    this.acceptPolicy = acceptPolicy;
+    this.allowedTargets = allowedTargets;
+  }
+
+  @Override
+  public void setSources(int[] sourceVertexIds) {
+    this.sourceVertexIds = sourceVertexIds;
+  }
+
+  @Override
+  protected int getFirstKey(long walk, int atVertex) {
+    return translate.backward(sourceVertexIds[PathFollower.staticSourceIdx(walk)]);
+  }
+
+  @Override
+  protected int getSecondKey(long walk, int atVertex) {
+    return PathFollower.Manager.pathType(walk);
+  }
+
+  @Override
+  protected int getValue(long walk, int atVertex) {
+    return translate.backward(atVertex);
+  }
+
+  @Override
+  protected boolean ignoreWalk(long walk) {
+    /*
+    int pathType = PathFollower.Manager.pathType(walk);
+    int hopNum = PathFollower.Manager.hopNum(walk);
+    if (hopNum != pathTypes[pathType].numHops) {
+      return true;
+    }
      */
-    public PathFollowerCompanion(int numThreads, long maxMemoryBytes, VertexIdTranslate translate,
-            PathType[] pathTypes, MatrixRowPolicy acceptPolicy, Set<Integer> allowedTargets)
-            throws RemoteException {
-        super(numThreads, maxMemoryBytes);
-        this.translate = translate;
-        this.pathTypes = pathTypes;
-        this.acceptPolicy = acceptPolicy;
-        this.allowedTargets = allowedTargets;
-    }
+    return false;
+  }
 
-    @Override
-    public void setSources(int[] sourceVertexIds) {
-        this.sourceVertexIds = sourceVertexIds;
-    }
+  @VisibleForTesting
+  protected void setAcceptPolicy(MatrixRowPolicy acceptPolicy) {
+    this.acceptPolicy = acceptPolicy;
+  }
 
-    @Override
-    protected int getFirstKey(long walk, int atVertex) {
-        return translate.backward(sourceVertexIds[PathFollower.staticSourceIdx(walk)]);
-    }
+  @VisibleForTesting
+  protected void setAllowedTargets(Set<Integer> allowedTargets) {
+    this.allowedTargets = allowedTargets;
+  }
 
-    @Override
-    protected int getSecondKey(long walk, int atVertex) {
-        return PathFollower.Manager.pathType(walk);
-    }
+  @VisibleForTesting
+  protected void setDistributions(
+      ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, DiscreteDistribution>> distributions) {
+    this.distributions = distributions;
+  }
 
-    @Override
-    protected int getValue(long walk, int atVertex) {
-        return translate.backward(atVertex);
-    }
+  @Override
+  public void outputDistributions(String outputFile) throws RemoteException {
+  }
 
-    @Override
-    protected boolean ignoreWalk(long walk) {
-        /*
-        int pathType = PathFollower.Manager.pathType(walk);
-        int hopNum = PathFollower.Manager.hopNum(walk);
-        if (hopNum != pathTypes[pathType].numHops) {
-            return true;
-        }
-        */
-        return false;
-    }
-
-    @VisibleForTesting
-    protected void setAcceptPolicy(MatrixRowPolicy acceptPolicy) {
-        this.acceptPolicy = acceptPolicy;
-    }
-
-    @VisibleForTesting
-    protected void setAllowedTargets(Set<Integer> allowedTargets) {
-        this.allowedTargets = allowedTargets;
-    }
-
-    @VisibleForTesting
-    protected void setDistributions(
-            ConcurrentHashMap<Integer,
-                              ConcurrentHashMap<Integer, DiscreteDistribution>> distributions) {
-        this.distributions = distributions;
-    }
-
-    @Override
-    public void outputDistributions(String outputFile) throws RemoteException {
-    }
-
-    @VisibleForTesting
-    protected boolean acceptableRow(int sourceNode,
+  @VisibleForTesting
+  protected boolean acceptableRow(int sourceNode,
                                   int targetNode,
                                   Set<Integer> sourceTargets,
                                   Set<Integer> allTargets) {
-        if (acceptPolicy == MatrixRowPolicy.EVERYTHING) {
-            return true;
-        } else if (acceptPolicy == MatrixRowPolicy.ALL_TARGETS) {
-            if (allowedTargets != null) {
-                return allowedTargets.contains(targetNode);
-            } else {
-                return allTargets.contains(targetNode);
-            }
-        } else if (acceptPolicy == MatrixRowPolicy.PAIRED_TARGETS_ONLY) {
-            return sourceTargets.contains(targetNode);
-        }
-        throw new RuntimeException("Accept policy not set to something recognizable: "
-                + acceptPolicy);
+    if (acceptPolicy == MatrixRowPolicy.EVERYTHING) {
+      return true;
+    } else if (acceptPolicy == MatrixRowPolicy.ALL_TARGETS) {
+      if (allowedTargets != null) {
+        return allowedTargets.contains(targetNode);
+      } else {
+        return allTargets.contains(targetNode);
+      }
+    } else if (acceptPolicy == MatrixRowPolicy.PAIRED_TARGETS_ONLY) {
+      return sourceTargets.contains(targetNode);
+    }
+    throw new RuntimeException("Accept policy not set to something recognizable: " + acceptPolicy);
+  }
+
+  public FeatureMatrix getFeatureMatrix(Map<Integer, Set<Integer>> sourcesMap) {
+    logger.info("Waiting for execution to finish");
+    waitForFinish();
+    for (Integer firstKey : buffers.keySet()) {
+      ConcurrentHashMap<Integer, IntegerBuffer> map = buffers.get(firstKey);
+      for (Integer secondKey : map.keySet()) {
+        drainBuffer(firstKey, secondKey);
+      }
+    }
+    HashSet<Integer> emptySet = Sets.newHashSet();
+    Set<Integer> allTargets = new HashSet<Integer>();
+    for (int source : sourcesMap.keySet()) {
+      Set<Integer> targets = MapUtil.getWithDefault(sourcesMap, source, emptySet);
+      for (int target : targets) {
+        allTargets.add(target);
+      }
     }
 
-    public FeatureMatrix getFeatureMatrix(Map<Integer, Set<Integer>> sourcesMap) {
-        logger.info("Waiting for execution to finish");
-        waitForFinish();
-        for (Integer firstKey : buffers.keySet()) {
-            ConcurrentHashMap<Integer, IntegerBuffer> map = buffers.get(firstKey);
-            for (Integer secondKey : map.keySet()) {
-                drainBuffer(firstKey, secondKey);
-            }
+    Map<Pair<Integer, Integer>, List<Pair<Integer, Double>>> features =
+        new HashMap<Pair<Integer, Integer>, List<Pair<Integer, Double>>>();
+    // firstKey is the (already translated) source vertex, secondKey is the path type, and the
+    // target vertices show up as keys in the DiscreteDistributions
+    for (Integer firstKey : distributions.keySet()) {
+      ConcurrentHashMap<Integer, DiscreteDistribution> map = distributions.get(firstKey);
+      Set<Integer> sourceTargets = MapUtil.getWithDefault(sourcesMap, firstKey, emptySet);
+      for (Integer secondKey : map.keySet()) {
+        DiscreteDistribution dist = map.get(secondKey);
+        double totalCount = (double) dist.totalCount();
+        /* For debugging
+        for (IdCount ic : dist.getTop(10)) {
+          System.out.println(firstKey + " " + ic.id + " " + secondKey + " " + ic.count);
+          System.out.println(acceptableRow(firstKey, ic.id, sourceTargets, allTargets));
         }
-        HashSet<Integer> emptySet = Sets.newHashSet();
-        Set<Integer> allTargets = new HashSet<Integer>();
-        for (int source : sourcesMap.keySet()) {
-            Set<Integer> targets = MapUtil.getWithDefault(sourcesMap, source, emptySet);
-            for (int target : targets) {
-                allTargets.add(target);
-            }
+        System.out.println();
+         */
+        for (IdCount ic : dist.getTop(dist.size())) {
+          int target = ic.id;
+          if (!acceptableRow(firstKey, target, sourceTargets, allTargets)) continue;
+          int count = ic.count;
+          double percent = count / totalCount;
+          if (Double.isInfinite(percent)) {
+            // Somehow this happens when there are lots of walks...  Not sure what's going on.
+            // TODO(matt): look into this problem.
+            continue;
+          }
+          Pair<Integer, Integer> nodePair = new Pair<Integer, Integer>(firstKey, target);
+          Pair<Integer, Double> feature = new Pair<Integer, Double>(secondKey, percent);
+          MapUtil.addValueToKeyList(features, nodePair, feature);
         }
-
-        Map<Pair<Integer, Integer>, List<Pair<Integer, Double>>> features =
-            new HashMap<Pair<Integer, Integer>, List<Pair<Integer, Double>>>();
-        // firstKey is the (already translated) source vertex, secondKey is the path type, and the
-        // target vertices show up as keys in the DiscreteDistributions
-        for (Integer firstKey : distributions.keySet()) {
-            ConcurrentHashMap<Integer, DiscreteDistribution> map = distributions.get(firstKey);
-            Set<Integer> sourceTargets = MapUtil.getWithDefault(sourcesMap, firstKey, emptySet);
-            for (Integer secondKey : map.keySet()) {
-                DiscreteDistribution dist = map.get(secondKey);
-                double totalCount = (double) dist.totalCount();
-                /* For debugging
-                for (IdCount ic : dist.getTop(10)) {
-                    System.out.println(firstKey + " " + ic.id + " " + secondKey + " " + ic.count);
-                    System.out.println(acceptableRow(firstKey, ic.id, sourceTargets, allTargets));
-                }
-                System.out.println();
-                */
-                for (IdCount ic : dist.getTop(dist.size())) {
-                    int target = ic.id;
-                    if (!acceptableRow(firstKey, target, sourceTargets, allTargets)) continue;
-                    int count = ic.count;
-                    double percent = count / totalCount;
-                    if (Double.isInfinite(percent)) {
-                        // Somehow this happens when there are lots of walks...  Not sure what's
-                        // going on.  TODO(matt): look into this problem.
-                        continue;
-                    }
-                    Pair<Integer, Integer> nodePair = new Pair<Integer, Integer>(firstKey, target);
-                    Pair<Integer, Double> feature = new Pair<Integer, Double>(secondKey, percent);
-                    MapUtil.addValueToKeyList(features, nodePair, feature);
-                }
-            }
-        }
-        List<MatrixRow> matrix = new ArrayList<MatrixRow>();
-        for (Pair<Integer, Integer> nodePair : features.keySet()) {
-            int sourceNode = nodePair.getLeft();
-            int targetNode = nodePair.getRight();
-            List<Pair<Integer, Double>> feature_list = features.get(nodePair);
-            int[] pathTypes = new int[feature_list.size()];
-            double[] values = new double[feature_list.size()];
-            for (int i=0; i<feature_list.size(); i++) {
-                pathTypes[i] = feature_list.get(i).getLeft();
-                values[i] = feature_list.get(i).getRight();
-            }
-            matrix.add(new MatrixRow(sourceNode, targetNode, pathTypes, values));
-        }
-        return new FeatureMatrix(matrix);
+      }
     }
+    List<MatrixRow> matrix = new ArrayList<MatrixRow>();
+    for (Pair<Integer, Integer> nodePair : features.keySet()) {
+      int sourceNode = nodePair.getLeft();
+      int targetNode = nodePair.getRight();
+      List<Pair<Integer, Double>> feature_list = features.get(nodePair);
+      int[] pathTypes = new int[feature_list.size()];
+      double[] values = new double[feature_list.size()];
+      for (int i=0; i<feature_list.size(); i++) {
+        pathTypes[i] = feature_list.get(i).getLeft();
+        values[i] = feature_list.get(i).getRight();
+      }
+      matrix.add(new MatrixRow(sourceNode, targetNode, pathTypes, values));
+    }
+    return new FeatureMatrix(matrix);
+  }
 }
