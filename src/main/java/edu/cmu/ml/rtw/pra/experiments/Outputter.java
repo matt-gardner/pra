@@ -138,8 +138,10 @@ public class Outputter {
                             List<PathType> pathTypes) {
     try {
       FileWriter writer = new FileWriter(filename);
-      for (int i=0; i<pathTypes.size(); i++) {
-        writer.write(getPathType(pathTypes.get(i)) + "\t" + weights.get(i) + "\n");
+      List<Pair<PathType, Double>> zipped = CollectionsUtil.zipLists(pathTypes, weights);
+      Collections.sort(zipped, new PairComparator(PairComparator.Side.NEGRIGHT));
+      for (Pair<PathType, Double> pair : zipped) {
+        writer.write(getPathType(pair.getLeft()) + "\t" + pair.getRight() + "\n");
       }
       writer.close();
     } catch(IOException e) {
