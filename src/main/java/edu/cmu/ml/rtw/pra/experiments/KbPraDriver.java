@@ -51,9 +51,7 @@ public class KbPraDriver {
       CommandLineParser parser = new PosixParser();
       cmdLine =  parser.parse(cmdLineOptions, args);
     } catch(ParseException e) {
-      HelpFormatter formatter = new HelpFormatter();
-      formatter.printHelp("KbPraDriver", cmdLineOptions);
-      System.exit(-1);
+      printHelpAndExit("ParseException while processing arguments");
     }
     runPra(cmdLine);
     // Somewhere in DrunkardMobEngine, the threads aren't exitting properly
@@ -109,12 +107,30 @@ public class KbPraDriver {
     return cmdLineOptions;
   }
 
+  private static void printHelpAndExit() {
+    printHelpAndExit(null);
+  }
+
+  private static void printHelpAndExit(String message) {
+    if (message != null) System.out.println(message);
+    HelpFormatter formatter = new HelpFormatter();
+    formatter.printHelp("KbPraDriver", createOptionParser());
+    System.exit(-1);
+  }
+
   public static void runPra(CommandLine cmdLine) throws IOException, InterruptedException {
     String outputBase = cmdLine.getOptionValue("outdir");
     String kbDirectory = cmdLine.getOptionValue("kb-files");
     String graphDirectory = cmdLine.getOptionValue("graph-files");
     String splitsDirectory = cmdLine.getOptionValue("split");
     String parameterFile = cmdLine.getOptionValue("param-file");
+    if (outputBase == null ||
+        kbDirectory == null ||
+        graphDirectory == null ||
+        splitsDirectory == null ||
+        parameterFile == null) {
+      printHelpAndExit("One or more of the parameters was missing");
+    }
     runPra(kbDirectory, graphDirectory, splitsDirectory, parameterFile, outputBase);
   }
 
