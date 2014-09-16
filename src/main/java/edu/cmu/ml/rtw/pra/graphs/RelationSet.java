@@ -143,8 +143,8 @@ public class RelationSet {
       int ind2 = nodeDict.getIndex(arg2);
 
       if (!isKb) {
-        numEdges += addAliasEdges(arg1,ind1,seenNps,writer,nodeDict,edgeDict,aliases);
-        numEdges += addAliasEdges(arg2,ind2,seenNps,writer,nodeDict,edgeDict,aliases);
+        numEdges += addAliasEdges(arg1, ind1, seenNps, writer, nodeDict, edgeDict, aliases);
+        numEdges += addAliasEdges(arg2, ind2, seenNps, writer, nodeDict, edgeDict, aliases);
       }
 
       if (!isKb && aliasesOnly) continue;
