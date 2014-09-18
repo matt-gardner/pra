@@ -116,6 +116,24 @@ public class PathFollowerTest extends TestCase {
         context.testFinished();
     }
 
+    // If we get as input a source that wasn't in the graph, we should just ignore it.  That is,
+    // say we're querying on a node that we didn't actually have when we created the graph, so we
+    // had to add it to the node dict.  In that case, we should just drop the node, instead of
+    // crashing, which is what the code currently does as of writing this test.
+    public void testIgnoresNewSources() {
+        MapUtil.addValueToKeySet(sourcesMap, 10000, 20000);
+        follower = new PathFollower("src/test/resources/edges.tsv",
+                                    1,
+                                    sourcesMap,
+                                    Sets.newHashSet(2),
+                                    new SingleEdgeExcluder(edgesToExclude),
+                                    paths,
+                                    0,
+                                    MatrixRowPolicy.EVERYTHING);
+        // We don't care about the results, we just want to be sure that this actually runs.
+        follower.execute();
+    }
+
     // TODO(matt): this should go away and be replaced by a fake edge excluder.
     private void addEdgeToExclude(int source,
                                   int target,

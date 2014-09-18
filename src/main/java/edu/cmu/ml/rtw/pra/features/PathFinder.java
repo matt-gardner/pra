@@ -92,9 +92,11 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     // time to finish each iteration.
     Set<Integer> allSourceNodes = new HashSet<Integer>();
     for (int i=0; i<origSources.size(); i++) {
+      if (origSources.get(i) > drunkardMobEngine.getEngine().numVertices()) continue;
       int translatedSource = vertexIdTranslate.forward(origSources.get(i));
       allSourceNodes.add(translatedSource);
       if (origTargets != null) {
+        if (origTargets.get(i) > drunkardMobEngine.getEngine().numVertices()) continue;
         int translatedTarget = vertexIdTranslate.forward(origTargets.get(i));
         allSourceNodes.add(translatedTarget);
       }

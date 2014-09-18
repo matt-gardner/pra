@@ -240,6 +240,23 @@ public class PathFinderTest extends TestCase {
         off = 97;
     }
 
+    // If we get as input a source that wasn't in the graph, we should just ignore it.  That is,
+    // say we're querying on a node that we didn't actually have when we created the graph, so we
+    // had to add it to the node dict.  In that case, we should just drop the node, instead of
+    // crashing, which is what the code currently does as of writing this test.
+    public void testIgnoresNewSources() {
+        finder = new PathFinder("src/test/resources/edges.tsv",
+                                1,
+                                Arrays.asList(10000),
+                                Arrays.asList(20000),
+                                new SingleEdgeExcluder(edgesToExclude),
+                                10,
+                                PathTypePolicy.EVERYTHING,
+                                factory);
+        // We don't care about the results, we just want to be sure that this actually runs.
+        finder.execute(1);
+    }
+
     // TODO(matt): this should go away and be replaced by a fake edge excluder.
     private void addEdgeToExclude(int source,
                                   int target,

@@ -85,6 +85,7 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
     /* Configure walk sources. Note, GraphChi's internal ids are used. */
     List<Integer> sources = new ArrayList<Integer>();
     for (int source : sourcesMap.keySet()) {
+      if (source > drunkardMobEngine.getEngine().numVertices()) continue;
       // The training data is a map going from a source to a set of known target instances.
       // We do walks starting from each source, following each of a given set of paths.
       int translatedSource = vertexIdTranslate.forward(source);
