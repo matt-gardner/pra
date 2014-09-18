@@ -156,7 +156,9 @@ public class FeatureGenerator {
     }
     FeatureMatrix featureMatrix = follower.getFeatureMatrix();
     follower.shutDown();
-    config.outputter.outputFeatureMatrix(outputFile, featureMatrix, pathTypes);
+    if (outputFile != null) {
+      config.outputter.outputFeatureMatrix(outputFile, featureMatrix, pathTypes);
+    }
     return featureMatrix;
   }
 

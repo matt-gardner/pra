@@ -131,7 +131,7 @@ public class PraDriver {
   public static List<Pair<PathType, Double>> trainPraModel(PraConfig config) {
     FeatureGenerator generator = new FeatureGenerator(config);
     List<PathType> pathTypes = generator.selectPathFeatures(config.trainingData);
-    String matrixOutput = config.outputBase == null ? null : config.outputBase + "matrix.tsv";
+    String matrixOutput = null;  // PraModel outputs split versions of the training matrix
     FeatureMatrix featureMatrix = generator.computeFeatureValues(pathTypes,
                                                                  config.trainingData,
                                                                  matrixOutput);
