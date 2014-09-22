@@ -208,6 +208,7 @@ public class RelationSetTest extends TestCase {
         expected.add(np1Index + "\t" + np2Index + "\t" + verb2Index + "\n");
         int numEdges = relationSet.writeRelationEdgesFromReader(reader,
                                                                 embeddings,
+                                                                null,
                                                                 prefix,
                                                                 seenNps,
                                                                 aliases,
@@ -229,6 +230,7 @@ public class RelationSetTest extends TestCase {
         expected.add(np2Index + "\t" + concept2Index + "\t" + aliasRelationIndex + "\n");
         numEdges = relationSet.writeRelationEdgesFromReader(reader,
                                                             embeddings,
+                                                            null,
                                                             prefix,
                                                             seenNps,
                                                             aliases,
@@ -253,6 +255,7 @@ public class RelationSetTest extends TestCase {
         expected.add(concept1Index + "\t" + concept2Index + "\t" + relation2Index + "\n");
         numEdges = relationSet.writeRelationEdgesFromReader(reader,
                                                             embeddings,
+                                                            null,
                                                             prefix,
                                                             seenNps,
                                                             aliases,
@@ -273,6 +276,7 @@ public class RelationSetTest extends TestCase {
         numEdges = relationSet.writeRelationEdgesFromReader(reader,
                                                             embeddings,
                                                             null,
+                                                            null,
                                                             seenNps,
                                                             aliases,
                                                             writer,
@@ -288,6 +292,7 @@ public class RelationSetTest extends TestCase {
         expected.add(concept1Index + "\t" + concept2Index + "\t" + relationNoPrefix1Index + "\n");
         numEdges = relationSet.writeRelationEdgesFromReader(reader,
                                                             embeddings,
+                                                            null,
                                                             null,
                                                             seenNps,
                                                             aliases,

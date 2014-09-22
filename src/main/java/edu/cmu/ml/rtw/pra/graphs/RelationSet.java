@@ -1,11 +1,8 @@
 package edu.cmu.ml.rtw.pra.graphs;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +13,7 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
+import edu.cmu.ml.rtw.users.matt.util.IntTriple;
 import edu.cmu.ml.rtw.util.Pair;
 
 public class RelationSet {
@@ -90,6 +88,7 @@ public class RelationSet {
   }
 
   public int writeRelationEdgesToGraphFile(FileWriter intEdgeFile,
+                                           Set<IntTriple> seenTriples,
                                            String prefixOverride,
                                            Set<String> seenNps,
                                            List<Pair<String, Map<String, List<String>>>> aliases,
@@ -97,6 +96,7 @@ public class RelationSet {
                                            Dictionary edgeDict) throws IOException {
     return writeRelationEdgesFromReader(fileUtil.getBufferedReader(relationFile),
                                         loadEmbeddings(),
+                                        seenTriples,
                                         prefixOverride,
                                         seenNps,
                                         aliases,
@@ -108,6 +108,7 @@ public class RelationSet {
   @VisibleForTesting
   protected int writeRelationEdgesFromReader(BufferedReader reader,
                                              Map<String, List<String>> embeddings,
+                                             Set<IntTriple> seenTriples,
                                              String prefixOverride,
                                              Set<String> seenNps,
                                              List<Pair<String, Map<String, List<String>>>> aliases,
@@ -155,11 +156,24 @@ public class RelationSet {
       for (String r : relationEdges) {
         r = prefix + r;
         int rel = edgeDict.getIndex(r);
-        writer.write(ind1 + "\t" + ind2 + "\t" + rel + "\n");
+        writeEdgeIfUnseen(ind1, ind2, rel, seenTriples, writer);
         numEdges++;
       }
     }
     return numEdges;
+  }
+
+  private void writeEdgeIfUnseen(int arg1,
+                                 int arg2,
+                                 int rel,
+                                 Set<IntTriple> seenTriples,
+                                 FileWriter writer) throws IOException {
+    if (seenTriples != null) {
+      IntTriple triple = new IntTriple(arg1, arg2, rel);
+      if (seenTriples.contains(triple)) return;
+      seenTriples.add(triple);
+    }
+    writer.write(arg1 + "\t" + arg2 + "\t" + rel + "\n");
   }
 
   @VisibleForTesting

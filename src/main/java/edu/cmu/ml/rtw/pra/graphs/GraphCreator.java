@@ -1,9 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +15,7 @@ import com.google.common.collect.Sets;
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
+import edu.cmu.ml.rtw.users.matt.util.IntTriple;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.util.Pair;
 
@@ -34,19 +33,38 @@ public class GraphCreator {
   private final List<RelationSet> relationSets;
   private final String outdir;
   private final FileUtil fileUtil;
+  private final boolean deduplicateEdges;
 
   public GraphCreator(List<RelationSet> relationSets, String outdir) {
-    this(relationSets, outdir, new FileUtil());
+    this(relationSets, outdir, false);
+  }
+
+  /**
+   * Constructs the GraphCreator with the given set of relation sets, to be written to the outdir,
+   * and perhaps deduplicating edges.
+   *
+   * Edge deduplication is optional because it makes us store each edge that's written in memory,
+   * so we can see if we've already got the edge, and it takes more time because for every edge we
+   * have to query a hash set to see if we've already written it.  If you know that you aren't
+   * going to have any duplicate edges in your relation sets, it will be quicker and less
+   * memory-intensive to just leave deduplicateEdges false.
+   */
+  public GraphCreator(List<RelationSet> relationSets, String outdir, boolean deduplicateEdges) {
+    this(relationSets, outdir, deduplicateEdges, new FileUtil());
   }
 
   @VisibleForTesting
-  protected GraphCreator(List<RelationSet> relationSets, String outdir, FileUtil fileUtil) {
+  protected GraphCreator(List<RelationSet> relationSets,
+                         String outdir,
+                         boolean deduplicateEdges,
+                         FileUtil fileUtil) {
     this.relationSets = relationSets;
     if (!outdir.endsWith("/")) {
       outdir += "/";
     }
     this.outdir = outdir;
     this.fileUtil = fileUtil;
+    this.deduplicateEdges = deduplicateEdges;
   }
 
   public void createGraphChiRelationGraph() throws IOException {
@@ -69,6 +87,10 @@ public class GraphCreator {
     Dictionary edgeDict = new Dictionary();
 
     Set<String> seenNps = Sets.newHashSet();
+    Set<IntTriple> seenTriples = null;
+    if (deduplicateEdges) {
+      seenTriples = Sets.newHashSet();
+    }
     Map<RelationSet, String> prefixes = getSvoPrefixes();
     int numEdges = 0;
     for (RelationSet relationSet : relationSets) {
@@ -78,6 +100,7 @@ public class GraphCreator {
         prefix = prefixes.get(relationSet);
       }
       numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
+                                                            seenTriples,
                                                             prefix,
                                                             seenNps,
                                                             aliases,

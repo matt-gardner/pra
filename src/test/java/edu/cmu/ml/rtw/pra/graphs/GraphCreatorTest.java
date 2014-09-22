@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil;
 
 public class GraphCreatorTest extends TestCase {
+  private FakeFileUtil fileUtil;
   private String embeddings1 = "embeddings1";
   private String embeddings2 = "embeddings2";
 
@@ -24,7 +25,9 @@ public class GraphCreatorTest extends TestCase {
   private String aliasRelation = "@ALIAS@";
 
   private String svoFile = "/svo_file";
-  private String svoFileContents = string1 + "\t" + relation + "\t" + string2 + "\t1\n";
+  private String svoFileContents =
+      string1 + "\t" + relation + "\t" + string2 + "\t1\n" +
+      string1 + "\t" + relation + "\t" + string2 + "\t1\n";
   private String kbFile = "/kb_file";
   private String kbFileContents = concept1 + "\t" + concept2 + "\t" + relation + "\n";
   private String aliasFile = "/alias_file";
@@ -61,19 +64,30 @@ public class GraphCreatorTest extends TestCase {
       "1\t3\t1\n" +
       "2\t4\t1\n" +
       "1\t2\t2\n" +
+      "1\t2\t2\n" +
       "3\t4\t2\n";
+  private String expectedDedupedEdgeFileContents =
+      "1\t3\t1\n" +
+      "2\t4\t1\n" +
+      "1\t2\t2\n" +
+      "3\t4\t2\n";
+
 
   private String shardsFile = "/num_shards.tsv";
   private String expectedShardsFileContents = "2\n";
 
-  public void testCreateGraphChiRelationGraphMakesACorrectSimpleGraph() throws IOException {
-    FakeFileUtil fileUtil = new FakeFileUtil();
-    fileUtil.onlyAllowExpectedFiles();
+  @Override
+  public void setUp() {
+    fileUtil = new FakeFileUtil();
     fileUtil.addFileToBeRead(svoFile, svoFileContents);
     fileUtil.addFileToBeRead(kbFile, kbFileContents);
     fileUtil.addFileToBeRead(aliasFile, aliasFileContents);
     fileUtil.addFileToBeRead(svoRelationSetFile, svoRelationSetFileContents);
     fileUtil.addFileToBeRead(kbRelationSetFile, kbRelationSetFileContents);
+  }
+
+  public void testCreateGraphChiRelationGraphMakesACorrectSimpleGraph() throws IOException {
+    fileUtil.onlyAllowExpectedFiles();
     fileUtil.addExpectedFileWritten(nodeDictionaryFile, expectedNodeDictionaryFileContents);
     fileUtil.addExpectedFileWritten(edgeDictionaryFile, expectedEdgeDictionaryFileContents);
     fileUtil.addExpectedFileWritten(edgesFile, expectedEdgeFileContents);
@@ -82,7 +96,18 @@ public class GraphCreatorTest extends TestCase {
     List<RelationSet> relationSets = Lists.newArrayList();
     relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
-    GraphCreator creator = new GraphCreator(relationSets, "", fileUtil);
+    GraphCreator creator = new GraphCreator(relationSets, "", false, fileUtil);
+    creator.createGraphChiRelationGraph();
+    fileUtil.expectFilesWritten();
+  }
+
+  public void testCreateGraphChiRelationGraphDedupesEdgesWhenSupposedTo() throws IOException {
+    fileUtil.addExpectedFileWritten(edgesFile, expectedDedupedEdgeFileContents);
+
+    List<RelationSet> relationSets = Lists.newArrayList();
+    relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
+    relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
+    GraphCreator creator = new GraphCreator(relationSets, "", true, fileUtil);
     creator.createGraphChiRelationGraph();
     fileUtil.expectFilesWritten();
   }
