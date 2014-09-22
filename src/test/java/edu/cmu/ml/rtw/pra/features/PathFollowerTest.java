@@ -98,13 +98,16 @@ public class PathFollowerTest extends TestCase {
         boolean trackBit = false;
         int off = 0;
         long walk = PathFinder.Manager.encode(pathType, hopNum, sourceId, trackBit, off);
+        long[] walks = new long[1];
+        walks[0] = walk;
+        PathTypeVertexCache[][] cache = follower.initializePathTypeVertexCaches(vertex, walks);
 
         // Test that a successful walk is forwarded correctly.
         int nextVertex = 3;
         ((FakePathType) paths.get(0)).setNextVertex(nextVertex);
         long newWalk = PathFinder.Manager.encode(pathType, hopNum+1, sourceId, trackBit, off);
         context.setExpectations(false, newWalk, nextVertex, trackBit);
-        follower.processSingleWalk(walk, vertex, context, random);
+        follower.processSingleWalk(walk, vertex, context, random, cache);
         context.testFinished();
 
         // And test that an unsuccessful walk is reset.
@@ -112,7 +115,7 @@ public class PathFollowerTest extends TestCase {
         ((FakePathType) paths.get(0)).setNextVertex(nextVertex);
         newWalk = PathFinder.Manager.encode(pathType, 0, sourceId, trackBit, off);
         context.setExpectationsForReset(newWalk, trackBit);
-        follower.processSingleWalk(walk, vertex, context, random);
+        follower.processSingleWalk(walk, vertex, context, random, cache);
         context.testFinished();
     }
 

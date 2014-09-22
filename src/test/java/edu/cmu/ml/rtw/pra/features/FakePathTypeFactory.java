@@ -79,11 +79,17 @@ public class FakePathTypeFactory implements PathTypeFactory {
         }
 
         @Override
+        public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
+          return null;
+        }
+
+        @Override
         public int nextHop(int hopNum,
                            int sourceVertex,
                            Vertex vertex,
                            Random random,
-                           EdgeExcluder edgeExcluder) {
+                           EdgeExcluder edgeExcluder,
+                           PathTypeVertexCache cache) {
             return nextVertex;
         }
 

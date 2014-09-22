@@ -52,25 +52,29 @@ public class VectorPathTypeFactoryTest extends TestCase {
         int hopNum = 0;
         int sourceId = 0;
 
+        PathTypeVertexCache cache = pathType.cacheVertexInformation(vertex, hopNum);
+
         // First the simplest case: two edge types, known dot product, make sure we take the right
         // one.
         random.setNextDouble(.1);
-        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
 
         // We should reset if we draw a 1 from the random number generator.
         random.setNextDouble(1);
-        assertEquals(-1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(-1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
 
         // If there is no embedding for the path type, we return the path type index itself.
         embeddings.clear();
         factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
         pathType = (VectorPathType) factory.fromString("-1-2-");
-        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random));
+        cache = pathType.cacheVertexInformation(vertex, hopNum);
+        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
 
         // Now we'll use a vector that's pretty close to the original, using in edges instead of
         // out edges.  And we throw in an edge type without embeddings, just for kicks.
         embeddings.put(1, vector1);
         embeddings.put(2, vector3);
+        cache = pathType.cacheVertexInformation(vertex, hopNum);
         factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
         pathType = (VectorPathType) factory.fromString("-_1-2-");
 
@@ -79,29 +83,32 @@ public class VectorPathTypeFactoryTest extends TestCase {
         chiVertex.addInEdge(2, 2);
         chiVertex.addInEdge(2, 3);
         vertex = new Vertex(chiVertex);
+        cache = pathType.cacheVertexInformation(vertex, hopNum);
         // We should have close to a 50% chance of picking this other edge type.
         random.setNextDouble(.5);
-        assertEquals(2, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(2, pathType.getNextEdgeType(hopNum, vertex, random, cache));
 
         // And if there's only one edge type available, and it's the right one, we should always
         // take it, no matter what random number we draw.
         chiVertex = new FakeChiVertex(1);
         chiVertex.addInEdge(1, 1);
         vertex = new Vertex(chiVertex);
+        cache = pathType.cacheVertexInformation(vertex, hopNum);
         random.setNextDouble(0.0);
-        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
         random.setNextDouble(0.5);
-        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
         random.setNextDouble(1.0);
-        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
 
         // But if it's a different edge type, we _should_ take into the reset probability.
         chiVertex = new FakeChiVertex(1);
         chiVertex.addInEdge(1, 2);
         vertex = new Vertex(chiVertex);
+        cache = pathType.cacheVertexInformation(vertex, hopNum);
         random.setNextDouble(0.0);
-        assertEquals(2, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(2, pathType.getNextEdgeType(hopNum, vertex, random, cache));
         random.setNextDouble(1.0);
-        assertEquals(-1, pathType.getNextEdgeType(hopNum, vertex, random));
+        assertEquals(-1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
     }
 }

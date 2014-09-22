@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.ChiEdge;
 import edu.cmu.graphchi.ChiLogger;
@@ -147,19 +148,46 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
       return;
     }
 
+    // Some path types normalize things by the edges going out of a vertex, or do other kinds of
+    // expensive computation.  Here we allow the path types to prep for that once, before calling
+    // nextHop for each walk.
+    PathTypeVertexCache[][] cache = initializePathTypeVertexCaches(vertex, walks);
+
     // Now we go through the walks.  Basic outline: for each walk, get its path type and hop
     // number, randomly pick an edge that matches the path for the hop number, and advance the
     // walk.
     for (long walk : walks) {
-      processSingleWalk(walk, vertex, drunkardContext, random);
+      processSingleWalk(walk, vertex, drunkardContext, random, cache);
     }
+  }
+
+  @VisibleForTesting
+  protected PathTypeVertexCache[][] initializePathTypeVertexCaches(Vertex vertex, long[] walks) {
+    Set<Integer> seenPathTypes = Sets.newHashSet();
+    Set<Pair<Integer, Integer>> seenPathHops = Sets.newHashSet();
+    PathTypeVertexCache[][] caches = new PathTypeVertexCache[pathTypes.length][];
+    for (long walk : walks) {
+      int pathType = Manager.pathType(walk);
+      if (!seenPathTypes.contains(pathType)) {
+        caches[pathType] = new PathTypeVertexCache[pathTypes[pathType].recommendedIters()];
+      }
+      int hopNum = Manager.hopNum(walk);
+      Pair<Integer, Integer> pathHop = Pair.makePair(pathType, hopNum);
+      if (!seenPathHops.contains(pathHop)) {
+        caches[pathType][hopNum] = pathTypes[pathType].cacheVertexInformation(vertex, hopNum);
+      }
+      seenPathTypes.add(pathType);
+      seenPathHops.add(pathHop);
+    }
+    return caches;
   }
 
   @VisibleForTesting
   protected void processSingleWalk(long walk,
                                    Vertex vertex,
                                    LongDrunkardContext drunkardContext,
-                                   Random random) {
+                                   Random random,
+                                   PathTypeVertexCache[][] cache) {
     int pathType = Manager.pathType(walk);
     int hopNum = Manager.hopNum(walk);
 
@@ -172,7 +200,12 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
 
     boolean trackBit = pathTypes[pathType].isLastHop(hopNum);
     int sourceVertex = sourceIds[staticSourceIdx(walk)];
-    int nextVertex = pathTypes[pathType].nextHop(hopNum, sourceVertex, vertex, random, edgeExcluder);
+    int nextVertex = pathTypes[pathType].nextHop(hopNum,
+                                                 sourceVertex,
+                                                 vertex,
+                                                 random,
+                                                 edgeExcluder,
+                                                 cache[pathType][hopNum]);
     if (nextVertex == -1) {
       resetWalk(walk, drunkardContext);
       return;

@@ -77,26 +77,26 @@ public class BasicPathTypeFactoryTest extends TestCase {
 
         // Ok, first, just make sure we get to the right next vertex.
         random.setNextInt(2);
-        assertEquals(3, pathType.nextHop(hopNum, sourceId, vertex, random, excluder));
+        assertEquals(3, pathType.nextHop(hopNum, sourceId, vertex, random, excluder, null));
         random.setNextInt(0);
 
         // Now, make sure we reset if the walk ends up somewhere it's not allowed to be.
         excluder.setShouldExclude(true);
-        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder));
+        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder, null));
         excluder.setShouldExclude(false);
 
         // Make sure we reset if the hop number is too high.
         hopNum = 10;
-        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder));
+        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder, null));
         hopNum = 0;
 
         // Make sure we reset if there are no edges that match the path type.
         pathType = factory.fromString("-10-2-");
-        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder));
+        assertEquals(-1, pathType.nextHop(hopNum, sourceId, vertex, random, excluder, null));
 
         // Now try some with a second path type, that has a reverse edge.
         pathType = factory.fromString("-_3-2-");
-        assertEquals(3, pathType.nextHop(hopNum, sourceId, vertex, random, excluder));
+        assertEquals(3, pathType.nextHop(hopNum, sourceId, vertex, random, excluder, null));
     }
 
     public void testIsLastHop() {

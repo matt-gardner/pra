@@ -25,7 +25,15 @@ public class BasicPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     }
 
     @Override
-    protected int getNextEdgeType(int hopNum, Vertex vertex, Random random) {
+    public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
+      return null;
+    }
+
+    @Override
+    protected int getNextEdgeType(int hopNum,
+                                  Vertex vertex,
+                                  Random random,
+                                  PathTypeVertexCache cache) {
       return edgeTypes[hopNum];
     }
 

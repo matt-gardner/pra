@@ -32,12 +32,13 @@ public abstract class BaseEdgeSequencePathType implements PathType {
                      int sourceVertex,
                      Vertex currentVertex,
                      Random random,
-                     EdgeExcluder edgeExcluder) {
+                     EdgeExcluder edgeExcluder,
+                     PathTypeVertexCache cache) {
     if (hopNum >= numHops) {
       return -1;
     }
     int[] possibleHops;
-    int edgeType = getNextEdgeType(hopNum, currentVertex, random);
+    int edgeType = getNextEdgeType(hopNum, currentVertex, random, cache);
     boolean isReverse = reverse[hopNum];
     possibleHops = currentVertex.getPossibleNodes(edgeType, isReverse);
     if (possibleHops == null) {
@@ -53,7 +54,10 @@ public abstract class BaseEdgeSequencePathType implements PathType {
     return nextVertex;
   }
 
-  protected abstract int getNextEdgeType(int hopNum, Vertex vertex, Random random);
+  protected abstract int getNextEdgeType(int hopNum,
+                                         Vertex vertex,
+                                         Random random,
+                                         PathTypeVertexCache cache);
 
   @Override
   public String encodeAsString() {

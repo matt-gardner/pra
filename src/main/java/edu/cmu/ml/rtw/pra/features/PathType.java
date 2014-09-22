@@ -47,12 +47,15 @@ public interface PathType {
    * _lot_.  Even worse, the processing is distributed across threads by vertex, and if you loop
    * over all of the edges, you make the amount of computation done by each thread more uneven,
    * because vertices that have lots of edges tend to get more walks at them.  So, really, try hard
-   * to avoid a loop over all of the edges.
+   * to avoid a loop over all of the edges.  The cache parameter should be helpful for that.
    */
   public int nextHop(int hopNum,
                      int sourceVertex,
                      Vertex vertex,
                      Random random,
-                     EdgeExcluder edgeExcluder);
+                     EdgeExcluder edgeExcluder,
+                     PathTypeVertexCache cache);
+
+  public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum);
 
 }

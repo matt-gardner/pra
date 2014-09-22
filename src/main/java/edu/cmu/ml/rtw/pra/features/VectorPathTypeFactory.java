@@ -91,13 +91,14 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     }
 
     @Override
-    protected int getNextEdgeType(int hopNum, Vertex vertex, Random random) {
+    public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
       Vector baseVector = embeddings[edgeTypes[hopNum]];
       // If we have no embeddings for the edge type corresponding to this hop num (for instance, if
       // it is the "alias" relation), then just return the edge type itself.
       if (baseVector == null) {
-        return edgeTypes[hopNum];
+        return new VectorPathTypeVertexCache(edgeTypes[hopNum]);
       }
+
       int[] vertexEdgeTypes;
       if (reverse[hopNum]) {
         vertexEdgeTypes = vertex.getInEdgeTypes();
@@ -107,7 +108,7 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
       // If there's only one possible edge type, and it matches the edge type we're supposed to be
       // walking on, don't bother messing with the reset probability, just take it.
       if (vertexEdgeTypes.length == 1 && vertexEdgeTypes[0] == edgeTypes[hopNum]) {
-        return edgeTypes[hopNum];
+        return new VectorPathTypeVertexCache(edgeTypes[hopNum]);
       }
       double[] weights = new double[vertexEdgeTypes.length];
       double totalWeight = 0.0;
@@ -122,14 +123,24 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
         weights[i] = weight;
         totalWeight += weight;
       }
-
       totalWeight += resetWeight;
-      double randomWeight = random.nextDouble() * totalWeight;
-      for (int i = 0; i < weights.length; i++) {
-        if (randomWeight < weights[i]) {
-          return vertexEdgeTypes[i];
+      return new VectorPathTypeVertexCache(vertexEdgeTypes, weights, totalWeight);
+    }
+
+    @Override
+    protected int getNextEdgeType(int hopNum,
+                                  Vertex vertex,
+                                  Random random,
+                                  PathTypeVertexCache _cache) {
+      VectorPathTypeVertexCache cache = (VectorPathTypeVertexCache) _cache;
+      if (cache.isDeltaDistribution()) return cache.deltaEdgeType;
+
+      double randomWeight = random.nextDouble() * cache.totalWeight;
+      for (int i = 0; i < cache.weights.length; i++) {
+        if (randomWeight < cache.weights[i]) {
+          return cache.edgeTypes[i];
         }
-        randomWeight -= weights[i];
+        randomWeight -= cache.weights[i];
       }
       // This corresponds to the reset weight that we added, in case all of the individual weights
       // were very low.  So return -1 to indicate that we should just reset the walk.
