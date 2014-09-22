@@ -12,6 +12,7 @@ import java.util.Set;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -57,21 +58,23 @@ public class RelationSet {
   // If we are embedding the edges, should we replace the original edges or just augment them?
   private final boolean keepOriginalEdges;
 
+  private final FileUtil fileUtil;
+
   /**
    * Get the set of aliases specified by this KB relation set.
    */
   public Map<String, List<String>> getAliases() throws IOException {
     if (aliasFile == null) {
-      return new HashMap<String, List<String>>();
+      return Maps.newHashMap();
     }
-    return getAliasesFromReader(new BufferedReader(new FileReader(aliasFile)));
+    return getAliasesFromReader(fileUtil.getBufferedReader(aliasFile));
   }
 
   @VisibleForTesting
   protected Map<String, List<String>> getAliasesFromReader(BufferedReader reader)
   throws IOException {
     if (aliasFileFormat.equals("freebase")) {
-      return FileUtil.readMapListFromTsvReader(reader, 3, false, new FileUtil.LineFilter() {
+      return fileUtil.readMapListFromTsvReader(reader, 3, false, new FileUtil.LineFilter() {
         @Override
         public boolean filter(String[] fields) {
           if (fields.length != 4) return true;
@@ -80,7 +83,7 @@ public class RelationSet {
         }
       });
     } else if (aliasFileFormat.equals("nell")) {
-      return FileUtil.readInvertedMapListFromTsvReader(reader);
+      return fileUtil.readInvertedMapListFromTsvReader(reader);
     } else {
       throw new RuntimeException("Unrecognized alias file format");
     }
@@ -92,7 +95,7 @@ public class RelationSet {
                                            List<Pair<String, Map<String, List<String>>>> aliases,
                                            Dictionary nodeDict,
                                            Dictionary edgeDict) throws IOException {
-    return writeRelationEdgesFromReader(new BufferedReader(new FileReader(relationFile)),
+    return writeRelationEdgesFromReader(fileUtil.getBufferedReader(relationFile),
                                         loadEmbeddings(),
                                         prefixOverride,
                                         seenNps,
@@ -122,7 +125,7 @@ public class RelationSet {
     int i = 0;
     int numEdges = 0;
     while ((line = reader.readLine()) != null) {
-      FileUtil.logEvery(1000000, ++i);
+      fileUtil.logEvery(1000000, ++i);
       String[] fields = line.split("\t");
       String relation;
       String arg1;
@@ -198,7 +201,7 @@ public class RelationSet {
       }
     }
     if (relationEdges == null) {
-      relationEdges = new ArrayList<String>();
+      relationEdges = Lists.newArrayList();
       relationEdges.add(relation);
     }
     return relationEdges;
@@ -208,7 +211,7 @@ public class RelationSet {
     Map<String, List<String>> embeddings = null;
     if (embeddingsFile != null) {
       System.out.println("Reading embeddings from file " + embeddingsFile);
-      embeddings = FileUtil.readMapListFromTsvFile(embeddingsFile);
+      embeddings = fileUtil.readMapListFromTsvFile(embeddingsFile);
     }
     return embeddings;
   }
@@ -259,14 +262,26 @@ public class RelationSet {
     aliasFileFormat = builder.aliasFileFormat;
     embeddingsFile = builder.embeddingsFile;
     keepOriginalEdges = builder.keepOriginalEdges;
+    fileUtil = builder.fileUtil;
   }
 
   public static RelationSet fromFile(String filename) throws IOException {
-    return fromReader(new BufferedReader(new FileReader(filename)));
+    return fromFile(filename, new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected static RelationSet fromFile(String filename, FileUtil fileUtil) throws IOException {
+    return fromReader(fileUtil.getBufferedReader(filename), fileUtil);
   }
 
   public static RelationSet fromReader(BufferedReader reader) throws IOException {
+    return fromReader(reader, new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected static RelationSet fromReader(BufferedReader reader, FileUtil fileUtil) throws IOException {
     Builder builder = new Builder();
+    builder.setFileUtil(fileUtil);
     String line;
     while ((line = reader.readLine()) != null) {
       String[] fields = line.split("\t");
@@ -305,6 +320,7 @@ public class RelationSet {
     private String aliasFileFormat;
     private String embeddingsFile;
     private boolean keepOriginalEdges;
+    private FileUtil fileUtil = new FileUtil();
 
     public Builder() {}
     public Builder setRelationFile(String r) {this.relationFile = r; return this;}
@@ -316,6 +332,7 @@ public class RelationSet {
     public Builder setAliasFileFormat(String a) {this.aliasFileFormat = a; return this;}
     public Builder setEmbeddingsFile(String e) {this.embeddingsFile = e; return this;}
     public Builder setKeepOriginalEdges(boolean k) {this.keepOriginalEdges = k; return this;}
+    public Builder setFileUtil(FileUtil f) {this.fileUtil = f; return this;}
 
     public RelationSet build() {
       return new RelationSet(this);

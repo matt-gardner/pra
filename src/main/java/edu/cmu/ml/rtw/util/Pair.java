@@ -23,6 +23,10 @@ public class Pair<L, R> implements Serializable {
   protected final L left;
   protected final R right;
 
+  public static <LT, RT> Pair<LT, RT> makePair(LT left, RT right) {
+    return new Pair<LT, RT>(left, right);
+  }
+
   /**
    * Returns the right entry of the pair.
    *

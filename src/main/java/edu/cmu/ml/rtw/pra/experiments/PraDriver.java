@@ -53,6 +53,7 @@ import edu.cmu.ml.rtw.util.Pair;
 public class PraDriver {
 
   private static Logger logger = ChiLogger.getLogger("pra-driver");
+  private static FileUtil fileUtil = new FileUtil();
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -382,13 +383,13 @@ public class PraDriver {
     Set<Integer> allowedTargets = null;
     String targets_file = cmdLine.getOptionValue("targets", null);
     if (targets_file != null) {
-      builder.setAllowedTargets(FileUtil.readIntegerSetFromFile(targets_file));
+      builder.setAllowedTargets(fileUtil.readIntegerSetFromFile(targets_file));
     }
 
     // Process the "to ignore" file (containing relations that you can't use between a source
     // node and its corresponding target)
     String toIgnoreFilename = cmdLine.getOptionValue("toignore");
-    builder.setUnallowedEdges(FileUtil.readIntegerListFromFile(toIgnoreFilename));
+    builder.setUnallowedEdges(fileUtil.readIntegerListFromFile(toIgnoreFilename));
 
     PraConfig config = builder.build();
     // Make sure the graph is sharded

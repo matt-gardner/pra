@@ -146,29 +146,29 @@ public class KbPraDriver {
     if (!splitsDirectory.endsWith("/")) splitsDirectory += "/";
     long start = System.currentTimeMillis();
     PraConfig.Builder baseBuilder = new PraConfig.Builder();
-    baseBuilder.setFromParamFile(new BufferedReader(new FileReader(parameterFile)));
+    baseBuilder.setFromParamFile(fileUtil.getBufferedReader(parameterFile));
 
-    if (new File(outputBase).exists()) {
+    if (fileUtil.fileExists(outputBase)) {
       throw new RuntimeException("Output directory already exists!  Exiting...");
     }
-    new File(outputBase).mkdirs();
+    fileUtil.mkdirs(outputBase);
 
     parseGraphFiles(graphDirectory, baseBuilder);
 
     Map<String, String> nodeNames = null;
-    if (new File(kbDirectory + "node_names.tsv").exists()) {
+    if (fileUtil.fileExists(kbDirectory + "node_names.tsv")) {
       nodeNames = fileUtil.readMapFromTsvFile(kbDirectory + "node_names.tsv", true);
     }
     Outputter outputter = new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames);
     baseBuilder.setOutputter(outputter);
 
-    FileWriter writer = new FileWriter(outputBase + "settings.txt");
+    FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt");
     writer.write("KB used: " + kbDirectory + "\n");
     writer.write("Graph used: " + graphDirectory + "\n");
     writer.write("Splits used: " + splitsDirectory + "\n");
     writer.write("Parameter file used: " + parameterFile + "\n");
     writer.write("Parameters:\n");
-    fileUtil.copyLines(new BufferedReader(new FileReader(parameterFile)), writer);
+    fileUtil.copyLines(fileUtil.getBufferedReader(parameterFile), writer);
     writer.write("End of parameters\n");
     writer.close();
 
@@ -178,16 +178,16 @@ public class KbPraDriver {
 
     String relationsFile = splitsDirectory + "relations_to_run.tsv";
     String line;
-    BufferedReader reader = new BufferedReader(new FileReader(relationsFile));
+    BufferedReader reader = fileUtil.getBufferedReader(relationsFile);
     while ((line = reader.readLine()) != null) {
       PraConfig.Builder builder = new PraConfig.Builder(baseConfig);
       String relation = line;
       logger.info("\n\n\n\nRunning PRA for relation " + relation);
       boolean doCrossValidation = false;
-      parseKbFiles(kbDirectory, relation, builder, outputBase);
+      parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
 
       String outdir = outputBase + relation + "/";
-      new File(outdir).mkdirs();
+      fileUtil.mkdirs(outdir);
       builder.setOutputBase(outdir);
 
       initializeSplit(splitsDirectory,
@@ -214,7 +214,7 @@ public class KbPraDriver {
     int seconds = (int) (millis / 1000);
     int minutes = seconds / 60;
     seconds = seconds - minutes * 60;
-    writer = new FileWriter(outputBase + "settings.txt", true);  // true -> append to the file.
+    writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append to the file.
     writer.write("PRA appears to have finished all relations successfully\n");
     writer.write("Finished in " + minutes + " minutes and " + seconds + " seconds\n");
     System.out.println("Took " + minutes + " minutes and " + seconds + " seconds");
@@ -277,14 +277,15 @@ public class KbPraDriver {
   public static void parseKbFiles(String directory,
                                   String relation,
                                   PraConfig.Builder builder,
-                                  String outputBase) throws IOException {
+                                  String outputBase,
+                                  FileUtil fileUtil) throws IOException {
     // TODO(matt): allow this to be left unspecified.
     Map<Integer, Integer> inverses = createInverses(directory + "inverses.tsv", builder.edgeDict);
     builder.setRelationInverses(inverses);
 
     Map<String, List<String>> embeddings = null;
-    if (new File(directory + "embeddings.tsv").exists()) {
-      embeddings = FileUtil.readMapListFromTsvFile(directory + "embeddings.tsv");
+    if (fileUtil.fileExists(directory + "embeddings.tsv")) {
+      embeddings = fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv");
     }
     List<Integer> unallowedEdges = createUnallowedEdges(relation,
                                                         inverses,
@@ -292,16 +293,16 @@ public class KbPraDriver {
                                                         builder.edgeDict);
     builder.setUnallowedEdges(unallowedEdges);
 
-    if (new File(directory + "ranges.tsv").exists()) {
-      Map<String, String> ranges = FileUtil.readMapFromTsvFile(directory + "ranges.tsv");
+    if (fileUtil.fileExists(directory + "ranges.tsv")) {
+      Map<String, String> ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv");
       String range = ranges.get(relation);
       String fixed = range.replace("/", "_");
       String cat_file = directory + "category_instances/" + fixed;
 
-      Set<Integer> allowedTargets = FileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict);
+      Set<Integer> allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict);
       builder.setAllowedTargets(allowedTargets);
     } else {
-      FileWriter writer = new FileWriter(outputBase + "settings.txt", true);  // true -> append
+      FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append
       writer.write("No range file found! I hope your accept policy is as you want it...\n");
       System.out.println("No range file found!");
       writer.close();

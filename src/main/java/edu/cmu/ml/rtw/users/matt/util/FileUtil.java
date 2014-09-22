@@ -14,25 +14,38 @@ import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import edu.cmu.ml.rtw.util.Pair;
 
+/**
+ * This class serves two main purposes:
+ *  - It abstracts away a lot of file manipulation code so that I can use it in a number of
+ *    different places (like reading in a list of Integers from a file, or whatever).
+ *  - It serves as an overridable interface between my code and the file system, allowing for the
+ *    use of a fake file system during testing.  So when I'm trying to make my code testable, I
+ *    tend to use this class instead of using java.io directly.
+ *
+ * It might make sense to split these two purposes out into separate classes, but that's not a big
+ * deal to me right now, so they will stay as they are.  There's also some overlap - if this were
+ * two classes, the one that does file manipulation would need to call the file system interface.
+ */
 public class FileUtil {
 
-  // Tese logEvery methods fit here, for now, because I only ever use them when I'm parsing through
-  // a really long file and want to see progress updates as I go.
-  public static void logEvery(int logFrequency, int current) {
+  // These logEvery methods fit here, for now, because I only ever use them when I'm parsing
+  // through a really long file and want to see progress updates as I go.
+  public void logEvery(int logFrequency, int current) {
     logEvery(logFrequency, current, Integer.toString(current));
   }
 
-  public static void logEvery(int logFrequency, int current, String toLog) {
+  public void logEvery(int logFrequency, int current, String toLog) {
     if (current % logFrequency == 0) System.out.println(toLog);
   }
 
   /**
    * Attempts to create the directory dirName, and exits if the directory already exists.
    */
-  public static void mkdirOrDie(String dirName) {
+  public void mkdirOrDie(String dirName) {
     if (!dirName.endsWith("/")) {
       dirName += "/";
     }
@@ -43,12 +56,31 @@ public class FileUtil {
     new File(dirName).mkdirs();
   }
 
-  public static List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {
-    return readStringPairsFromReader(new BufferedReader(new FileReader(filename)));
+  public FileWriter getFileWriter(String filename) throws IOException {
+    return getFileWriter(filename, false);
   }
 
-  public static List<Pair<String, String>> readStringPairsFromReader(BufferedReader reader) throws IOException {
-    List<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
+  public FileWriter getFileWriter(String filename, boolean append) throws IOException {
+    return new FileWriter(filename, append);
+  }
+
+  public BufferedReader getBufferedReader(String filename) throws IOException {
+    return new BufferedReader(new FileReader(filename));
+  }
+
+  /**
+   * Calls new File(dirName).mkdirs().
+   */
+  public void mkdirs(String dirName) {
+    new File(dirName).mkdirs();
+  }
+
+  public List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {
+    return readStringPairsFromReader(getBufferedReader(filename));
+  }
+
+  public List<Pair<String, String>> readStringPairsFromReader(BufferedReader reader) throws IOException {
+    List<Pair<String, String>> list = Lists.newArrayList();
     String line;
     while ((line = reader.readLine()) != null) {
       String[] fields = line.split("\t");
@@ -57,23 +89,21 @@ public class FileUtil {
         throw new RuntimeException(
             "readStringPairsFromReader called on file that didn't have two columns");
       }
-      list.add(new Pair<String, String>(fields[0], fields[1]));
+      list.add(Pair.makePair(fields[0], fields[1]));
     }
     return list;
   }
 
-  public static Map<String, String> readMapFromTsvFile(String filename) throws IOException {
+  public Map<String, String> readMapFromTsvFile(String filename) throws IOException {
     return readMapFromTsvFile(filename, false);
   }
 
-  public static Map<String, String> readMapFromTsvFile(String filename,
-                                                       boolean skipErrors) throws IOException {
-    return readMapFromTsvReader(new BufferedReader(new FileReader(filename)), skipErrors);
+  public Map<String, String> readMapFromTsvFile(String filename, boolean skipErrors) throws IOException {
+    return readMapFromTsvReader(getBufferedReader(filename), skipErrors);
   }
 
-  public static Map<String, String> readMapFromTsvReader(BufferedReader reader,
-                                                         boolean skipErrors) throws IOException {
-    Map<String, String> map = new HashMap<String, String>();
+  public Map<String, String> readMapFromTsvReader(BufferedReader reader, boolean skipErrors) throws IOException {
+    Map<String, String> map = Maps.newHashMap();
     String line;
     while ((line = reader.readLine()) != null) {
       String[] fields = line.split("\t");
@@ -88,21 +118,21 @@ public class FileUtil {
     return map;
   }
 
-  public static Map<String, List<String>> readMapListFromTsvFile(String filename) throws IOException {
-    return readMapListFromTsvReader(new BufferedReader(new FileReader(filename)));
+  public Map<String, List<String>> readMapListFromTsvFile(String filename) throws IOException {
+    return readMapListFromTsvReader(getBufferedReader(filename));
   }
 
-  public static Map<String, List<String>> readMapListFromTsvFile(String filename,
-                                                                 int keyIndex,
-                                                                 boolean overwrite,
-                                                                 LineFilter filter) throws IOException {
-    return readMapListFromTsvReader(new BufferedReader(new FileReader(filename)),
+  public Map<String, List<String>> readMapListFromTsvFile(String filename,
+                                                          int keyIndex,
+                                                          boolean overwrite,
+                                                          LineFilter filter) throws IOException {
+    return readMapListFromTsvReader(getBufferedReader(filename),
                                     keyIndex,
                                     overwrite,
                                     filter);
   }
 
-  public static Map<String, List<String>> readMapListFromTsvReader(BufferedReader reader) throws IOException {
+  public Map<String, List<String>> readMapListFromTsvReader(BufferedReader reader) throws IOException {
     return readMapListFromTsvReader(reader, 0, false, null);
   }
 
@@ -119,11 +149,11 @@ public class FileUtil {
    * - You can provide a LineFilter object that wlil be called with each line to determine if it
    *   should be skipped.
    */
-  public static Map<String, List<String>> readMapListFromTsvReader(BufferedReader reader,
-                                                                   int keyIndex,
-                                                                   boolean overwrite,
-                                                                   LineFilter filter) throws IOException {
-    Map<String, List<String>> map = new HashMap<String, List<String>>();
+  public Map<String, List<String>> readMapListFromTsvReader(BufferedReader reader,
+                                                            int keyIndex,
+                                                            boolean overwrite,
+                                                            LineFilter filter) throws IOException {
+    Map<String, List<String>> map = Maps.newHashMap();
     String line;
     while ((line = reader.readLine()) != null) {
       String[] fields = line.split("\t");
@@ -131,12 +161,12 @@ public class FileUtil {
       String key = fields[keyIndex];
       List<String> list;
       if (overwrite) {
-        list = new ArrayList<String>();
+        list = Lists.newArrayList();
         map.put(key, list);
       } else {
         list = map.get(key);
         if (list == null) {
-          list = new ArrayList<String>();
+          list = Lists.newArrayList();
           map.put(key, list);
         }
       }
@@ -151,15 +181,15 @@ public class FileUtil {
     return map;
   }
 
-  public static Map<String, List<String>> readInvertedMapListFromTsvFile(String filename) throws IOException {
-    return readInvertedMapListFromTsvReader(new BufferedReader(new FileReader(filename)));
+  public Map<String, List<String>> readInvertedMapListFromTsvFile(String filename) throws IOException {
+    return readInvertedMapListFromTsvReader(getBufferedReader(filename));
   }
 
   /**
    * Assuming the file is formatted as (key, value, value, ...), read an _inverted_ map from the
    * file.  That is, take all of the values, and make them keys, with the original key as a values.
    */
-  public static Map<String, List<String>> readInvertedMapListFromTsvReader(BufferedReader reader) throws IOException {
+  public Map<String, List<String>> readInvertedMapListFromTsvReader(BufferedReader reader) throws IOException {
     Map<String, List<String>> map = Maps.newHashMap();
     String line;
     while ((line = reader.readLine()) != null) {
@@ -174,7 +204,7 @@ public class FileUtil {
     return map;
   }
 
-  public static Set<Integer> readIntegerSetFromFile(String filename) throws IOException {
+  public Set<Integer> readIntegerSetFromFile(String filename) throws IOException {
     return readIntegerSetFromFile(filename, null);
   }
 
@@ -183,11 +213,10 @@ public class FileUtil {
    * is null, we parse the string to an integer before adding it to a set.  Otherwise, we look up
    * the string in the dictionary to convert the string to an integer.
    */
-  public static Set<Integer> readIntegerSetFromFile(String filename,
-                                                    Dictionary dict) throws IOException {
+  public Set<Integer> readIntegerSetFromFile(String filename, Dictionary dict) throws IOException {
     try {
-      Set<Integer> integers = new HashSet<Integer>();
-      BufferedReader reader = new BufferedReader(new FileReader(new File(filename)));
+      Set<Integer> integers = Sets.newHashSet();
+      BufferedReader reader = getBufferedReader(filename);
       String line;
       while ((line = reader.readLine()) != null) {
         try {
@@ -207,7 +236,7 @@ public class FileUtil {
     }
   }
 
-  public static List<Integer> readIntegerListFromFile(String filename) throws IOException {
+  public List<Integer> readIntegerListFromFile(String filename) throws IOException {
     return readIntegerListFromFile(filename, null);
   }
 
@@ -216,10 +245,9 @@ public class FileUtil {
    * is null, we parse the string to an integer before adding it to a list.  Otherwise, we look up
    * the string in the dictionary to convert the string to an integer.
    */
-  public static List<Integer> readIntegerListFromFile(String filename,
-                                                      Dictionary dict) throws IOException {
+  public List<Integer> readIntegerListFromFile(String filename, Dictionary dict) throws IOException {
     List<Integer> integers = Lists.newArrayList();
-    BufferedReader reader = new BufferedReader(new FileReader(new File(filename)));
+    BufferedReader reader = getBufferedReader(filename);
     String line;
     while ((line = reader.readLine()) != null) {
       if (dict == null) {
@@ -234,7 +262,7 @@ public class FileUtil {
 
   public List<Double> readDoubleListFromFile(String filename) throws IOException {
     List<Double> doubles = Lists.newArrayList();
-    BufferedReader reader = new BufferedReader(new FileReader(new File(filename)));
+    BufferedReader reader = getBufferedReader(filename);
     String line;
     while ((line = reader.readLine()) != null) {
       doubles.add(Double.parseDouble(line));

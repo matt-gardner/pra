@@ -142,7 +142,8 @@ public class OnlinePraPredictor {
         throw new RuntimeException(e);
       }
       try {
-        allowedTargets.add(FileUtil.readIntegerSetFromFile(allowedTargetsFiles.get(i), nodeDict));
+        FileUtil fileUtil = new FileUtil();
+        allowedTargets.add(fileUtil.readIntegerSetFromFile(allowedTargetsFiles.get(i), nodeDict));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

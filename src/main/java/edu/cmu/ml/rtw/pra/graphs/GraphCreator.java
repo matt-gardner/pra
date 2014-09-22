@@ -10,8 +10,10 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -31,35 +33,42 @@ public class GraphCreator {
 
   private final List<RelationSet> relationSets;
   private final String outdir;
+  private final FileUtil fileUtil;
 
   public GraphCreator(List<RelationSet> relationSets, String outdir) {
+    this(relationSets, outdir, new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected GraphCreator(List<RelationSet> relationSets, String outdir, FileUtil fileUtil) {
     this.relationSets = relationSets;
     if (!outdir.endsWith("/")) {
       outdir += "/";
     }
     this.outdir = outdir;
+    this.fileUtil = fileUtil;
   }
 
   public void createGraphChiRelationGraph() throws IOException {
     // Some preparatory stuff
-    FileUtil.mkdirOrDie(outdir);
+    fileUtil.mkdirOrDie(outdir);
 
-    new File(outdir + "graph_chi/").mkdirs();
-    FileWriter intEdgeFile = new FileWriter(outdir + "graph_chi/edges.tsv");
+    fileUtil.mkdirs(outdir + "graph_chi/");
+    FileWriter intEdgeFile = fileUtil.getFileWriter(outdir + "graph_chi/edges.tsv");
 
     List<Pair<String, Map<String, List<String>>>> aliases = Lists.newArrayList();
     for (RelationSet relationSet : relationSets) {
       if (relationSet.getIsKb()) {
         String aliasRelation = relationSet.getAliasRelation();
         Map<String, List<String>> kbAliases = relationSet.getAliases();
-        aliases.add(new Pair<String, Map<String, List<String>>>(aliasRelation, kbAliases));
+        aliases.add(Pair.makePair(aliasRelation, kbAliases));
       }
     }
 
     Dictionary nodeDict = new Dictionary();
     Dictionary edgeDict = new Dictionary();
 
-    Set<String> seenNps = new HashSet<String>();
+    Set<String> seenNps = Sets.newHashSet();
     Map<RelationSet, String> prefixes = getSvoPrefixes();
     int numEdges = 0;
     for (RelationSet relationSet : relationSets) {
@@ -83,7 +92,7 @@ public class GraphCreator {
 
     // Now decide how many shards to do, based on the number of edges that are in the graph.
     int numShards = getNumShards(numEdges);
-    FileWriter writer = new FileWriter(outdir + "num_shards.tsv");
+    FileWriter writer = fileUtil.getFileWriter(outdir + "num_shards.tsv");
     writer.write(numShards + "\n");
     writer.close();
   }
@@ -95,17 +104,17 @@ public class GraphCreator {
   public void outputDictionariesToDisk(Dictionary nodeDict,
                                        Dictionary edgeDict) throws IOException {
     System.out.println("Outputting dictionaries to disk");
-    FileWriter nodeDictFile = new FileWriter(new File(outdir + "node_dict.tsv"));
+    FileWriter nodeDictFile = fileUtil.getFileWriter(outdir + "node_dict.tsv");
     nodeDict.writeToWriter(nodeDictFile);
     nodeDictFile.close();
 
-    FileWriter edgeDictFile = new FileWriter(new File(outdir + "edge_dict.tsv"));
+    FileWriter edgeDictFile = fileUtil.getFileWriter(outdir + "edge_dict.tsv");
     edgeDict.writeToWriter(edgeDictFile);
     edgeDictFile.close();
   }
 
   public int getNumShards(int numEdges) {
-    if (numEdges < 50000000) {
+    if (numEdges < 5000000) {
       return 2;
     } else if (numEdges < 10000000) {
       return 3;

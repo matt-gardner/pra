@@ -13,47 +13,53 @@ import com.google.common.collect.Multiset;
 
 public class FakeFileWriter extends FileWriter {
 
-    private List<String> written;
+  private List<String> written;
+  private String filename;
 
-    public FakeFileWriter() throws IOException {
-        super("/dev/null");
-        written = Lists.newArrayList();
-    }
+  public FakeFileWriter() throws IOException {
+    this(null);
+  }
 
-    @Override
-    public void write(String line) {
-        written.add(line);
-    }
+  public FakeFileWriter(String filename) throws IOException {
+    super("/dev/null");
+    this.filename = filename;
+    written = Lists.newArrayList();
+  }
 
-    public void expectWritten(String expected) {
-        String concatenated = "";
-        for (String line : written) {
-            concatenated += line;
-        }
-        TestCase.assertEquals(expected, concatenated);
-        written = Lists.newArrayList();
-    }
+  @Override
+  public void write(String line) {
+    written.add(line);
+  }
 
-    /**
-     * Assert that each of the lines passed in has been written, but don't care about the order.
-     */
-    public void expectWritten(Collection<String> lines) {
-        TestCase.assertEquals(lines.size(), written.size());
-        Multiset<String> counts = HashMultiset.create(lines);
-        for (Multiset.Entry<String> entry : counts.entrySet()) {
-            TestUtil.assertCount(written, entry.getElement(), entry.getCount());
-        }
-        written = Lists.newArrayList();
+  public void expectWritten(String expected) {
+    String concatenated = "";
+    for (String line : written) {
+      concatenated += line;
     }
+    TestCase.assertEquals("File: " + filename, expected, concatenated);
+    written = Lists.newArrayList();
+  }
 
-    /**
-     * Essentially the same as expectWritten(String), except you can pass in a list if you want.
-     */
-    public void expectWrittenInOrder(List<String> lines) {
-        TestCase.assertEquals(lines.size(), written.size());
-        for (int i = 0; i < lines.size(); i++) {
-            TestCase.assertEquals(lines.get(i), written.get(i));
-        }
-        written = Lists.newArrayList();
+  /**
+   * Assert that each of the lines passed in has been written, but don't care about the order.
+   */
+  public void expectWritten(Collection<String> lines) {
+    TestCase.assertEquals("File: " + filename, lines.size(), written.size());
+    Multiset<String> counts = HashMultiset.create(lines);
+    for (Multiset.Entry<String> entry : counts.entrySet()) {
+      TestUtil.assertCount(written, entry.getElement(), entry.getCount());
     }
+    written = Lists.newArrayList();
+  }
+
+  /**
+   * Essentially the same as expectWritten(String), except you can pass in a list if you want.
+   */
+  public void expectWrittenInOrder(List<String> lines) {
+    TestCase.assertEquals("File: " + filename, lines.size(), written.size());
+    for (int i = 0; i < lines.size(); i++) {
+      TestCase.assertEquals(lines.get(i), written.get(i));
+    }
+    written = Lists.newArrayList();
+  }
 }
