@@ -145,6 +145,7 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
   public void shutDown() {
     logger.info("Path Finder shutting down");
     companion.close();
+    pathDict.clear();
   }
 
   public int[] encodePath(Path path) {

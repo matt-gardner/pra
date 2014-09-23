@@ -9,14 +9,17 @@ import java.io.InputStreamReader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
+
 /**
  * A mapping from some object to integers, for any application where such a mapping is useful
  * (generally because working with integers is much faster and less memory-intensive than working
  * with objects).
  */
 public class Index<T> {
-  private final ConcurrentHashMap<T, Integer> map;
-  private final ConcurrentHashMap<Integer, T> reverse_map;
+  private final BiMap<T, Integer> bimap;
   private final AtomicInteger nextIndex;
   private final boolean verbose;
   private final ObjectParser<T> factory;
@@ -26,8 +29,7 @@ public class Index<T> {
   }
 
   public Index(ObjectParser<T> factory, boolean verbose) {
-    map = new ConcurrentHashMap<T, Integer>();
-    reverse_map = new ConcurrentHashMap<Integer, T>();
+    bimap = Maps.synchronizedBiMap(HashBiMap.<T, Integer>create());
     nextIndex = new AtomicInteger(1);
     this.verbose = verbose;
     this.factory = factory;
@@ -37,7 +39,7 @@ public class Index<T> {
    * Test if key is already in the dictionary
    */
   public boolean hasKey(T key) {
-    return map.containsKey(key);
+    return bimap.containsKey(key);
   }
 
   /**
@@ -47,31 +49,29 @@ public class Index<T> {
     if (key == null) {
       throw new RuntimeException("A null key was passed to the dictionary!");
     }
-    Integer i = map.get(key);
+    Integer i = bimap.get(key);
     if (i == null) {
       if (verbose) {
         System.out.println("Key not in index: " + key);
       }
       Integer new_i = nextIndex.getAndIncrement();
-      i = map.putIfAbsent(key, new_i);
-      if (i == null) {
-        if (verbose) {
-          System.out.println("Key added to index at position " + new_i + ": "
-                             + key + "; next index is " + nextIndex.get());
-        }
-        reverse_map.put(new_i, key);
-        return new_i;
-      }
+      bimap.put(key, new_i);
+      i = new_i;
     }
     return i;
   }
 
   public T getKey(int index) {
-    return reverse_map.get(index);
+    return bimap.inverse().get(index);
   }
 
   public int getNextIndex() {
     return nextIndex.get();
+  }
+
+  public void clear() {
+    bimap.clear();
+    nextIndex.set(1);
   }
 
   public void writeToFile(File outfile) throws IOException {
@@ -117,8 +117,7 @@ public class Index<T> {
   }
 
   public void setFromReader(BufferedReader reader) {
-    map.clear();
-    reverse_map.clear();
+    bimap.clear();
     String line;
     try {
       int max_index = 0;
@@ -129,8 +128,7 @@ public class Index<T> {
           max_index = num;
         }
         T key = factory.fromString(parts[1]);
-        map.put(key, num);
-        reverse_map.put(num, key);
+        bimap.put(key, num);
       }
       nextIndex.set(max_index+1);
     } catch (IOException e) {
