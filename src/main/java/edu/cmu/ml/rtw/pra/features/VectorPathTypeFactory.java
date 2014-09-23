@@ -92,6 +92,8 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
 
     @Override
     public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
+      if (hopNum >= numHops) return null;
+
       Vector baseVector = embeddings[edgeTypes[hopNum]];
       // If we have no embeddings for the edge type corresponding to this hop num (for instance, if
       // it is the "alias" relation), then just return the edge type itself.

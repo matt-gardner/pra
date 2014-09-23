@@ -36,6 +36,16 @@ public class VectorPathTypeFactoryTest extends TestCase {
         assertFalse(type12.equals(factory.emptyPathType()));
     }
 
+    public void testCacheVertexInformationDoesNotCrashOnHighHopNum() {
+        FakeChiVertex chiVertex = new FakeChiVertex(1);
+        chiVertex.addOutEdge(1, 1);
+        chiVertex.addOutEdge(2, 2);
+        Vertex vertex = new Vertex(chiVertex);
+        VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        VectorPathType pathType = (VectorPathType) factory.fromString("-1-2-");
+        assertNull(pathType.cacheVertexInformation(vertex, 1000));
+    }
+
     public void testNextHop() {
         embeddings.put(1, vector1);
         embeddings.put(2, vector2);
