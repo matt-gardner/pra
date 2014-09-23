@@ -74,6 +74,12 @@ public class Index<T> {
     return nextIndex.get();
   }
 
+  public void clear() {
+    map.clear();
+    reverse_map.clear();
+    nextIndex.set(1);
+  }
+
   public void writeToFile(File outfile) throws IOException {
     writeToWriter(new FileWriter(outfile));
   }
