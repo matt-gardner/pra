@@ -144,16 +144,20 @@ public class KbPraDriver {
     if (!kbDirectory.endsWith("/")) kbDirectory += "/";
     if (!graphDirectory.endsWith("/")) graphDirectory += "/";
     if (!splitsDirectory.endsWith("/")) splitsDirectory += "/";
-    long start = System.currentTimeMillis();
-    PraConfig.Builder baseBuilder = new PraConfig.Builder();
-    baseBuilder.setFromParamFile(fileUtil.getBufferedReader(parameterFile));
 
     if (fileUtil.fileExists(outputBase)) {
       throw new RuntimeException("Output directory already exists!  Exiting...");
     }
     fileUtil.mkdirs(outputBase);
 
+    long start = System.currentTimeMillis();
+    PraConfig.Builder baseBuilder = new PraConfig.Builder();
     parseGraphFiles(graphDirectory, baseBuilder);
+
+    // This call potentially uses the edge dictionary that's set in parseGraphFiles - this MUST be
+    // called after parseGraphFiles, or things will break with really weird errors.  TODO(matt): I
+    // really should write a test for this...
+    baseBuilder.setFromParamFile(fileUtil.getBufferedReader(parameterFile));
 
     Map<String, String> nodeNames = null;
     if (fileUtil.fileExists(kbDirectory + "node_names.tsv")) {
