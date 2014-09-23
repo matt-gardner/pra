@@ -33,4 +33,15 @@ public class VertexTest extends TestCase {
         assertEquals(-1, vertex.getEdgeTypeIndex(-1));
         assertEquals(-1, vertex.getEdgeTypeIndex(2));
     }
+
+    public void testGetEdgeTypeIndexWithLotsOfEdgeTypes() {
+        FakeChiVertex chiVertex = new FakeChiVertex(1);
+        for (int i = 0; i < 21; i++) {
+          chiVertex.addOutEdge(1, i);
+        }
+        Vertex vertex = new Vertex(chiVertex);
+        for (int i = 0; i < 21; i++) {
+          assertEquals(i, vertex.getEdgeTypeIndex(i));
+        }
+    }
 }

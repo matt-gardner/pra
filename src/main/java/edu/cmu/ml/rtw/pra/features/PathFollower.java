@@ -148,6 +148,13 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
       return;
     }
 
+    // TODO(matt): I could probably save a bit of time here by only doing the bit twiddling on each
+    // walk once.  I.e., do one pass over the walks, separating them into pathType, sourceIdx,
+    // hopNum, and whatnot, and sending that information around these methods instead.  It would
+    // require a fair amount of refactoring, though, including in graphchi code.  I'm not certain
+    // it's worth the speed up.  It might be, though, if it decreases the time spend in these inner
+    // loops of the code.
+
     // Some path types normalize things by the edges going out of a vertex, or do other kinds of
     // expensive computation.  Here we allow the path types to prep for that once, before calling
     // nextHop for each walk.
@@ -163,21 +170,16 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
 
   @VisibleForTesting
   protected PathTypeVertexCache[][] initializePathTypeVertexCaches(Vertex vertex, long[] walks) {
-    Set<Integer> seenPathTypes = Sets.newHashSet();
-    Set<Pair<Integer, Integer>> seenPathHops = Sets.newHashSet();
     PathTypeVertexCache[][] caches = new PathTypeVertexCache[pathTypes.length][];
     for (long walk : walks) {
       int pathType = Manager.pathType(walk);
-      if (!seenPathTypes.contains(pathType)) {
-        caches[pathType] = new PathTypeVertexCache[pathTypes[pathType].recommendedIters()];
+      if (caches[pathType] == null) {
+        caches[pathType] = new PathTypeVertexCache[pathTypes[pathType].recommendedIters() + 1];
       }
       int hopNum = Manager.hopNum(walk);
-      Pair<Integer, Integer> pathHop = Pair.makePair(pathType, hopNum);
-      if (!seenPathHops.contains(pathHop)) {
+      if (caches[pathType][hopNum] == null) {
         caches[pathType][hopNum] = pathTypes[pathType].cacheVertexInformation(vertex, hopNum);
       }
-      seenPathTypes.add(pathType);
-      seenPathHops.add(pathHop);
     }
     return caches;
   }

@@ -177,12 +177,22 @@ public class Vertex {
 
   @VisibleForTesting
   protected int getEdgeTypeIndex(int edgeType) {
-    for (int i = 0; i < edgeTypeSet.length; i++) {
-      if (edgeTypeSet[i] == edgeType) return i;
-      // The edge types are sorted, so we can break early.  It would be more efficient to do a
-      // binary search, maybe, except the number of edge types at each node should be pretty small.
-      if (edgeTypeSet[i] > edgeType) return -1;
+    if (edgeTypeSet.length == 0) return -1;
+    int top = edgeTypeSet.length - 1;
+    int bottom = 0;
+    while (top > bottom) {
+      int index = (top + bottom) / 2;
+      if (edgeTypeSet[index] > edgeType) {
+        top = index - 1;
+        if (top < 0) return -1;
+      } else if (edgeTypeSet[index] < edgeType) {
+        bottom = index + 1;
+        if (bottom >= edgeTypeSet.length) return -1;
+      } else {
+        return index;
+      }
     }
+    if (edgeTypeSet[top] == edgeType) return top;
     return -1;
   }
 
