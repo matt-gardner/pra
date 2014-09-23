@@ -93,17 +93,6 @@ public class PraDriver {
    *     data, what options to use, and a lot of other things.
    */
   public static void trainAndTest(PraConfig config) {
-    List<Integer> trainingSources = config.trainingData.getPositiveSources();
-    List<Integer> trainingTargets = config.trainingData.getPositiveTargets();
-    List<Integer> testingSources = config.testingData.getPositiveSources();
-    List<Integer> testingTargets = config.testingData.getPositiveTargets();
-    List<Integer> allSources = new ArrayList<Integer>();
-    allSources.addAll(trainingSources);
-    allSources.addAll(testingSources);
-    List<Integer> allTargets = new ArrayList<Integer>();
-    allTargets.addAll(trainingTargets);
-    allTargets.addAll(testingTargets);
-
     List<Pair<PathType, Double>> model = trainPraModel(config);
     Map<Integer, List<Pair<Integer, Double>>> scores = testPraModel(config, model);
 
