@@ -125,14 +125,9 @@ public class Outputter {
         }
         for (Pair<Integer, Double> pair : scores) {
           writer.write(sourceStr + "\t" + getNode(pair.getLeft()) + "\t" + pair.getRight() + "\t");
-          System.out.println("source: " + sourceStr + "; target: " + pair.getLeft());
-          System.out.println("targetSet: " + targetSet);
-          System.out.println("targetSet.contains(): " + targetSet.contains(pair.getLeft().intValue()));
           if (targetSet.contains(pair.getLeft().intValue())) {
             writer.write("*");
           }
-          System.out.println("trainingTargetSet: " + trainingTargetSet);
-          System.out.println("trainingTargetSet.contains(): " + trainingTargetSet.contains(pair.getLeft().intValue()));
           if (trainingTargetSet.contains(pair.getLeft().intValue())) {
             writer.write("^");
           }
