@@ -19,18 +19,12 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
-import com.google.common.collect.Maps;
+import com.google.common.annotations.VisibleForTesting;
 
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
-import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
-import edu.cmu.ml.rtw.pra.features.PathTypePolicy;
-import edu.cmu.ml.rtw.pra.features.PathTypeSelector;
-import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector;
-import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
 
 /**
  * An interface to PraDriver for more easily running PRA experiments with a knowledge base.  The
@@ -44,6 +38,253 @@ import edu.cmu.ml.rtw.users.matt.util.Vector;
 public class KbPraDriver {
   private static final Logger logger = ChiLogger.getLogger("kb-pra-driver");
 
+  private final FileUtil fileUtil;
+
+  public KbPraDriver() {
+    this(new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected KbPraDriver(FileUtil fileUtil) {
+    this.fileUtil = fileUtil;
+  }
+
+  public void runPra(String kbDirectory,
+                     String graphDirectory,
+                     String splitsDirectory,
+                     String parameterFile,
+                     String outputBase) throws IOException, InterruptedException {
+    outputBase = fileUtil.addDirectorySeparatorIfNecessary(outputBase);
+    kbDirectory = fileUtil.addDirectorySeparatorIfNecessary(kbDirectory);
+    graphDirectory = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory);
+    splitsDirectory = fileUtil.addDirectorySeparatorIfNecessary(splitsDirectory);
+
+    fileUtil.mkdirOrDie(outputBase);
+
+    long start = System.currentTimeMillis();
+    PraConfig.Builder baseBuilder = new PraConfig.Builder();
+    parseGraphFiles(graphDirectory, baseBuilder);
+
+    // This call potentially uses the edge dictionary that's set in parseGraphFiles - this MUST be
+    // called after parseGraphFiles, or things will break with really weird errors.  TODO(matt): I
+    // really should write a test for this...
+    baseBuilder.setFromParamFile(fileUtil.getBufferedReader(parameterFile));
+
+    Map<String, String> nodeNames = null;
+    if (fileUtil.fileExists(kbDirectory + "node_names.tsv")) {
+      nodeNames = fileUtil.readMapFromTsvFile(kbDirectory + "node_names.tsv", true);
+    }
+    Outputter outputter = new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames);
+    baseBuilder.setOutputter(outputter);
+
+    FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt");
+    writer.write("KB used: " + kbDirectory + "\n");
+    writer.write("Graph used: " + graphDirectory + "\n");
+    writer.write("Splits used: " + splitsDirectory + "\n");
+    writer.write("Parameter file used: " + parameterFile + "\n");
+    writer.write("Parameters:\n");
+    fileUtil.copyLines(fileUtil.getBufferedReader(parameterFile), writer);
+    writer.write("End of parameters\n");
+    writer.close();
+
+    PraConfig baseConfig = baseBuilder.build();
+    // Make sure the graph is sharded
+    PraDriver.processGraph(baseConfig.graph, baseConfig.numShards);
+
+    String relationsFile = splitsDirectory + "relations_to_run.tsv";
+    String line;
+    BufferedReader reader = fileUtil.getBufferedReader(relationsFile);
+    while ((line = reader.readLine()) != null) {
+      PraConfig.Builder builder = new PraConfig.Builder(baseConfig);
+      String relation = line;
+      logger.info("\n\n\n\nRunning PRA for relation " + relation);
+      boolean doCrossValidation = false;
+      parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
+
+      String outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation);
+      fileUtil.mkdirs(outdir);
+      builder.setOutputBase(outdir);
+
+      initializeSplit(splitsDirectory,
+                      kbDirectory,
+                      relation,
+                      builder,
+                      new DatasetFactory(),
+                      fileUtil);
+
+      PraConfig config = builder.build();
+      if (config.allData != null) {
+        doCrossValidation = true;
+      }
+
+      // Run PRA
+      if (doCrossValidation) {
+        PraDriver.crossValidate(config);
+      } else {
+        PraDriver.trainAndTest(config);
+      }
+    }
+    long end = System.currentTimeMillis();
+    long millis = end - start;
+    int seconds = (int) (millis / 1000);
+    int minutes = seconds / 60;
+    seconds = seconds - minutes * 60;
+    writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append to the file.
+    writer.write("PRA appears to have finished all relations successfully\n");
+    writer.write("Finished in " + minutes + " minutes and " + seconds + " seconds\n");
+    System.out.println("Took " + minutes + " minutes and " + seconds + " seconds");
+    writer.close();
+  }
+
+  /**
+   * Reads from splitsDirectory and populates the data fields in builder.  Returns true if we
+   * should be doing cross validation, false otherwise.
+   */
+  public boolean initializeSplit(String splitsDirectory,
+                                 String kbDirectory,
+                                 String relation,
+                                 PraConfig.Builder builder,
+                                 DatasetFactory datasetFactory,
+                                 FileUtil fileUtil) throws IOException {
+    String fixed = relation.replace("/", "_");
+    // We look in the splits directory for a fixed split; if we don't find one, we do cross
+    // validation.
+    if (fileUtil.fileExists(splitsDirectory + fixed)) {
+      String training = splitsDirectory + fixed + File.separator + "training.tsv";
+      String testing = splitsDirectory + fixed + File.separator + "testing.tsv";
+      builder.setTrainingData(datasetFactory.fromFile(training, builder.nodeDict));
+      builder.setTestingData(datasetFactory.fromFile(testing, builder.nodeDict));
+      return false;
+    } else {
+      builder.setAllData(datasetFactory.fromFile(kbDirectory + "relations" + File.separator + fixed,
+                                                 builder.nodeDict));
+      String percent_training_file = splitsDirectory + "percent_training.tsv";
+      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0));
+      return true;
+    }
+  }
+
+  public void parseGraphFiles(String directory, PraConfig.Builder builder) throws IOException {
+    directory = fileUtil.addDirectorySeparatorIfNecessary(directory);
+    builder.setGraph(directory + "graph_chi" + File.separator + "edges.tsv");
+    System.out.println("Loading node and edge dictionaries from graph directory: " + directory);
+    BufferedReader reader = new BufferedReader(new FileReader(directory + "num_shards.tsv"));
+    builder.setNumShards(Integer.parseInt(reader.readLine()));
+    Dictionary nodeDict = new Dictionary();
+    nodeDict.setFromFile(directory + "node_dict.tsv");
+    builder.setNodeDictionary(nodeDict);
+    Dictionary edgeDict = new Dictionary();
+    edgeDict.setFromFile(directory + "edge_dict.tsv");
+    builder.setEdgeDictionary(edgeDict);
+  }
+
+  /**
+   * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
+   * that means deciding which relations are known to be inverses of each other, which edges
+   * should be ignored because using them to predict new relations instances would consitute
+   * cheating, and setting the range and domain of a relation to restrict new predictions.
+   *
+   * Also, if the relations have been embedded into a latent space, we perform a mapping here
+   * when deciding which edges to ignore.  This means that each embedding of a KB graph has to
+   * have a different directory.
+   */
+  public void parseKbFiles(String directory,
+                           String relation,
+                           PraConfig.Builder builder,
+                           String outputBase,
+                           FileUtil fileUtil) throws IOException {
+    // TODO(matt): allow this to be left unspecified.
+    Map<Integer, Integer> inverses = createInverses(directory + "inverses.tsv", builder.edgeDict);
+    builder.setRelationInverses(inverses);
+
+    Map<String, List<String>> embeddings = null;
+    if (fileUtil.fileExists(directory + "embeddings.tsv")) {
+      embeddings = fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv");
+    }
+    List<Integer> unallowedEdges = createUnallowedEdges(relation,
+                                                        inverses,
+                                                        embeddings,
+                                                        builder.edgeDict);
+    builder.setUnallowedEdges(unallowedEdges);
+
+    if (fileUtil.fileExists(directory + "ranges.tsv")) {
+      Map<String, String> ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv");
+      String range = ranges.get(relation);
+      String fixed = range.replace("/", "_");
+      String cat_file = directory + "category_instances" + File.separator + fixed;
+
+      Set<Integer> allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict);
+      builder.setAllowedTargets(allowedTargets);
+    } else {
+      FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append
+      writer.write("No range file found! I hope your accept policy is as you want it...\n");
+      System.out.println("No range file found!");
+      writer.close();
+    }
+  }
+
+  public List<Integer> createUnallowedEdges(String relation,
+                                            Map<Integer, Integer> inverses,
+                                            Map<String, List<String>> embeddings,
+                                            Dictionary edgeDict) {
+    List<Integer> unallowedEdges = new ArrayList<Integer>();
+
+    // The relation itself is an unallowed edge type.
+    int relIndex = edgeDict.getIndex(relation);
+    unallowedEdges.add(relIndex);
+
+    // If the relation has an inverse, it's an unallowed edge type.
+    Integer inverseIndex = inverses.get(relIndex);
+    String inverse = null;
+    if (inverseIndex != null) {
+      unallowedEdges.add(inverseIndex);
+      inverse = edgeDict.getString(inverseIndex);
+    }
+
+    // And if the relation has an embedding (really a set of cluster ids), those should be
+    // added to the unallowed edge type list.
+    if (embeddings != null) {
+      List<String> relationEmbeddings = embeddings.get(relation);
+      if (relationEmbeddings != null) {
+        for (String embedded : embeddings.get(relation)) {
+          unallowedEdges.add(edgeDict.getIndex(embedded));
+        }
+      }
+      if (inverse != null) {
+        List<String> inverseEmbeddings = embeddings.get(inverse);
+        if (inverseEmbeddings != null) {
+          for (String embedded : embeddings.get(inverse)) {
+            unallowedEdges.add(edgeDict.getIndex(embedded));
+          }
+        }
+      }
+    }
+    return unallowedEdges;
+  }
+
+  /**
+   * Reads a file containing a mapping between relations and their inverses, and returns the
+   * result as a map.
+   */
+  public Map<Integer, Integer> createInverses(String filename, Dictionary dict) throws IOException {
+    Map<Integer, Integer> inverses = new HashMap<Integer, Integer>();
+    BufferedReader reader = new BufferedReader(new FileReader(filename));
+    String line;
+    while ((line = reader.readLine()) != null) {
+      String[] parts = line.split("\t");
+      int rel1 = dict.getIndex(parts[0]);
+      int rel2 = dict.getIndex(parts[1]);
+      inverses.put(rel1, rel2);
+      // Just for good measure, in case the file only lists each relation once.
+      inverses.put(rel2, rel1);
+    }
+    reader.close();
+    return inverses;
+  }
+
+  @VisibleForTesting
+  protected static KbPraDriver driver = new KbPraDriver();
+
   public static void main(String[] args) throws IOException, InterruptedException {
     Options cmdLineOptions = createOptionParser();
     CommandLine cmdLine = null;
@@ -51,7 +292,8 @@ public class KbPraDriver {
       CommandLineParser parser = new PosixParser();
       cmdLine =  parser.parse(cmdLineOptions, args);
     } catch(ParseException e) {
-      printHelpAndExit("ParseException while processing arguments");
+      printHelp("ParseException while processing arguments");
+      return;
     }
     runPra(cmdLine);
     // Somewhere in DrunkardMobEngine, the threads aren't exitting properly
@@ -107,15 +349,10 @@ public class KbPraDriver {
     return cmdLineOptions;
   }
 
-  private static void printHelpAndExit() {
-    printHelpAndExit(null);
-  }
-
-  private static void printHelpAndExit(String message) {
+  private static void printHelp(String message) {
     if (message != null) System.out.println(message);
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp("KbPraDriver", createOptionParser());
-    System.exit(-1);
   }
 
   public static void runPra(CommandLine cmdLine) throws IOException, InterruptedException {
@@ -129,247 +366,10 @@ public class KbPraDriver {
         graphDirectory == null ||
         splitsDirectory == null ||
         parameterFile == null) {
-      printHelpAndExit("One or more of the parameters was missing");
+      printHelp("One or more of the parameters was missing");
+      return;
     }
-    runPra(kbDirectory, graphDirectory, splitsDirectory, parameterFile, outputBase);
+    driver.runPra(kbDirectory, graphDirectory, splitsDirectory, parameterFile, outputBase);
   }
 
-  public static void runPra(String kbDirectory,
-                            String graphDirectory,
-                            String splitsDirectory,
-                            String parameterFile,
-                            String outputBase) throws IOException, InterruptedException {
-    FileUtil fileUtil = new FileUtil();
-    if (!outputBase.endsWith("/")) outputBase += "/";
-    if (!kbDirectory.endsWith("/")) kbDirectory += "/";
-    if (!graphDirectory.endsWith("/")) graphDirectory += "/";
-    if (!splitsDirectory.endsWith("/")) splitsDirectory += "/";
-
-    if (fileUtil.fileExists(outputBase)) {
-      throw new RuntimeException("Output directory already exists!  Exiting...");
-    }
-    fileUtil.mkdirs(outputBase);
-
-    long start = System.currentTimeMillis();
-    PraConfig.Builder baseBuilder = new PraConfig.Builder();
-    parseGraphFiles(graphDirectory, baseBuilder);
-
-    // This call potentially uses the edge dictionary that's set in parseGraphFiles - this MUST be
-    // called after parseGraphFiles, or things will break with really weird errors.  TODO(matt): I
-    // really should write a test for this...
-    baseBuilder.setFromParamFile(fileUtil.getBufferedReader(parameterFile));
-
-    Map<String, String> nodeNames = null;
-    if (fileUtil.fileExists(kbDirectory + "node_names.tsv")) {
-      nodeNames = fileUtil.readMapFromTsvFile(kbDirectory + "node_names.tsv", true);
-    }
-    Outputter outputter = new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames);
-    baseBuilder.setOutputter(outputter);
-
-    FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt");
-    writer.write("KB used: " + kbDirectory + "\n");
-    writer.write("Graph used: " + graphDirectory + "\n");
-    writer.write("Splits used: " + splitsDirectory + "\n");
-    writer.write("Parameter file used: " + parameterFile + "\n");
-    writer.write("Parameters:\n");
-    fileUtil.copyLines(fileUtil.getBufferedReader(parameterFile), writer);
-    writer.write("End of parameters\n");
-    writer.close();
-
-    PraConfig baseConfig = baseBuilder.build();
-    // Make sure the graph is sharded
-    PraDriver.processGraph(baseConfig.graph, baseConfig.numShards);
-
-    String relationsFile = splitsDirectory + "relations_to_run.tsv";
-    String line;
-    BufferedReader reader = fileUtil.getBufferedReader(relationsFile);
-    while ((line = reader.readLine()) != null) {
-      PraConfig.Builder builder = new PraConfig.Builder(baseConfig);
-      String relation = line;
-      logger.info("\n\n\n\nRunning PRA for relation " + relation);
-      boolean doCrossValidation = false;
-      parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
-
-      String outdir = outputBase + relation + "/";
-      fileUtil.mkdirs(outdir);
-      builder.setOutputBase(outdir);
-
-      initializeSplit(splitsDirectory,
-                      kbDirectory,
-                      relation,
-                      builder,
-                      new DatasetFactory(),
-                      fileUtil);
-
-      PraConfig config = builder.build();
-      if (config.allData != null) {
-        doCrossValidation = true;
-      }
-
-      // Run PRA
-      if (doCrossValidation) {
-        PraDriver.crossValidate(config);
-      } else {
-        PraDriver.trainAndTest(config);
-      }
-    }
-    long end = System.currentTimeMillis();
-    long millis = end - start;
-    int seconds = (int) (millis / 1000);
-    int minutes = seconds / 60;
-    seconds = seconds - minutes * 60;
-    writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append to the file.
-    writer.write("PRA appears to have finished all relations successfully\n");
-    writer.write("Finished in " + minutes + " minutes and " + seconds + " seconds\n");
-    System.out.println("Took " + minutes + " minutes and " + seconds + " seconds");
-    writer.close();
-  }
-
-  /**
-   * Reads from splitsDirectory and populates the data fields in builder.  Returns true if we
-   * should be doing cross validation, false otherwise.
-   */
-  public static boolean initializeSplit(String splitsDirectory,
-                                        String kbDirectory,
-                                        String relation,
-                                        PraConfig.Builder builder,
-                                        DatasetFactory datasetFactory,
-                                        FileUtil fileUtil) throws IOException {
-    String fixed = relation.replace("/", "_");
-    // We look in the splits directory for a fixed split; if we don't find one, we do cross
-    // validation.
-    if (fileUtil.fileExists(splitsDirectory + fixed)) {
-      String training = splitsDirectory + fixed + "/training.tsv";
-      String testing = splitsDirectory + fixed + "/testing.tsv";
-      builder.setTrainingData(datasetFactory.fromFile(training, builder.nodeDict));
-      builder.setTestingData(datasetFactory.fromFile(testing, builder.nodeDict));
-      return false;
-    } else {
-      builder.setAllData(datasetFactory.fromFile(kbDirectory + "relations/" + fixed,
-                                                 builder.nodeDict));
-      String percent_training_file = splitsDirectory + "percent_training.tsv";
-      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0));
-      return true;
-    }
-  }
-
-  public static void parseGraphFiles(String directory, PraConfig.Builder builder)
-      throws IOException {
-        if (!directory.endsWith("/")) directory += "/";
-        builder.setGraph(directory + "graph_chi/edges.tsv");
-        System.out.println("Loading node and edge dictionaries from graph directory: " + directory);
-        BufferedReader reader = new BufferedReader(new FileReader(directory + "num_shards.tsv"));
-        builder.setNumShards(Integer.parseInt(reader.readLine()));
-        Dictionary nodeDict = new Dictionary();
-        nodeDict.setFromFile(directory + "node_dict.tsv");
-        builder.setNodeDictionary(nodeDict);
-        Dictionary edgeDict = new Dictionary();
-        edgeDict.setFromFile(directory + "edge_dict.tsv");
-        builder.setEdgeDictionary(edgeDict);
-      }
-
-  /**
-   * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
-   * that means deciding which relations are known to be inverses of each other, which edges
-   * should be ignored because using them to predict new relations instances would consitute
-   * cheating, and setting the range and domain of a relation to restrict new predictions.
-   *
-   * Also, if the relations have been embedded into a latent space, we perform a mapping here
-   * when deciding which edges to ignore.  This means that each embedding of a KB graph has to
-   * have a different directory.
-   */
-  public static void parseKbFiles(String directory,
-                                  String relation,
-                                  PraConfig.Builder builder,
-                                  String outputBase,
-                                  FileUtil fileUtil) throws IOException {
-    // TODO(matt): allow this to be left unspecified.
-    Map<Integer, Integer> inverses = createInverses(directory + "inverses.tsv", builder.edgeDict);
-    builder.setRelationInverses(inverses);
-
-    Map<String, List<String>> embeddings = null;
-    if (fileUtil.fileExists(directory + "embeddings.tsv")) {
-      embeddings = fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv");
-    }
-    List<Integer> unallowedEdges = createUnallowedEdges(relation,
-                                                        inverses,
-                                                        embeddings,
-                                                        builder.edgeDict);
-    builder.setUnallowedEdges(unallowedEdges);
-
-    if (fileUtil.fileExists(directory + "ranges.tsv")) {
-      Map<String, String> ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv");
-      String range = ranges.get(relation);
-      String fixed = range.replace("/", "_");
-      String cat_file = directory + "category_instances/" + fixed;
-
-      Set<Integer> allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict);
-      builder.setAllowedTargets(allowedTargets);
-    } else {
-      FileWriter writer = fileUtil.getFileWriter(outputBase + "settings.txt", true);  // true -> append
-      writer.write("No range file found! I hope your accept policy is as you want it...\n");
-      System.out.println("No range file found!");
-      writer.close();
-    }
-  }
-
-  public static List<Integer> createUnallowedEdges(String relation,
-                                                   Map<Integer, Integer> inverses,
-                                                   Map<String, List<String>> embeddings,
-                                                   Dictionary edgeDict) {
-    List<Integer> unallowedEdges = new ArrayList<Integer>();
-
-    // The relation itself is an unallowed edge type.
-    int relIndex = edgeDict.getIndex(relation);
-    unallowedEdges.add(relIndex);
-
-    // If the relation has an inverse, it's an unallowed edge type.
-    Integer inverseIndex = inverses.get(relIndex);
-    String inverse = null;
-    if (inverseIndex != null) {
-      unallowedEdges.add(inverseIndex);
-      inverse = edgeDict.getString(inverseIndex);
-    }
-
-    // And if the relation has an embedding (really a set of cluster ids), those should be
-    // added to the unallowed edge type list.
-    if (embeddings != null) {
-      List<String> relationEmbeddings = embeddings.get(relation);
-      if (relationEmbeddings != null) {
-        for (String embedded : embeddings.get(relation)) {
-          unallowedEdges.add(edgeDict.getIndex(embedded));
-        }
-      }
-      if (inverse != null) {
-        List<String> inverseEmbeddings = embeddings.get(inverse);
-        if (inverseEmbeddings != null) {
-          for (String embedded : embeddings.get(inverse)) {
-            unallowedEdges.add(edgeDict.getIndex(embedded));
-          }
-        }
-      }
-    }
-    return unallowedEdges;
-  }
-
-  /**
-   * Reads a file containing a mapping between relations and their inverses, and returns the
-   * result as a map.
-   */
-  public static Map<Integer, Integer> createInverses(String filename,
-                                                     Dictionary dict) throws IOException {
-    Map<Integer, Integer> inverses = new HashMap<Integer, Integer>();
-    BufferedReader reader = new BufferedReader(new FileReader(filename));
-    String line;
-    while ((line = reader.readLine()) != null) {
-      String[] parts = line.split("\t");
-      int rel1 = dict.getIndex(parts[0]);
-      int rel2 = dict.getIndex(parts[1]);
-      inverses.put(rel1, rel2);
-      // Just for good measure, in case the file only lists each relation once.
-      inverses.put(rel2, rel1);
-    }
-    reader.close();
-    return inverses;
-  }
 }

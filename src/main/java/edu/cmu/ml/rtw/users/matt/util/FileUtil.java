@@ -73,6 +73,11 @@ public class FileUtil {
     new File(dirName).mkdirs();
   }
 
+  public String addDirectorySeparatorIfNecessary(String dirName) {
+    if (dirName.endsWith(File.separator)) return dirName;
+    return dirName + File.separator;
+  }
+
   public List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {
     return readStringPairsFromReader(getBufferedReader(filename));
   }
