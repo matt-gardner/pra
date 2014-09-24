@@ -279,7 +279,13 @@ public class PraModel {
 
   public Instance matrixRowToInstance(MatrixRow row, Alphabet alphabet, boolean positive) {
     double value = positive ? 1.0 : 0.0;
-    FeatureVector feature_vector = new FeatureVector(alphabet, row.pathTypes, row.values);
+    double[] values = row.values.clone();
+    if (config.binarizeFeatures) {
+      for (int i = 0; i < values.length; i++) {
+        if (values[i] > 0) values[i] = 1;
+      }
+    }
+    FeatureVector feature_vector = new FeatureVector(alphabet, row.pathTypes, values);
     return new Instance(feature_vector, value, row.sourceNode + " " + row.targetNode, null);
   }
 

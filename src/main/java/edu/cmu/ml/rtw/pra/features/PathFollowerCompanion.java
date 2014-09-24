@@ -28,6 +28,7 @@ public class PathFollowerCompanion extends TwoKeyCompanion {
   private VertexIdTranslate translate;
   private int[] sourceVertexIds;
   private PathType[] pathTypes;
+  private final boolean normalizeWalkProbabilities;
 
   /**
    * Creates the PathFollowerCompanion object
@@ -37,12 +38,14 @@ public class PathFollowerCompanion extends TwoKeyCompanion {
                                VertexIdTranslate translate,
                                PathType[] pathTypes,
                                MatrixRowPolicy acceptPolicy,
-                               Set<Integer> allowedTargets) throws RemoteException {
+                               Set<Integer> allowedTargets,
+                               boolean normalizeWalkProbabilities) throws RemoteException {
     super(numThreads, maxMemoryBytes);
     this.translate = translate;
     this.pathTypes = pathTypes;
     this.acceptPolicy = acceptPolicy;
     this.allowedTargets = allowedTargets;
+    this.normalizeWalkProbabilities = normalizeWalkProbabilities;
   }
 
   @Override
@@ -155,7 +158,8 @@ public class PathFollowerCompanion extends TwoKeyCompanion {
           int target = ic.id;
           if (!acceptableRow(firstKey, target, sourceTargets, allTargets)) continue;
           int count = ic.count;
-          double percent = count / totalCount;
+          double percent = count;
+          if (normalizeWalkProbabilities) percent /= totalCount;
           if (Double.isInfinite(percent)) {
             // Somehow this happens when there are lots of walks...  Not sure what's going on.
             // TODO(matt): look into this problem.

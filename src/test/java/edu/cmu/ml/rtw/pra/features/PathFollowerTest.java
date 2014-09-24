@@ -47,7 +47,8 @@ public class PathFollowerTest extends TestCase {
                                     new SingleEdgeExcluder(edgesToExclude),
                                     paths,
                                     0,
-                                    MatrixRowPolicy.EVERYTHING);
+                                    MatrixRowPolicy.EVERYTHING,
+                                    true);
     }
 
     @Override
@@ -132,7 +133,8 @@ public class PathFollowerTest extends TestCase {
                                     new SingleEdgeExcluder(edgesToExclude),
                                     paths,
                                     0,
-                                    MatrixRowPolicy.EVERYTHING);
+                                    MatrixRowPolicy.EVERYTHING,
+                                    true);
         // We don't care about the results, we just want to be sure that this actually runs.
         follower.execute();
     }

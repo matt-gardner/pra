@@ -27,7 +27,8 @@ public class PathFollowerCompanionTest extends TestCase {
                 new FakeVertexIdTranslate(),
                 new PathType[1],
                 MatrixRowPolicy.ALL_TARGETS,
-                allowedTargets);
+                allowedTargets,
+                true);
         final Set<Integer> sourceTargets = Sets.newHashSet();
         sourceTargets.add(2);
         final Set<Integer> allTargets = Sets.newHashSet(sourceTargets);
@@ -62,7 +63,8 @@ public class PathFollowerCompanionTest extends TestCase {
                 new FakeVertexIdTranslate(),
                 new PathType[1],
                 MatrixRowPolicy.EVERYTHING,  // so we don't have to worry about matching
-                null);
+                null,
+                true);
         // We'll have one source, one path type, and two targets in this test.
         ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, DiscreteDistribution>> dists =
                 new ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, DiscreteDistribution>>();

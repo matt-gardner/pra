@@ -157,6 +157,12 @@ public class PraConfig {
   // to be targets in the feature matrix.
   public final Set<Integer> allowedTargets;
 
+  // I typically have normalized the random walk probabilities over targets for each (source, path
+  // type) pair.  When I was at Google I discovered that Ni doesn't do this in his code.  This
+  // parameter lets you control whether or not you should normalize probabilities.  Currently
+  // defaults to true.
+  public final boolean normalizeWalkProbabilities;
+
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Classifier learning parameters
@@ -176,6 +182,13 @@ public class PraConfig {
 
   // Weight to use for L1 regularization (if both L2 and L1 are set, we will use both).
   public final double l1Weight;
+
+  // We generally use probabilities as feature values when learning models and performing
+  // classification.  Setting this to true allows you to use simple 1-0 features instead, where any
+  // positive value is set to 1.  I have been told that Ni experimented with this and found that
+  // binarizing the features performed worse than using probabilities.  I am adding this parameter
+  // so that I can test this myself.
+  public final boolean binarizeFeatures;
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +231,7 @@ public class PraConfig {
     acceptPolicy = builder.acceptPolicy;
     l2Weight = builder.l2Weight;
     l1Weight = builder.l1Weight;
+    binarizeFeatures = builder.binarizeFeatures;
     onlyExplicitNegatives = builder.onlyExplicitNegatives;
     allData = builder.allData;
     percentTraining = builder.percentTraining;
@@ -226,6 +240,7 @@ public class PraConfig {
     //domainNodes = builder.domainNodes;
     //rangeNodes = builder.rangeNodes;
     allowedTargets = builder.allowedTargets;
+    normalizeWalkProbabilities = builder.normalizeWalkProbabilities;
     unallowedEdges = builder.unallowedEdges;
     edgeExcluderFactory = builder.edgeExcluderFactory;
     relationInverses = builder.relationInverses;
@@ -248,6 +263,7 @@ public class PraConfig {
     private MatrixRowPolicy acceptPolicy = MatrixRowPolicy.ALL_TARGETS;
     private double l2Weight;
     private double l1Weight;
+    private boolean binarizeFeatures = false;
     private boolean onlyExplicitNegatives;
     private Dataset allData;
     private double percentTraining;
@@ -256,6 +272,7 @@ public class PraConfig {
     //private Set<Integer> domainNodes;
     //private Set<Integer> rangeNodes;
     private Set<Integer> allowedTargets;
+    private boolean normalizeWalkProbabilities = true;
     private List<Integer> unallowedEdges;
     private EdgeExcluderFactory edgeExcluderFactory = new SingleEdgeExcluderFactory();
     private Map<Integer, Integer> relationInverses;
@@ -278,6 +295,7 @@ public class PraConfig {
     public Builder setAcceptPolicy(MatrixRowPolicy p) {this.acceptPolicy = p;return this;}
     public Builder setL2Weight(double l2Weight) {this.l2Weight = l2Weight;return this;}
     public Builder setL1Weight(double l1Weight) {this.l1Weight = l1Weight;return this;}
+    public Builder setBinarizeFeatures(boolean b) {this.binarizeFeatures = b;return this;}
     public Builder onlyExplicitNegatives() {this.onlyExplicitNegatives = true;return this;}
     public Builder setAllData(Dataset d) {this.allData = d;return this;}
     public Builder setPercentTraining(double p) {this.percentTraining = p;return this;}
@@ -286,6 +304,7 @@ public class PraConfig {
     //public Builder setDomainNodes(Set<Integer> n) {this.domainNodes = n;return this;}
     //public Builder setRangeNodes(Set<Integer> n) {this.rangeNodes = n;return this;}
     public Builder setAllowedTargets(Set<Integer> a) {this.allowedTargets = a;return this;}
+    public Builder setNormalizeWalkProbabilities(boolean b) {this.normalizeWalkProbabilities = b;return this;}
     public Builder setUnallowedEdges(List<Integer> e) {this.unallowedEdges = e;return this;}
     public Builder setEdgeExcluderFactory(EdgeExcluderFactory f) {edgeExcluderFactory = f; return this;}
     public Builder setRelationInverses(Map<Integer, Integer> i) {relationInverses = i;return this;}
@@ -317,6 +336,7 @@ public class PraConfig {
       setAcceptPolicy(config.acceptPolicy);
       setL2Weight(config.l2Weight);
       setL1Weight(config.l1Weight);
+      setBinarizeFeatures(config.binarizeFeatures);
       if (config.onlyExplicitNegatives) onlyExplicitNegatives();
       setAllData(config.allData);
       setPercentTraining(config.percentTraining);
@@ -325,6 +345,7 @@ public class PraConfig {
       //setDomainNodes(config.domainNodes);
       //setRangeNodes(config.rangeNodes);
       setAllowedTargets(config.allowedTargets);
+      setNormalizeWalkProbabilities(config.normalizeWalkProbabilities);
       setUnallowedEdges(config.unallowedEdges);
       setEdgeExcluderFactory(config.edgeExcluderFactory);
       setRelationInverses(config.relationInverses);
@@ -354,6 +375,10 @@ public class PraConfig {
           setNumPaths(Integer.parseInt(value));
         } else if (parameter.equalsIgnoreCase("only explicit negative evidence")) {
           onlyExplicitNegatives();
+        } else if (parameter.equalsIgnoreCase("binarize features")) {
+          setBinarizeFeatures(Boolean.parseBoolean(value));
+        } else if (parameter.equalsIgnoreCase("normalize walk probabilities")) {
+          setNormalizeWalkProbabilities(Boolean.parseBoolean(value));
         } else if (parameter.equalsIgnoreCase("matrix accept policy")) {
           setAcceptPolicy(MatrixRowPolicy.parseFromString(value));
         } else if (parameter.equalsIgnoreCase("path accept policy")) {

@@ -145,7 +145,8 @@ public class FeatureGenerator {
                                              config.edgeExcluderFactory.create(edgesToExclude),
                                              pathTypes,
                                              config.walksPerPath,
-                                             config.acceptPolicy);
+                                             config.acceptPolicy,
+                                             config.normalizeWalkProbabilities);
     follower.execute();
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
     // reason I don't understand.

@@ -60,7 +60,8 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
                       EdgeExcluder edgeExcluder,
                       List<PathType> paths,
                       int walksPerPath,
-                      MatrixRowPolicy companionAcceptPolicy) {
+                      MatrixRowPolicy companionAcceptPolicy,
+                      boolean normalizeWalkProbabilities) {
     this.numWalksPerPath = walksPerPath;
     this.sourcesMap = sourcesMap;
     try {
@@ -99,7 +100,8 @@ public class PathFollower implements WalkUpdateFunction<EmptyType, Integer> {
                                             vertexIdTranslate,
                                             pathTypes,
                                             companionAcceptPolicy,
-                                            allowedTargets);
+                                            allowedTargets,
+                                            normalizeWalkProbabilities);
     } catch(RemoteException e) {
       throw new RuntimeException(e);
     }
