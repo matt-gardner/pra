@@ -8,10 +8,9 @@ import edu.cmu.graphchi.ChiEdge;
 import edu.cmu.graphchi.ChiVertex;
 import edu.cmu.graphchi.EmptyType;
 
-import gnu.trove.list.TIntList;
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.set.TIntSet;
-import gnu.trove.set.hash.TIntHashSet;
+import gnu.trove.TIntArrayList;
+import gnu.trove.TIntHash;
+import gnu.trove.TIntHashSet;
 
 /**
  * A nicer representation for the processing we do at each vertex than a ChiVertex.
@@ -57,9 +56,9 @@ public class Vertex {
     inEdgeTypes = new int[numInEdges];
     outEdgeNodes = new int[numOutEdges];
     outEdgeTypes = new int[numOutEdges];
-    TIntSet seenEdgeTypes = new TIntHashSet();
-    TIntSet seenInEdgeTypes = new TIntHashSet();
-    TIntSet seenOutEdgeTypes = new TIntHashSet();
+    TIntHashSet seenEdgeTypes = new TIntHashSet();
+    TIntHashSet seenInEdgeTypes = new TIntHashSet();
+    TIntHashSet seenOutEdgeTypes = new TIntHashSet();
     for (int edgeNum = 0; edgeNum < numInEdges; edgeNum++) {
       ChiEdge<Integer> edge = chiVertex.inEdge(edgeNum);
       int vertexId = edge.getVertexId();
@@ -196,10 +195,10 @@ public class Vertex {
                                        int[] inEdgeTypes,
                                        int[] outEdgeNodes,
                                        int[] outEdgeTypes) {
-    TIntList[][] tempEdgeTypeMap = new TIntList[edgeTypeSet.length][];
+    TIntArrayList[][] tempEdgeTypeMap = new TIntArrayList[edgeTypeSet.length][];
     for (int i = 0; i < edgeTypeSet.length; i++) {
       edgeTypeMap[i] = new int[2][];
-      tempEdgeTypeMap[i] = new TIntList[2];
+      tempEdgeTypeMap[i] = new TIntArrayList[2];
       tempEdgeTypeMap[i][0] = new TIntArrayList();
       tempEdgeTypeMap[i][1] = new TIntArrayList();
     }
@@ -210,8 +209,8 @@ public class Vertex {
       tempEdgeTypeMap[getEdgeTypeIndex(outEdgeTypes[edgeNum])][0].add(outEdgeNodes[edgeNum]);
     }
     for (int i = 0; i < edgeTypeSet.length; i++) {
-      if (tempEdgeTypeMap[i][1].size() > 0) edgeTypeMap[i][1] = tempEdgeTypeMap[i][1].toArray();
-      if (tempEdgeTypeMap[i][0].size() > 0) edgeTypeMap[i][0] = tempEdgeTypeMap[i][0].toArray();
+      if (tempEdgeTypeMap[i][1].size() > 0) edgeTypeMap[i][1] = tempEdgeTypeMap[i][1].toNativeArray();
+      if (tempEdgeTypeMap[i][0].size() > 0) edgeTypeMap[i][0] = tempEdgeTypeMap[i][0].toNativeArray();
     }
   }
 }

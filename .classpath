@@ -51,7 +51,7 @@
   <classpathentry kind="var" path="M2_REPO/org/beanshell/bsh/2.0b4/bsh-2.0b4.jar"/>
   <classpathentry kind="var" path="M2_REPO/jgrapht/jgrapht/0.6.0/jgrapht-0.6.0.jar"/>
   <classpathentry kind="var" path="M2_REPO/net/sf/jwordnet/jwnl/1.4_rc3/jwnl-1.4_rc3.jar"/>
-  <classpathentry kind="var" path="M2_REPO/net/sf/trove4j/trove4j/3.0.3/trove4j-3.0.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/sf/trove4j/trove4j/2.0.2/trove4j-2.0.2.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/googlecode/matrix-toolkits-java/mtj/0.9.14/mtj-0.9.14.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/googlecode/netlib-java/netlib-java/0.9.3/netlib-java-0.9.3.jar"/>
   <classpathentry kind="var" path="M2_REPO/net/sourceforge/f2j/arpack_combined_all/0.1/arpack_combined_all-0.1.jar"/>
