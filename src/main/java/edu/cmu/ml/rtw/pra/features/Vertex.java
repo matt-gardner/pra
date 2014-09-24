@@ -1,19 +1,17 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.Arrays;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.ChiEdge;
 import edu.cmu.graphchi.ChiVertex;
 import edu.cmu.graphchi.EmptyType;
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
+
+import gnu.trove.list.TIntList;
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 
 /**
  * A nicer representation for the processing we do at each vertex than a ChiVertex.
@@ -55,56 +53,53 @@ public class Vertex {
     numOutEdges = chiVertex.numOutEdges();
     allEdgeNodes = new int[numEdges];
     allEdgeTypes = new int[numEdges];
-    inEdgeNodes = new int[chiVertex.numInEdges()];
-    inEdgeTypes = new int[chiVertex.numInEdges()];
-    outEdgeNodes = new int[chiVertex.numOutEdges()];
-    outEdgeTypes = new int[chiVertex.numOutEdges()];
-    Set<Integer> seenEdgeTypes = Sets.newHashSet();
-    Set<Integer> seenInEdgeTypes = Sets.newHashSet();
-    Set<Integer> seenOutEdgeTypes = Sets.newHashSet();
-    for (int edgeNum = 0; edgeNum < chiVertex.numInEdges(); edgeNum++) {
+    inEdgeNodes = new int[numInEdges];
+    inEdgeTypes = new int[numInEdges];
+    outEdgeNodes = new int[numOutEdges];
+    outEdgeTypes = new int[numOutEdges];
+    TIntSet seenEdgeTypes = new TIntHashSet();
+    TIntSet seenInEdgeTypes = new TIntHashSet();
+    TIntSet seenOutEdgeTypes = new TIntHashSet();
+    for (int edgeNum = 0; edgeNum < numInEdges; edgeNum++) {
       ChiEdge<Integer> edge = chiVertex.inEdge(edgeNum);
-      allEdgeNodes[edgeNum] = edge.getVertexId();
-      allEdgeTypes[edgeNum] = edge.getValue();
-      inEdgeNodes[edgeNum] = edge.getVertexId();
-      inEdgeTypes[edgeNum] = edge.getValue();
+      int vertexId = edge.getVertexId();
+      int type = edge.getValue();
+      allEdgeNodes[edgeNum] = vertexId;
+      allEdgeTypes[edgeNum] = type;
+      inEdgeNodes[edgeNum] = vertexId;
+      inEdgeTypes[edgeNum] = type;
       if (needEdgeTypeMaps) {
-        seenEdgeTypes.add(edge.getValue());
-        seenInEdgeTypes.add(edge.getValue());
+        seenEdgeTypes.add(type);
+        seenInEdgeTypes.add(type);
       }
     }
-    for (int edgeNum = 0; edgeNum < chiVertex.numOutEdges(); edgeNum++) {
+    for (int edgeNum = 0; edgeNum < numOutEdges; edgeNum++) {
       ChiEdge<Integer> edge = chiVertex.outEdge(edgeNum);
-      allEdgeNodes[edgeNum + numInEdges] = edge.getVertexId();
-      allEdgeTypes[edgeNum + numInEdges] = edge.getValue();
-      outEdgeNodes[edgeNum] = edge.getVertexId();
-      outEdgeTypes[edgeNum] = edge.getValue();
+      int vertexId = edge.getVertexId();
+      int type = edge.getValue();
+      allEdgeNodes[edgeNum + numInEdges] = vertexId;
+      allEdgeTypes[edgeNum + numInEdges] = type;
+      outEdgeNodes[edgeNum] = vertexId;
+      outEdgeTypes[edgeNum] = type;
       if (needEdgeTypeMaps) {
-        seenEdgeTypes.add(edge.getValue());
-        seenOutEdgeTypes.add(edge.getValue());
+        seenEdgeTypes.add(type);
+        seenOutEdgeTypes.add(type);
       }
     }
-    inEdgeTypeSet = new int[seenInEdgeTypes.size()];
-    outEdgeTypeSet = new int[seenOutEdgeTypes.size()];
-    edgeTypeSet = new int[seenEdgeTypes.size()];
-    edgeTypeMap = new int[edgeTypeSet.length][2][];
     if (needEdgeTypeMaps) {
-      List<Integer> inEdgeTypeList = Lists.newArrayList(seenInEdgeTypes);
-      Collections.sort(inEdgeTypeList);
-      for (int i = 0; i < inEdgeTypeList.size(); i++) {
-        inEdgeTypeSet[i] = inEdgeTypeList.get(i);
-      }
-      List<Integer> outEdgeTypeList = Lists.newArrayList(seenOutEdgeTypes);
-      Collections.sort(outEdgeTypeList);
-      for (int i = 0; i < outEdgeTypeList.size(); i++) {
-        outEdgeTypeSet[i] = outEdgeTypeList.get(i);
-      }
-      List<Integer> edgeTypeList = Lists.newArrayList(seenEdgeTypes);
-      Collections.sort(edgeTypeList);
-      for (int i = 0; i < edgeTypeList.size(); i++) {
-        edgeTypeSet[i] = edgeTypeList.get(i);
-      }
-      initializeEdgeTypeMap(chiVertex);
+      inEdgeTypeSet = seenInEdgeTypes.toArray();
+      Arrays.sort(inEdgeTypeSet);
+      outEdgeTypeSet = seenOutEdgeTypes.toArray();
+      Arrays.sort(outEdgeTypeSet);
+      edgeTypeSet = seenEdgeTypes.toArray();
+      Arrays.sort(edgeTypeSet);
+      edgeTypeMap = new int[edgeTypeSet.length][2][];
+      initializeEdgeTypeMap(inEdgeNodes, inEdgeTypes, outEdgeNodes, outEdgeTypes);
+    } else {
+      inEdgeTypeSet = new int[seenInEdgeTypes.size()];
+      outEdgeTypeSet = new int[seenOutEdgeTypes.size()];
+      edgeTypeSet = new int[seenEdgeTypes.size()];
+      edgeTypeMap = new int[edgeTypeSet.length][2][];
     }
   }
 
@@ -197,32 +192,26 @@ public class Vertex {
   }
 
   @VisibleForTesting
-  protected void initializeEdgeTypeMap(ChiVertex<EmptyType, Integer> chiVertex) {
+  protected void initializeEdgeTypeMap(int[] inEdgeNodes,
+                                       int[] inEdgeTypes,
+                                       int[] outEdgeNodes,
+                                       int[] outEdgeTypes) {
+    TIntList[][] tempEdgeTypeMap = new TIntList[edgeTypeSet.length][];
     for (int i = 0; i < edgeTypeSet.length; i++) {
       edgeTypeMap[i] = new int[2][];
+      tempEdgeTypeMap[i] = new TIntList[2];
+      tempEdgeTypeMap[i][0] = new TIntArrayList();
+      tempEdgeTypeMap[i][1] = new TIntArrayList();
     }
-    Map<Integer, Map<Boolean, List<Integer>>> edgeMap = Maps.newHashMap();
-    for (int edgeNum = 0; edgeNum < chiVertex.numInEdges(); edgeNum++) {
-      ChiEdge<Integer> edge = chiVertex.inEdge(edgeNum);
-      MapUtil.addValueToTwoKeyList(edgeMap, edge.getValue(), true, edge.getVertexId());
+    for (int edgeNum = 0; edgeNum < inEdgeNodes.length; edgeNum++) {
+      tempEdgeTypeMap[getEdgeTypeIndex(inEdgeTypes[edgeNum])][1].add(inEdgeNodes[edgeNum]);
     }
-    for (int edgeNum = 0; edgeNum < chiVertex.numOutEdges(); edgeNum++) {
-      ChiEdge<Integer> edge = chiVertex.outEdge(edgeNum);
-      MapUtil.addValueToTwoKeyList(edgeMap, edge.getValue(), false, edge.getVertexId());
+    for (int edgeNum = 0; edgeNum < outEdgeNodes.length; edgeNum++) {
+      tempEdgeTypeMap[getEdgeTypeIndex(outEdgeTypes[edgeNum])][0].add(outEdgeNodes[edgeNum]);
     }
     for (int i = 0; i < edgeTypeSet.length; i++) {
-      putNodesIntoEdgeMap(i, true, edgeMap.get(edgeTypeSet[i]).get(true));
-      putNodesIntoEdgeMap(i, false, edgeMap.get(edgeTypeSet[i]).get(false));
-    }
-  }
-
-  private void putNodesIntoEdgeMap(int edgeTypeIndex, boolean reverse, List<Integer> nodes) {
-    if (nodes == null) return;
-    int reverseIndex = reverse ? 1 : 0;
-    edgeTypeMap[edgeTypeIndex][reverseIndex] = new int[nodes.size()];
-    int counter = 0;
-    for (int node : nodes) {
-      edgeTypeMap[edgeTypeIndex][reverseIndex][counter++] = node;
+      if (tempEdgeTypeMap[i][1].size() > 0) edgeTypeMap[i][1] = tempEdgeTypeMap[i][1].toArray();
+      if (tempEdgeTypeMap[i][0].size() > 0) edgeTypeMap[i][0] = tempEdgeTypeMap[i][0].toArray();
     }
   }
 }

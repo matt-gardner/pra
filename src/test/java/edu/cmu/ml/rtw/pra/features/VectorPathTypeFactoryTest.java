@@ -46,7 +46,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
         assertNull(pathType.cacheVertexInformation(vertex, 1000));
     }
 
-    public void testNextHop() {
+    public void testGetNextEdgeTypeWorksCorrectly() {
         embeddings.put(1, vector1);
         embeddings.put(2, vector2);
         VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);

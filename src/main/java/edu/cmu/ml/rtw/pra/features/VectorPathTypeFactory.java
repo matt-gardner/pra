@@ -74,8 +74,19 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
   @VisibleForTesting
   protected class VectorPathType extends BaseEdgeSequencePathType {
 
+    // In profiling, it looked like a whole lot of time was taken up just _accessing_ these fields
+    // from the enclosing class.  So I added these fields in order to improve performance a bit.
+    // This will increase memory usage a bit, but should decrease processing time, which is the
+    // more pressing issue.
+    private double _spikiness;
+    private double _resetWeight;
+    private Vector[] _embeddings;
+
     public VectorPathType(int[] edgeTypes, boolean[] reverse) {
       super(edgeTypes, reverse);
+      _spikiness = spikiness;
+      _resetWeight = resetWeight;
+      _embeddings = embeddings;
     }
 
     private VectorPathType() {
@@ -94,7 +105,7 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
       if (hopNum >= numHops) return null;
 
-      Vector baseVector = embeddings[edgeTypes[hopNum]];
+      Vector baseVector = _embeddings[edgeTypes[hopNum]];
       // If we have no embeddings for the edge type corresponding to this hop num (for instance, if
       // it is the "alias" relation), then just return the edge type itself.
       if (baseVector == null) {
@@ -115,17 +126,17 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
       double[] weights = new double[vertexEdgeTypes.length];
       double totalWeight = 0.0;
       for (int i = 0; i < vertexEdgeTypes.length; i++) {
-        Vector edgeVector = embeddings[vertexEdgeTypes[i]];
+        Vector edgeVector = _embeddings[vertexEdgeTypes[i]];
         if (edgeVector == null) {
           weights[i] = 0.0;
           continue;
         }
         double dotProduct = baseVector.dotProduct(edgeVector);
-        double weight = Math.exp(spikiness * dotProduct);
+        double weight = Math.exp(_spikiness * dotProduct);
         weights[i] = weight;
         totalWeight += weight;
       }
-      totalWeight += resetWeight;
+      totalWeight += _resetWeight;
       return new VectorPathTypeVertexCache(vertexEdgeTypes, weights, totalWeight);
     }
 
