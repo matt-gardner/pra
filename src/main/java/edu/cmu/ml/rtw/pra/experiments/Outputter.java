@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
 import edu.cmu.ml.rtw.pra.config.PraConfig;
@@ -16,6 +17,7 @@ import edu.cmu.ml.rtw.pra.features.MatrixRow;
 import edu.cmu.ml.rtw.pra.features.PathType;
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.util.Pair;
 import edu.cmu.ml.rtw.util.PairComparator;
@@ -34,6 +36,7 @@ public class Outputter {
   private final Dictionary nodeDict;
   private final Dictionary edgeDict;
   private final Map<String, String> nodeNames;
+  private final FileUtil fileUtil;
 
   public Outputter() {
     this(null, null, null);
@@ -48,9 +51,18 @@ public class Outputter {
   }
 
   public Outputter(Dictionary nodeDict, Dictionary edgeDict, Map<String, String> nodeNames) {
+    this(nodeDict, edgeDict, nodeNames, new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected Outputter(Dictionary nodeDict,
+                      Dictionary edgeDict,
+                      Map<String, String> nodeNames,
+                      FileUtil fileUtil) {
     this.nodeDict = nodeDict;
     this.edgeDict = edgeDict;
     this.nodeNames = nodeNames;
+    this.fileUtil = fileUtil;
   }
 
   private String getNode(int index) {
@@ -90,7 +102,7 @@ public class Outputter {
     // instances).
     Set<Integer> allTestSources = config.testingData.getCombinedSourceMap().keySet();
     try {
-      FileWriter writer = new FileWriter(filename);
+      FileWriter writer = fileUtil.getFileWriter(filename);
       for (int source : allTestSources) {
         String sourceStr = getNode(source);
         List<Pair<Integer, Double>> scores = sourceScores.get(source);
@@ -102,15 +114,14 @@ public class Outputter {
           writer.write("\n\n");
           continue;
         }
-        Collections.sort(scores,
-                         new PairComparator<Integer, Double>(PairComparator.Side.NEGRIGHT));
+        Collections.sort(scores, PairComparator.<Integer, Double>negativeRight());
         Set<Integer> targetSet = allPositiveSourcesMap.get(source);
         if (targetSet == null) {
-          targetSet = new HashSet<Integer>();
+          targetSet = Sets.newHashSet();
         }
         Set<Integer> trainingTargetSet = trainingSourcesMap.get(source);
         if (trainingTargetSet == null) {
-          trainingTargetSet = new HashSet<Integer>();
+          trainingTargetSet = Sets.newHashSet();
         }
         for (Pair<Integer, Double> pair : scores) {
           writer.write(sourceStr + "\t" + getNode(pair.getLeft()) + "\t" + pair.getRight() + "\t");
@@ -137,9 +148,9 @@ public class Outputter {
                             List<Double> weights,
                             List<PathType> pathTypes) {
     try {
-      FileWriter writer = new FileWriter(filename);
+      FileWriter writer = fileUtil.getFileWriter(filename);
       List<Pair<PathType, Double>> zipped = CollectionsUtil.zipLists(pathTypes, weights);
-      Collections.sort(zipped, new PairComparator(PairComparator.Side.NEGRIGHT));
+      Collections.sort(zipped, PairComparator.<PathType, Double>negativeRight());
       for (Pair<PathType, Double> pair : zipped) {
         writer.write(getPathType(pair.getLeft()) + "\t" + pair.getRight() + "\n");
       }
@@ -152,26 +163,25 @@ public class Outputter {
   public void outputSplitFiles(String outputBase, Dataset trainingData, Dataset testingData) {
     if (outputBase == null) return;
     try {
-      FileWriter writer = new FileWriter(outputBase
-                                         + "training_positive_examples.tsv");
+      FileWriter writer = fileUtil.getFileWriter(outputBase + "training_positive_examples.tsv");
       for (Pair<Integer, Integer> pair : trainingData.getPositiveInstances()) {
         writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
       }
       writer.close();
       if (trainingData.getNegativeInstances() != null) {
-        writer = new FileWriter(outputBase + "training_negative_examples.tsv");
+        writer = fileUtil.getFileWriter(outputBase + "training_negative_examples.tsv");
         for (Pair<Integer, Integer> pair : trainingData.getNegativeInstances()) {
           writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
         }
         writer.close();
       }
-      writer = new FileWriter(outputBase + "testing_positive_examples.tsv");
+      writer = fileUtil.getFileWriter(outputBase + "testing_positive_examples.tsv");
       for (Pair<Integer, Integer> pair : testingData.getPositiveInstances()) {
         writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
       }
       writer.close();
       if (testingData.getNegativeInstances() != null) {
-        writer = new FileWriter(outputBase + "testing_negative_examples.tsv");
+        writer = fileUtil.getFileWriter(outputBase + "testing_negative_examples.tsv");
         for (Pair<Integer, Integer> pair : testingData.getNegativeInstances()) {
           writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
         }
@@ -187,7 +197,7 @@ public class Outputter {
                                Map<PathType, Integer> pathCounts) {
     if (baseDir == null) return;
     try {
-      FileWriter writer = new FileWriter(baseDir + filename);
+      FileWriter writer = fileUtil.getFileWriter(baseDir + filename);
       List<Map.Entry<PathType, Integer>> list = MapUtil.sortByValue(pathCounts, true);
       for (Map.Entry<PathType, Integer> entry : list) {
         writer.write(getPathType(entry.getKey()) + "\t" + entry.getValue() + "\n");
@@ -205,7 +215,7 @@ public class Outputter {
       Dataset data) {
     if (baseDir == null) return;
     try {
-      FileWriter writer = new FileWriter(baseDir + filename);
+      FileWriter writer = fileUtil.getFileWriter(baseDir + filename);
       for (Pair<Integer, Integer> pair : data.getPositiveInstances()) {
         outputPathCountPair(pair, true, pathCountMap.get(pair), writer);
       }
@@ -242,7 +252,7 @@ public class Outputter {
   public void outputPaths(String baseDir, String filename, List<PathType> pathTypes) {
     if (baseDir == null) return;
     try {
-      FileWriter writer = new FileWriter(baseDir + filename);
+      FileWriter writer = fileUtil.getFileWriter(baseDir + filename);
       for (PathType pathType : pathTypes) {
         writer.write(getPathType(pathType) + "\n");
       }
@@ -254,7 +264,7 @@ public class Outputter {
 
   public void outputFeatureMatrix(String filename, FeatureMatrix matrix, List<PathType> pathTypes) {
     try {
-      outputFeatureMatrix(new FileWriter(filename), matrix, pathTypes);
+      outputFeatureMatrix(fileUtil.getFileWriter(filename), matrix, pathTypes);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
