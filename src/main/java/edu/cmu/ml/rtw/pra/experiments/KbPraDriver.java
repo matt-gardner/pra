@@ -23,15 +23,17 @@ import com.google.common.annotations.VisibleForTesting;
 
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
+import edu.cmu.ml.rtw.pra.graphs.GraphProcessor;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 
 /**
  * An interface to PraDriver for more easily running PRA experiments with a knowledge base.  The
- * PraDriver code is totally agnostic to what kind of graph is being used or what the relation and
- * node numbers actually refer to.  This gives an interface that can be used more easily if you are
- * using a KB graph like from Freebase or NELL (presumably created using the NellGraphCreator or
- * FreebaseGraphCreator for the KB files, then GraphCreator for the graph and dictionary files).
+ * PraTrainAndTester code is totally agnostic to what kind of graph is being used or what the
+ * relation and node numbers actually refer to.  This gives an interface that can be used more
+ * easily if you are using a KB graph like from Freebase or NELL (presumably created using the
+ * NellGraphCreator or FreebaseGraphCreator for the KB files, then GraphCreator for the graph and
+ * dictionary files).
  *
  * @author Matt Gardner (mg1@cs.cmu.edu)
  */
@@ -89,7 +91,7 @@ public class KbPraDriver {
 
     PraConfig baseConfig = baseBuilder.build();
     // Make sure the graph is sharded
-    PraDriver.processGraph(baseConfig.graph, baseConfig.numShards);
+    new GraphProcessor().processGraph(baseConfig.graph, baseConfig.numShards);
 
     String relationsFile = splitsDirectory + "relations_to_run.tsv";
     String line;
@@ -119,9 +121,9 @@ public class KbPraDriver {
 
       // Run PRA
       if (doCrossValidation) {
-        PraDriver.crossValidate(config);
+        new PraTrainAndTester().crossValidate(config);
       } else {
-        PraDriver.trainAndTest(config);
+        new PraTrainAndTester().trainAndTest(config);
       }
     }
     long end = System.currentTimeMillis();

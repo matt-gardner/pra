@@ -17,6 +17,7 @@ import org.apache.commons.cli.PosixParser;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.features.PathType;
+import edu.cmu.ml.rtw.pra.graphs.GraphProcessor;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
@@ -85,14 +86,14 @@ public class PathExplorer {
     new File(outputBase).mkdirs();
     builder.setOutputBase(outputBase);
     DatasetFactory datasetFactory = new DatasetFactory();
-    KbPraDriver.parseGraphFiles(graphDirectory, builder);
+    new KbPraDriver().parseGraphFiles(graphDirectory, builder);
     builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict));
     // TODO(matt): this will need to be fixed if we ever want to use this for something more than
     // exploratory analysis!
     builder.setUnallowedEdges(new ArrayList<Integer>());
     PraConfig config = builder.build();
     // Make sure the graph is sharded
-    PraDriver.processGraph(config.graph, config.numShards);
+    new GraphProcessor().processGraph(config.graph, config.numShards);
 
     FeatureGenerator generator = new FeatureGenerator(config);
     Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCounts =

@@ -10,7 +10,6 @@ import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
 
-import edu.cmu.ml.rtw.pra.experiments.PraDriver;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
