@@ -9,8 +9,8 @@ import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
 
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class SingleEdgeExcluderTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();

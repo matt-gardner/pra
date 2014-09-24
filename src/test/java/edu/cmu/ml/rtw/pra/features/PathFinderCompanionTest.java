@@ -11,7 +11,7 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.users.matt.util.Index;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class PathFinderCompanionTest extends TestCase {
     private BasicPathTypeFactory factory = new BasicPathTypeFactory();

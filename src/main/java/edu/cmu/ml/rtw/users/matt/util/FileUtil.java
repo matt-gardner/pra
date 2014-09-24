@@ -16,8 +16,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import edu.cmu.ml.rtw.util.Pair;
-
 /**
  * This class serves two main purposes:
  *  - It abstracts away a lot of file manipulation code so that I can use it in a number of

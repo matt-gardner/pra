@@ -17,7 +17,7 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.IntTriple;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
  * Given an (already constructed) KB graph, convert it to a GraphChi graph suitable for using with

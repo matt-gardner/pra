@@ -15,8 +15,8 @@ import edu.cmu.graphchi.walks.LongWalkArray;
 import edu.cmu.ml.rtw.pra.features.FakePathTypeFactory.FakePathType;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class PathFollowerTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();

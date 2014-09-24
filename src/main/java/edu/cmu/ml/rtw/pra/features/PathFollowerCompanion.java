@@ -18,7 +18,7 @@ import edu.cmu.graphchi.util.IntegerBuffer;
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class PathFollowerCompanion extends TwoKeyCompanion {
 

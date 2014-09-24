@@ -32,7 +32,7 @@ import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
  * Finds common path types between pairs of nodes in a given set, using DrunkardMobEngine.

@@ -14,7 +14,7 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.IntTriple;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class RelationSet {
 

@@ -17,9 +17,9 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FakeFileWriter;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class RelationSetTest extends TestCase {
     private String relationFile = "test relation file";

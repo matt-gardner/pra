@@ -14,8 +14,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import edu.cmu.ml.rtw.util.Pair;
-
 public class FakeFileUtil extends FileUtil {
 
   private Set<String> existingPaths;
@@ -24,6 +22,7 @@ public class FakeFileUtil extends FileUtil {
   private Map<String, FakeFileWriter> fileWriters;
   private Map<String, String> readerFileContents;
   private boolean onlyAllowExpectedFiles;
+  private boolean throwIOExceptionOnWrite;
 
   public FakeFileUtil() {
     existingPaths = Sets.newHashSet();
@@ -32,6 +31,7 @@ public class FakeFileUtil extends FileUtil {
     fileWriters = Maps.newHashMap();
     readerFileContents = Maps.newHashMap();
     onlyAllowExpectedFiles = false;
+    throwIOExceptionOnWrite = false;
   }
 
   @Override
@@ -60,6 +60,7 @@ public class FakeFileUtil extends FileUtil {
 
   @Override
   public FileWriter getFileWriter(String filename, boolean append) throws IOException {
+    if (throwIOExceptionOnWrite) throw new IOException("Writing not allowed");
     if (onlyAllowExpectedFiles) {
       TestCase.assertNotNull("Unexpected file written: " + filename,
                              expectedFileContents.get(filename));
@@ -105,5 +106,13 @@ public class FakeFileUtil extends FileUtil {
    */
   public void allowUnexpectedFiles() {
     onlyAllowExpectedFiles = false;
+  }
+
+  public void throwIOExceptionOnWrite() {
+    throwIOExceptionOnWrite = true;
+  }
+
+  public void unsetThrowIOExceptionOnWrite() {
+    throwIOExceptionOnWrite = false;
   }
 }

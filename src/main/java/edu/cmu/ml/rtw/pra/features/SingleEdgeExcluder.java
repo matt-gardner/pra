@@ -9,7 +9,7 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.preprocessing.VertexIdTranslate;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class SingleEdgeExcluder implements EdgeExcluder {
 

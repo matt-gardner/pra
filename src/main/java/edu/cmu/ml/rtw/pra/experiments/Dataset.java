@@ -15,7 +15,7 @@ import com.google.common.collect.Lists;
 
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
  * A collection of positive and negative (source, target) pairs.

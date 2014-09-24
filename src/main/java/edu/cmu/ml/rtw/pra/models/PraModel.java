@@ -19,15 +19,14 @@ import cc.mallet.types.Alphabet;
 import cc.mallet.types.FeatureVector;
 import cc.mallet.types.Instance;
 import cc.mallet.types.InstanceList;
-
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRow;
 import edu.cmu.ml.rtw.pra.features.PathType;
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
-import edu.cmu.ml.rtw.util.Pair;
-import edu.cmu.ml.rtw.util.PairComparator;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.PairComparator;
 
 /**
  * Handles learning and classification for a simple logistic regression model that uses PRA

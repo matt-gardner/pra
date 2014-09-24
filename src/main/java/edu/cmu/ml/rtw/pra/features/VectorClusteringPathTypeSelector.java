@@ -5,14 +5,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.annotations.VisibleForTesting;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class VectorClusteringPathTypeSelector implements PathTypeSelector {
 

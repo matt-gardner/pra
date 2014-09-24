@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import edu.cmu.ml.rtw.util.Pair;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 public class CollectionsUtil {
   public static <L, R> List<Pair<L, R>> zipLists(List<L> listOne, List<R> listTwo) {
@@ -70,17 +71,22 @@ public class CollectionsUtil {
   }
 
   public static <K, V> Map<K, Set<V>> combineMapSets(Map<K, Set<V>> map1, Map<K, Set<V>> map2) {
-    Map<K, Set<V>> combined = new HashMap<K, Set<V>>(map1);
-    for (Map.Entry<K, Set<V>> entry : map2.entrySet()) {
-      Set<V> values = combined.get(entry.getKey());
+    Map<K, Set<V>> combined = Maps.newHashMap();
+    addMapSet(combined, map1);
+    addMapSet(combined, map2);
+    return combined;
+  }
+
+  public static <K, V> void addMapSet(Map<K, Set<V>> map, Map<K, Set<V>> toAdd) {
+    for (Map.Entry<K, Set<V>> entry : toAdd.entrySet()) {
+      Set<V> values = map.get(entry.getKey());
       if (values == null) {
-        values = new HashSet<V>();
-        combined.put(entry.getKey(), values);
+        values = Sets.newHashSet();
+        map.put(entry.getKey(), values);
       }
       for (V value : entry.getValue()) {
         values.add(value);
       }
     }
-    return combined;
   }
 }

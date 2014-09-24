@@ -11,9 +11,9 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class VectorClusteringPathTypeSelectorTest extends TestCase {
     private Dictionary edgeDict = new Dictionary();

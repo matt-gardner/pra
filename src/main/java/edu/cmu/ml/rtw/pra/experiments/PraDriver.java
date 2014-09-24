@@ -34,7 +34,7 @@ import edu.cmu.ml.rtw.pra.features.PathTypePolicy;
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.models.PraModel;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
  * A driver for PRA.

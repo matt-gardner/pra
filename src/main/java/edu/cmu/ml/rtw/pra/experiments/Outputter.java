@@ -3,7 +3,6 @@ package edu.cmu.ml.rtw.pra.experiments;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,8 +18,8 @@ import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
-import edu.cmu.ml.rtw.util.PairComparator;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.PairComparator;
 
 /**
  * Handles outputting results and other information from running PRA to the file system.  When
@@ -65,13 +64,15 @@ public class Outputter {
     this.fileUtil = fileUtil;
   }
 
-  private String getNode(int index) {
+  @VisibleForTesting
+  protected String getNode(int index) {
     if (nodeDict == null) return "" + index;
     String node = nodeDict.getString(index);
     return MapUtil.getWithDefaultAllowNullMap(nodeNames, node, node);
   }
 
-  private String getPathType(PathType pathType) {
+  @VisibleForTesting
+  protected String getPathType(PathType pathType) {
     if (edgeDict == null) return pathType.encodeAsString();
     return pathType.encodeAsHumanReadableString(edgeDict);
   }
@@ -85,24 +86,23 @@ public class Outputter {
    * @param filename Place to write the output file
    * @param sourceScores The set of scores for each of the sources
    * @param config We use this to get to the training and testing data, so we know which sources
-   *     score and how well we did on them.
+   *     to score and how well we did on them.
    */
   public void outputScores(String filename,
                            Map<Integer, List<Pair<Integer, Double>>> sourceScores,
                            PraConfig config) {
-    // TODO
-    // These first few lines are for finding out if our prediction was _correct_ or not.
-    Map<Integer, Set<Integer>> trainingSourcesMap = config.trainingData.getPositiveSourceMap();
-    Map<Integer, Set<Integer>> testingSourcesMap = config.testingData.getPositiveSourceMap();
-    Map<Integer, Set<Integer>> allPositiveSourcesMap =
-        CollectionsUtil.combineMapSets(trainingSourcesMap, testingSourcesMap);
-    Set<Integer> positiveTestSources = testingSourcesMap.keySet();
-
-    // And this is to know which tuples to _score_ (which might include negative test
-    // instances).
-    Set<Integer> allTestSources = config.testingData.getCombinedSourceMap().keySet();
     try {
       FileWriter writer = fileUtil.getFileWriter(filename);
+      // These first few lines are for finding out if our prediction was _correct_ or not.
+      Map<Integer, Set<Integer>> trainingSourcesMap = config.trainingData.getPositiveSourceMap();
+      Map<Integer, Set<Integer>> testingSourcesMap = config.testingData.getPositiveSourceMap();
+      Map<Integer, Set<Integer>> allPositiveSourcesMap =
+          CollectionsUtil.combineMapSets(trainingSourcesMap, testingSourcesMap);
+      Set<Integer> positiveTestSources = testingSourcesMap.keySet();
+
+      // And this is to know which tuples to _score_ (which might include negative test
+      // instances).
+      Set<Integer> allTestSources = config.testingData.getCombinedSourceMap().keySet();
       for (int source : allTestSources) {
         String sourceStr = getNode(source);
         List<Pair<Integer, Double>> scores = sourceScores.get(source);
@@ -125,9 +125,14 @@ public class Outputter {
         }
         for (Pair<Integer, Double> pair : scores) {
           writer.write(sourceStr + "\t" + getNode(pair.getLeft()) + "\t" + pair.getRight() + "\t");
+          System.out.println("source: " + sourceStr + "; target: " + pair.getLeft());
+          System.out.println("targetSet: " + targetSet);
+          System.out.println("targetSet.contains(): " + targetSet.contains(pair.getLeft().intValue()));
           if (targetSet.contains(pair.getLeft().intValue())) {
             writer.write("*");
           }
+          System.out.println("trainingTargetSet: " + trainingTargetSet);
+          System.out.println("trainingTargetSet.contains(): " + trainingTargetSet.contains(pair.getLeft().intValue()));
           if (trainingTargetSet.contains(pair.getLeft().intValue())) {
             writer.write("^");
           }
@@ -168,7 +173,7 @@ public class Outputter {
         writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
       }
       writer.close();
-      if (trainingData.getNegativeInstances() != null) {
+      if (trainingData.getNegativeInstances().size() > 0) {
         writer = fileUtil.getFileWriter(outputBase + "training_negative_examples.tsv");
         for (Pair<Integer, Integer> pair : trainingData.getNegativeInstances()) {
           writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
@@ -180,7 +185,7 @@ public class Outputter {
         writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
       }
       writer.close();
-      if (testingData.getNegativeInstances() != null) {
+      if (testingData.getNegativeInstances().size() > 0) {
         writer = fileUtil.getFileWriter(outputBase + "testing_negative_examples.tsv");
         for (Pair<Integer, Integer> pair : testingData.getNegativeInstances()) {
           writer.write(getNode(pair.getLeft()) + "\t" + getNode(pair.getRight()) + "\n");
@@ -264,20 +269,15 @@ public class Outputter {
 
   public void outputFeatureMatrix(String filename, FeatureMatrix matrix, List<PathType> pathTypes) {
     try {
-      outputFeatureMatrix(fileUtil.getFileWriter(filename), matrix, pathTypes);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  // This is a kind of complicated format, that maps node pairs to (feature, value) pairs.
-  public void outputFeatureMatrix(FileWriter writer, FeatureMatrix matrix, List<PathType> pathTypes) {
-    try {
+      FileWriter writer = fileUtil.getFileWriter(filename);
       for (MatrixRow row : matrix.getRows()) {
         writer.write(getNode(row.sourceNode) + "," + getNode(row.targetNode) + "\t");
         for (int i=0; i<row.columns; i++) {
           String pathType = getPathType(pathTypes.get(row.pathTypes[i]));
-          writer.write(pathType + "," + row.values[i] + " -#- ");
+          writer.write(pathType + "," + row.values[i]);
+          if (i < row.columns - 1) {
+             writer.write(" -#- ");
+          }
         }
         writer.write("\n");
       }
@@ -286,5 +286,4 @@ public class Outputter {
       throw new RuntimeException(e);
     }
   }
-
 }

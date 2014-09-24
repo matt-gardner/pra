@@ -13,8 +13,8 @@ import com.google.common.collect.Lists;
 import edu.cmu.ml.rtw.pra.experiments.PraDriver;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.Index;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
-import edu.cmu.ml.rtw.util.Pair;
 
 public class PathFinderTest extends TestCase {
     private FakePathTypeFactory factory = new FakePathTypeFactory();

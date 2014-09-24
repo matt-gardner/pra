@@ -15,7 +15,7 @@ import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class FeatureGenerator {
   private PraConfig config;

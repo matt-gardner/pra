@@ -24,8 +24,8 @@ import edu.cmu.ml.rtw.pra.models.PraModel;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
-import edu.cmu.ml.rtw.util.Pair;
-import edu.cmu.ml.rtw.util.PairComparator;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.PairComparator;
 
 /**
  * An object for loading and querying a trained PRA model.
@@ -355,8 +355,7 @@ public class OnlinePraPredictor {
                                            weight);
       provenanceStrings.add(new Pair<String, Double>(provenanceBit, Math.abs(influence)));
     }
-    Collections.sort(provenanceStrings,
-                     new PairComparator<String, Double>(PairComparator.Side.NEGRIGHT));
+    Collections.sort(provenanceStrings, PairComparator.<String, Double>negativeRight());
     String provenance = "";
     for (int i=0; i<featuresToShow; i++) {
       if (i >= provenanceStrings.size()) break;

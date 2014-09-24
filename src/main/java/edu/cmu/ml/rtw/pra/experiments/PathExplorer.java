@@ -17,7 +17,7 @@ import org.apache.commons.cli.PosixParser;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.features.PathType;
-import edu.cmu.ml.rtw.util.Pair;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
  * A class for finding which paths exist between any pair of nodes.  This is the same as the first
