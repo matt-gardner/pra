@@ -1,0 +1,7 @@
+.swp
+*.log
+.project
+Gemfile.lock
+_site/
+src/
+target/
