@@ -1,4 +1,4 @@
-.swp
+*.swp
 *.log
 .project
 Gemfile.lock
