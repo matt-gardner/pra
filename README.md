@@ -13,15 +13,8 @@ following papers:
   Gardner, Partha Talukdar, Bryan Kisiel, and Tom Mitchell.  EMNLP 2013.
 ([website](http://rtw.ml.cmu.edu/emnlp2013_pra))
 
-Each of these papers has a corresponding tag in the repository (called a "release" in github).  You
-can check out that tag if you _really_ want to reproduce _exactly_ the experiments that I ran for
-those papers (and I actually broke the emnlp2013 release by removing the jars that were stored in
-this repo, to drammatically cut down download size...).  But you probably should just use the most
-recent code - this codebase will run all of the methods used in those papers, if not with exactly
-the same code.
-
-See [the wiki](http://github.com/matt-gardner/pra/wiki/Documentation) for code documentation.
-Please feel free to file bugs, feature requests, or send pull requests.
+See [the github.io page](http://matt-gardner.github.io/pra/) for code documentation.  Please feel
+free to file bugs, feature requests, or send pull requests.
 
 License
 =======
