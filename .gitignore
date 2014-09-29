@@ -1,3 +1,6 @@
 *.swp
+.project
+.classpath
+.settings
 target/
 walkmanager.log
