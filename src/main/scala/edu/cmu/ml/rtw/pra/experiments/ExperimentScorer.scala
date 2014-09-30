@@ -135,8 +135,8 @@ object ExperimentScorer {
             || !saved_metrics.get(relation).isDefinedAt(TIMESTAMP)
             || saved_metrics.get(relation)(TIMESTAMP) < timestamp) {
           metrics(relation)(TIMESTAMP) = timestamp
+          println(s"Computing metrics for relation $relation")
           for (metricComputer <- metricComputers) {
-            println(s"Computing metrics for relation $relation")
             val test_split_file = s"$split_dir/$relation/testing.tsv"
             val relation_metrics = metricComputer.computeRelationMetrics(results_file, test_split_file)
             metrics.update(relation, relation_metrics ++ metrics(relation))
