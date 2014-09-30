@@ -144,15 +144,16 @@ table, just edit `sortResultsBy_` and `displayMetrics_` in
 This scorer is also extendable.  You can add a `MetricComputer` relatively
 easily to compute your own metric, and call `scoreExperiments` with your
 customized list of `MetricComputers`.  As an example of why this is useful, I
-used this PRA code as the basis for a simple question answering system, and so
+used this PRA code as the basis for a simple [question answering
+system](https://github.com/matt-gardner/qapra), and so
 I wrote a `MetricComputer` that goes through the list of questions, evaluates
 each SVO triple in the question given PRA model output, and gives an accuracy
 score on the question set.  The result hooked right into this code as an
 additional metric that could be displayed alongside the standard MAP and MRR
 metrics computed by default.  If you want to use this functionality and have
-trouble getting it to work, let me know.  I'll be putting the
-question-answering code on github soon, so there will soon be a good example of
-how to make this work.
+trouble getting it to work, let me know.  The example mentioned above can be
+found
+[here](https://github.com/matt-gardner/qapra/blob/master/src/main/scala/org/allenai/qapra/QuestionScorer.scala#L37).
 
 ### ExperimentExplorer
 
