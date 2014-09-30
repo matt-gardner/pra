@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import scalax.io.Resource
 import scala.collection.mutable
-import edu.cmu.ml.rtw.pra.experiments.Dataset
 
 trait MetricComputer {
   def computeDatasetMetrics(results_dir: String, split_dir: String, relation_metrics: RelationMetrics): MutableMetrics
