@@ -1,5 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
@@ -13,6 +15,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import edu.cmu.graphchi.ChiFilenames;
+import edu.cmu.graphchi.EmptyType;
+import edu.cmu.graphchi.datablocks.IntConverter;
+import edu.cmu.graphchi.preprocessing.EdgeProcessor;
+import edu.cmu.graphchi.preprocessing.FastSharder;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.IntTriple;
@@ -72,7 +79,8 @@ public class GraphCreator {
     fileUtil.mkdirOrDie(outdir);
 
     fileUtil.mkdirs(outdir + "graph_chi/");
-    FileWriter intEdgeFile = fileUtil.getFileWriter(outdir + "graph_chi/edges.tsv");
+    String edgeFilename = outdir + "graph_chi/edges.tsv";
+    FileWriter intEdgeFile = fileUtil.getFileWriter(edgeFilename);
 
     List<Pair<String, Map<String, List<String>>>> aliases = Lists.newArrayList();
     for (RelationSet relationSet : relationSets) {
@@ -118,6 +126,24 @@ public class GraphCreator {
     FileWriter writer = fileUtil.getFileWriter(outdir + "num_shards.tsv");
     writer.write(numShards + "\n");
     writer.close();
+    shardGraph(edgeFilename, numShards);
+  }
+
+  /**
+   * Runs GraphChi's preprocessing (sharding) on the graph.  This produces a number of shard files,
+   * and if the files are already present, this is a no-op.  So it's only run once for each graph,
+   * no matter how many times you run GraphChi code.
+   */
+  private void shardGraph(String baseFilename, int numShards) throws IOException {
+    FastSharder<EmptyType, Integer> sharder = new FastSharder<EmptyType, Integer>(baseFilename, numShards, null,
+        new EdgeProcessor<Integer>() {
+          public Integer receiveEdge(int from, int to, String token) {
+            return Integer.parseInt(token);
+          }
+        }, null, new IntConverter());
+    if (!new File(ChiFilenames.getFilenameIntervals(baseFilename, numShards)).exists()) {
+      sharder.shard(new FileInputStream(new File(baseFilename)), "edgelist");
+    }
   }
 
   ////////////////////////////////////////////////////////
