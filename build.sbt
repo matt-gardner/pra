@@ -6,6 +6,10 @@ version := "1.0-SNAPSHOT"
 
 scalaVersion := "2.11.2"
 
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+
+javacOptions += "-Xlint:unchecked"
+
 crossScalaVersions := Seq("2.11.2", "2.10.3")
 
 resolvers += Resolver.url("https://raw.github.com/matt-gardner/graphchi-java/mvn-repo/")

@@ -77,8 +77,9 @@ object ExperimentScorer {
         savedMetrics(experiment_name) = experiment_metrics
       }
     }
-    displayExperiments(metrics, displayMetrics, sortResultsBy)
-    saveMetrics(savedMetrics, savedMetricsFile)
+    val finishedMetrics = makeExperimentMetricsImmutable(metrics)
+    displayExperiments(finishedMetrics, displayMetrics, sortResultsBy)
+    saveMetrics(makeExperimentMetricsImmutable(savedMetrics), savedMetricsFile)
   }
 
   def displayExperiments(
@@ -166,7 +167,10 @@ object ExperimentScorer {
 
       for (metricComputer <- metricComputers) {
         val dataset_metrics =
-          metricComputer.computeDatasetMetrics(experiment_dir, split_dir, relation_metrics)
+          metricComputer.computeDatasetMetrics(
+            experiment_dir,
+            split_dir,
+            makeRelationMetricsImmutable(relation_metrics))
         metrics.update(DATASET_RELATION, dataset_metrics ++ metrics(DATASET_RELATION))
       }
     } else {

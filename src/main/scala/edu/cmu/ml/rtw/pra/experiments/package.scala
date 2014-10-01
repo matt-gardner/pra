@@ -11,11 +11,11 @@ package object experiments {
   type MutableExperimentMetrics = mutable.Map[String, MutableRelationMetrics]
   type Prediction = (Double, Boolean, String, String)
 
-  implicit def makeMetricsImmutable(metrics: MutableMetrics): Metrics = metrics.toMap
-  implicit def makeRelationMetricsImmutable(metrics: MutableRelationMetrics): RelationMetrics = {
+  def makeMetricsImmutable(metrics: MutableMetrics): Metrics = metrics.toMap
+  def makeRelationMetricsImmutable(metrics: MutableRelationMetrics): RelationMetrics = {
     metrics.map(x => (x._1, makeMetricsImmutable(x._2))).toMap
   }
-  implicit def makeExperimentMetricsImmutable(metrics: MutableExperimentMetrics): ExperimentMetrics = {
+  def makeExperimentMetricsImmutable(metrics: MutableExperimentMetrics): ExperimentMetrics = {
     metrics.map(x => (x._1, makeRelationMetricsImmutable(x._2))).toMap
   }
 
