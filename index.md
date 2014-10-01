@@ -12,6 +12,31 @@ types.
 See the navigation on the left for code documentation.  Please feel free to
 file bugs, feature requests, or send pull requests.
 
+## Using the code
+
+If all you want to do is run this algorithm as-is on your dataset, see the 
+[getting started guide]({{ site.baseurl }}/getting_started.html).  If you want
+to use this code as a library in your own system, you can easily do so by using
+[maven](http://maven.apache.org/) or [sbt](http://www.scala-sbt.org/) as your
+build system.  The code is released on the maven central repository, so all you
+have to do is include it as a managed dependency.  If you are using sbt, 
+include the following line in your `build.sbt` file:
+
+```
+libraryDependencies += "edu.cmu.ml.rtw" %% "pra" % "1.0"
+```
+
+If you are using maven, you can include the PRA code by putting the following
+under `<dependencies>` in your `pom.xml` file:
+
+```
+<dependency>
+  <groupId>edu.cmu.ml.rtw</groupdId>
+  <artifactId>pra_2.11</artifactId>
+  <version>1.0</version>
+</dependency>
+```
+
 ## License
 
 This code makes use of a number of other libraries that are distributed under
