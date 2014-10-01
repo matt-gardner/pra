@@ -4,17 +4,18 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import edu.cmu.graphchi.ChiEdge;
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.graphchi.ChiVertex;
 import edu.cmu.graphchi.EdgeDirection;
@@ -28,13 +29,13 @@ import edu.cmu.graphchi.walks.DrunkardJob;
 import edu.cmu.graphchi.walks.DrunkardMobEngine;
 import edu.cmu.graphchi.walks.LongDrunkardContext;
 import edu.cmu.graphchi.walks.LongDrunkardDriver;
+import edu.cmu.graphchi.walks.LongDumperThread;
 import edu.cmu.graphchi.walks.LongDrunkardFactory;
 import edu.cmu.graphchi.walks.LongWalkArray;
 import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
@@ -317,9 +318,18 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
 
     @Override
     protected LongDumperThread createDumperThread() {
-      return new DumperThread();
+      return new DumperThread(bucketQueue, pendingWalksToSubmit, finished, job);
     }
-    class DumperThread extends LongDrunkardDriver<EmptyType, Integer>.LongDumperThread {
+
+    class DumperThread extends LongDumperThread {
+
+      DumperThread(LinkedBlockingQueue<BucketsToSend> bucketQueue,
+                          AtomicLong pendingWalksToSubmit,
+                          AtomicBoolean finished,
+                          DrunkardJob job) {
+        super(bucketQueue, pendingWalksToSubmit, finished, job);
+      }
+
       @Override
       protected void processWalks(BucketsToSend bucket, int i) {
         LongWalkArray bucketWalks = (LongWalkArray) bucket.walks;

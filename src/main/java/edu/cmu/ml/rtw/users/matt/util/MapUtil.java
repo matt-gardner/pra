@@ -87,7 +87,7 @@ public class MapUtil {
     return getWithDefault(map, key, defaultValue);
   }
 
-  public static <K, V extends Comparable> List<K> getTopKeys(Map<K, V> keyCounts, int numToKeep) {
+  public static <K, V extends Comparable<V>> List<K> getTopKeys(Map<K, V> keyCounts, int numToKeep) {
     List<Map.Entry<K, V>> list = Lists.newArrayList(keyCounts.entrySet());
     Collections.sort(list, new Comparator<Map.Entry<K, V>>() {
       public int compare(Map.Entry<K, V> o1, Map.Entry<K, V> o2) {

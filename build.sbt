@@ -6,6 +6,10 @@ version := "1.0"
 
 scalaVersion := "2.11.2"
 
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+
+javacOptions += "-Xlint:unchecked"
+
 crossScalaVersions := Seq("2.11.2", "2.10.3")
 
 libraryDependencies ++= Seq(
