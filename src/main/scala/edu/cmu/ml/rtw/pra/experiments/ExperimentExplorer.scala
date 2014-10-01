@@ -5,7 +5,6 @@ import java.io.File
 import scala.collection.mutable
 import scalax.io.Resource
 
-import edu.cmu.ml.rtw.pra.experiments.PathExplorer
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
 
 object ExperimentExplorer {

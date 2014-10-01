@@ -8,7 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
+import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
@@ -43,7 +43,7 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
       Map<PathType, Integer> pathCounts) {
     Map<String, List<Pair<PathType, Integer>>> grouped = Maps.newHashMap();
     for (Map.Entry<PathType, Integer> entry : pathCounts.entrySet()) {
-      String signature = getSignature((VectorPathType) entry.getKey());
+      String signature = getSignature((VectorPathTypeFactory.VectorPathType) entry.getKey());
       Pair<PathType, Integer> pair = new Pair<PathType, Integer>(entry.getKey(), entry.getValue());
       MapUtil.addValueToKeyList(grouped, signature, pair);
     }
@@ -51,7 +51,7 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
   }
 
   @VisibleForTesting
-  protected String getSignature(VectorPathType pathType) {
+  protected String getSignature(VectorPathTypeFactory.VectorPathType pathType) {
     String signature = "-";
     for (int i = 0; i < pathType.getEdgeTypes().length; i++) {
       boolean reverse = pathType.getReverse()[i];
@@ -108,7 +108,7 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
 
   @VisibleForTesting
   protected Vector getVectorFromPathType(PathType pathType_) {
-    VectorPathType pathType = (VectorPathType) pathType_;
+    VectorPathTypeFactory.VectorPathType pathType = (VectorPathTypeFactory.VectorPathType) pathType_;
     Vector concatenatedVector = null;
     for (int i = 0; i < pathType.getEdgeTypes().length; i++) {
       Vector edgeVector = factory.getEmbedding(pathType.getEdgeTypes()[i]);
@@ -126,8 +126,8 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
   @VisibleForTesting
   protected Pair<PathType, Integer> combinePathTypes(Pair<PathType, Integer> first,
                                                      Pair<PathType, Integer> second) {
-    VectorPathType firstPathType = (VectorPathType) first.getLeft();
-    VectorPathType secondPathType = (VectorPathType) second.getLeft();
+    VectorPathTypeFactory.VectorPathType firstPathType = (VectorPathTypeFactory.VectorPathType) first.getLeft();
+    VectorPathTypeFactory.VectorPathType secondPathType = (VectorPathTypeFactory.VectorPathType) second.getLeft();
     int numEdgeTypes = firstPathType.getEdgeTypes().length;
     int[] newEdgeTypes = new int[numEdgeTypes];
     boolean[] newReverse = new boolean[numEdgeTypes];

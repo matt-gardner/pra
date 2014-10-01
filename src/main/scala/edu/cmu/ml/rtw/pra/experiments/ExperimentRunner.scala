@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.pra.experiments.KbPraDriver
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
 
 import java.io.File
