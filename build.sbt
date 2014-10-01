@@ -8,8 +8,6 @@ scalaVersion := "2.11.2"
 
 crossScalaVersions := Seq("2.11.2", "2.10.3")
 
-resolvers += Resolver.url("https://raw.github.com/matt-gardner/graphchi-java/mvn-repo/")
-
 libraryDependencies ++= Seq(
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
@@ -29,6 +27,8 @@ instrumentSettings
 jacoco.settings
 
 publishMavenStyle := true
+
+pomIncludeRepository := { _ => false }
 
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
