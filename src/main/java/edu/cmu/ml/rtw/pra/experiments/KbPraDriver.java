@@ -23,7 +23,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
-import edu.cmu.ml.rtw.pra.graphs.GraphProcessor;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 
@@ -90,8 +89,6 @@ public class KbPraDriver {
     writer.close();
 
     PraConfig baseConfig = baseBuilder.build();
-    // Make sure the graph is sharded
-    new GraphProcessor().processGraph(baseConfig.graph, baseConfig.numShards);
 
     String relationsFile = splitsDirectory + "relations_to_run.tsv";
     String line;
