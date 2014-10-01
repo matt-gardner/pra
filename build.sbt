@@ -1,6 +1,8 @@
+organization := "edu.cmu.ml.rtw"
+
 name := "pra"
 
-version := "1.0-SNAPSHOT"
+version := "1.0"
 
 scalaVersion := "2.11.2"
 
@@ -24,3 +26,32 @@ libraryDependencies ++= Seq(
 instrumentSettings
 
 jacoco.settings
+
+publishMavenStyle := true
+
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishArtifact in Test := false
+
+licenses := Seq("GPL-3.0" -> url("http://www.opensource.org/licenses/GPL-3.0"))
+
+homepage := Some(url("http://matt-gardner.github.io/pra"))
+
+pomExtra := (
+  <scm>
+    <url>git@github.com:matt-gardner/pra.git</url>
+    <connection>scm:git:git@github.com:matt-gardner/pra.git</connection>
+  </scm>
+  <developers>
+    <developer>
+      <id>matt-gardner</id>
+      <name>Matt Gardner</name>
+      <url>http://cs.cmu.edu/~mg1</url>
+    </developer>
+  </developers>)
