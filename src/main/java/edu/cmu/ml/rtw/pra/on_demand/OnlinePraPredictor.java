@@ -12,14 +12,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
+
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
-import edu.cmu.ml.rtw.pra.experiments.KbPraDriver;
+import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRow;
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
 import edu.cmu.ml.rtw.pra.features.PathType;
-import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.models.PraModel;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -372,12 +373,11 @@ public class OnlinePraPredictor {
    */
   public static void main(String[] args) throws IOException {
     String base = "/home/mg1/pra/kod_models/";
-    List<Pair<String, String>> relationsAndDomains = Arrays.asList(
-        new Pair<String, String>("concept:citylocatedinstate", "concept:stateorprovince"),
-        new Pair<String, String>("concept:cityparks", "concept:park"),
-        new Pair<String, String>("concept:citytelevisionstation",
-                                 "concept:televisionstation"),
-        new Pair<String, String>("concept:cityliesonriver", "concept:river"));
+    List<Pair<String, String>> relationsAndDomains = Lists.newArrayList();
+    relationsAndDomains.add(new Pair<String, String>("concept:citylocatedinstate", "concept:stateorprovince"));
+    relationsAndDomains.add(new Pair<String, String>("concept:cityparks", "concept:park"));
+    relationsAndDomains.add(new Pair<String, String>("concept:citytelevisionstation", "concept:televisionstation"));
+    relationsAndDomains.add(new Pair<String, String>("concept:cityliesonriver", "concept:river"));
     String modelBase = base + "results/";
     List<String> models = new ArrayList<String>();
     String targetsBase = base + "category_instances/";
