@@ -75,6 +75,10 @@ public class GraphCreator {
   }
 
   public void createGraphChiRelationGraph() throws IOException {
+    createGraphChiRelationGraph(true);
+  }
+
+  public void createGraphChiRelationGraph(boolean shardGraph) throws IOException {
     // Some preparatory stuff
     fileUtil.mkdirOrDie(outdir);
 
@@ -126,7 +130,9 @@ public class GraphCreator {
     FileWriter writer = fileUtil.getFileWriter(outdir + "num_shards.tsv");
     writer.write(numShards + "\n");
     writer.close();
-    shardGraph(edgeFilename, numShards);
+    if (shardGraph) {
+      shardGraph(edgeFilename, numShards);
+    }
   }
 
   /**

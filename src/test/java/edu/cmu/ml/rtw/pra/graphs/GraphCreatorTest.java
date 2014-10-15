@@ -97,7 +97,7 @@ public class GraphCreatorTest extends TestCase {
     relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
     GraphCreator creator = new GraphCreator(relationSets, "", false, fileUtil);
-    creator.createGraphChiRelationGraph();
+    creator.createGraphChiRelationGraph(false);
     fileUtil.expectFilesWritten();
   }
 
@@ -108,7 +108,7 @@ public class GraphCreatorTest extends TestCase {
     relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
     GraphCreator creator = new GraphCreator(relationSets, "", true, fileUtil);
-    creator.createGraphChiRelationGraph();
+    creator.createGraphChiRelationGraph(false);
     fileUtil.expectFilesWritten();
   }
 
