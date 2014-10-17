@@ -42,11 +42,13 @@ but I haven't gotten to it yet...).  It's not that hard; here are some steps to 
 3. run `sbt console`, to get an interpretor that will let you run the code
 
 4. Run the `shardGraph` method on the graph that you want.  That should look something like this:
+
 ```
 edu.cmu.ml.rtw.pra.graphs.GraphCreator.shardGraph(
   "/path/to/graph/dir/graph_chi/edges.tsv",
   n)
 ```
+
 where `n` is the number in the `num_shards.tsv` file in the graph directory.
 
 If you wanted, you could write a script that would re-shard all of the graphs that you think you
