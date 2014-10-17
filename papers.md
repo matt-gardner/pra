@@ -43,7 +43,9 @@ but I haven't gotten to it yet...).  It's not that hard; here are some steps to 
 
 4. Run the `shardGraph` method on the graph that you want.  That should look something like this:
 ```
-edu.cmu.ml.rtw.pra.graphs.GraphCreator.shardGraph("/path/to/graph/dir/graph_chi/edges.tsv", n)
+edu.cmu.ml.rtw.pra.graphs.GraphCreator.shardGraph(
+  "/path/to/graph/dir/graph_chi/edges.tsv",
+  n)
 ```
 where `n` is the number in the `num_shards.tsv` file in the graph directory.
 
