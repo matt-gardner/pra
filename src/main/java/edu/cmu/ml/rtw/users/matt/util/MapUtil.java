@@ -33,6 +33,19 @@ public class MapUtil {
     }
   }
 
+  public static <K, V extends Comparable<V>> List<K> getKeysSortedByValue(Map<K, V> map) {
+    return getKeysSortedByValue(map, false);
+  }
+
+  public static <K, V extends Comparable<V>> List<K> getKeysSortedByValue(Map<K, V> map,
+                                                                          boolean reverse) {
+    List<K> keys = Lists.newArrayList();
+    for (Map.Entry<K, V> entry : sortByValue(map, reverse)) {
+      keys.add(entry.getKey());
+    }
+    return keys;
+  }
+
   public static <K, V extends Comparable<V>> List<Map.Entry<K, V>> sortByValue(Map<K, V> map) {
     return sortByValue(map, false);
   }
