@@ -72,9 +72,31 @@ public class GraphCreatorTest extends TestCase {
       "1\t2\t2\n" +
       "3\t4\t2\n";
 
-
   private String shardsFile = "/num_shards.tsv";
   private String expectedShardsFileContents = "2\n";
+
+  private String matrixFile1 = "/matrices/1";
+  private String expectedMatrixFile1Contents =
+      "Relation 1\n" +
+      "1\t3\n" +
+      "2\t4\n";
+
+  private String matrixFile2 = "/matrices/2";
+  private String expectedMatrixFile2Contents =
+      "Relation 2\n" +
+      "1\t2\n" +
+      "1\t2\n" +
+      "3\t4\n";
+
+  private String matrixFile12 = "/matrices/1-2";
+  private String expectedMatrixFile12Contents =
+      "Relation 1\n" +
+      "1\t3\n" +
+      "2\t4\n" +
+      "Relation 2\n" +
+      "1\t2\n" +
+      "1\t2\n" +
+      "3\t4\n";
 
   @Override
   public void setUp() {
@@ -84,6 +106,28 @@ public class GraphCreatorTest extends TestCase {
     fileUtil.addFileToBeRead(aliasFile, aliasFileContents);
     fileUtil.addFileToBeRead(svoRelationSetFile, svoRelationSetFileContents);
     fileUtil.addFileToBeRead(kbRelationSetFile, kbRelationSetFileContents);
+  }
+
+  private GraphCreator makeGraphCreator(List<RelationSet> relationSets) {
+    return makeGraphCreator(relationSets, false);
+  }
+
+  private GraphCreator makeGraphCreator(List<RelationSet> relationSets,
+                                        boolean deduplicateEdges) {
+    return makeGraphCreator(relationSets, deduplicateEdges, false, -1);
+  }
+
+  private GraphCreator makeGraphCreator(List<RelationSet> relationSets,
+                                        boolean deduplicateEdges,
+                                        boolean createMatrices,
+                                        int maxMatrixFileSize) {
+    GraphConfig.Builder builder = new GraphConfig.Builder();
+    builder.setOutdir("");
+    builder.setRelationSets(relationSets);
+    builder.setDeduplicateEdges(deduplicateEdges);
+    builder.setCreateMatrices(createMatrices);
+    builder.setMaxMatrixFileSize(maxMatrixFileSize);
+    return new GraphCreator(builder.build(), fileUtil);
   }
 
   public void testCreateGraphChiRelationGraphMakesACorrectSimpleGraph() throws IOException {
@@ -96,7 +140,7 @@ public class GraphCreatorTest extends TestCase {
     List<RelationSet> relationSets = Lists.newArrayList();
     relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
-    GraphCreator creator = new GraphCreator(relationSets, "", false, fileUtil);
+    GraphCreator creator = makeGraphCreator(relationSets);
     creator.createGraphChiRelationGraph(false);
     fileUtil.expectFilesWritten();
   }
@@ -107,7 +151,7 @@ public class GraphCreatorTest extends TestCase {
     List<RelationSet> relationSets = Lists.newArrayList();
     relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
-    GraphCreator creator = new GraphCreator(relationSets, "", true, fileUtil);
+    GraphCreator creator = makeGraphCreator(relationSets, true);
     creator.createGraphChiRelationGraph(false);
     fileUtil.expectFilesWritten();
   }
@@ -121,7 +165,7 @@ public class GraphCreatorTest extends TestCase {
     file = "embeddings file\t" + embeddings2 + "\n";
     relationSets.add(RelationSet.fromReader(new BufferedReader(new StringReader(file))));
 
-    Map<RelationSet, String> prefixes = new GraphCreator(relationSets, "").getSvoPrefixes();
+    Map<RelationSet, String> prefixes = makeGraphCreator(relationSets).getSvoPrefixes();
     assertEquals("1-", prefixes.get(relationSets.get(0)));
     assertEquals("1-", prefixes.get(relationSets.get(1)));
     assertEquals("2-", prefixes.get(relationSets.get(2)));
@@ -129,7 +173,7 @@ public class GraphCreatorTest extends TestCase {
     // No need for a prefix map if there isn't any ambiguity about where the embeddings came
     // from.
     relationSets.remove(2);
-    prefixes = new GraphCreator(relationSets, "").getSvoPrefixes();
+    prefixes = makeGraphCreator(relationSets).getSvoPrefixes();
     assertNull(prefixes);
   }
 
@@ -142,7 +186,7 @@ public class GraphCreatorTest extends TestCase {
   // change is good.  And then change the test to reflect the better shard numbers.
   public void testGetNumShardsReturnsCorrectShardNumbers() {
     List<RelationSet> relationSets = Lists.newArrayList();
-    GraphCreator creator = new GraphCreator(relationSets, "");
+    GraphCreator creator = makeGraphCreator(relationSets);
     assertEquals(2, creator.getNumShards(4999999));
     assertEquals(3, creator.getNumShards(5000000));
     assertEquals(3, creator.getNumShards(9999999));
@@ -159,5 +203,30 @@ public class GraphCreatorTest extends TestCase {
     assertEquals(9, creator.getNumShards(450000000));
     assertEquals(9, creator.getNumShards(499999999));
     assertEquals(10, creator.getNumShards(500000000));
+  }
+
+  public void testOutputMatricesWithSmallMatrixFileSizeSplitsFiles() throws IOException {
+    fileUtil.onlyAllowExpectedFiles();
+    fileUtil.addExpectedFileWritten(matrixFile1, expectedMatrixFile1Contents);
+    fileUtil.addExpectedFileWritten(matrixFile2, expectedMatrixFile2Contents);
+
+    List<RelationSet> relationSets = Lists.newArrayList();
+    relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
+    relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
+    GraphCreator creator = makeGraphCreator(relationSets, false, true, 4);
+    creator.outputMatrices(new BufferedReader(new StringReader(expectedEdgeFileContents)), 2);
+    fileUtil.expectFilesWritten();
+  }
+
+  public void testOutputMatricesWithLargeMatrixFileSizeMakesOneLargeFile() throws IOException {
+    fileUtil.onlyAllowExpectedFiles();
+    fileUtil.addExpectedFileWritten(matrixFile12, expectedMatrixFile12Contents);
+
+    List<RelationSet> relationSets = Lists.newArrayList();
+    relationSets.add(RelationSet.fromFile(svoRelationSetFile, fileUtil));
+    relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
+    GraphCreator creator = makeGraphCreator(relationSets, false, true, 40);
+    creator.outputMatrices(new BufferedReader(new StringReader(expectedEdgeFileContents)), 2);
+    fileUtil.expectFilesWritten();
   }
 }

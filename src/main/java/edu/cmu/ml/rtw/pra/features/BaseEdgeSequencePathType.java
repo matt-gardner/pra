@@ -54,6 +54,14 @@ public abstract class BaseEdgeSequencePathType implements PathType {
     return nextVertex;
   }
 
+  public int[] getEdgeTypes() {
+    return edgeTypes.clone();
+  }
+
+  public boolean[] getReverse() {
+    return reverse.clone();
+  }
+
   protected abstract int getNextEdgeType(int hopNum,
                                          Vertex vertex,
                                          Random random,

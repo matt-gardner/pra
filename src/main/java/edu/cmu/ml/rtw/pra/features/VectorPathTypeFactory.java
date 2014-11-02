@@ -93,14 +93,6 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
       super(new int[0], new boolean[0]);
     }
 
-    protected int[] getEdgeTypes() {
-      return edgeTypes;
-    }
-
-    protected boolean[] getReverse() {
-      return reverse;
-    }
-
     @Override
     public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
       if (hopNum >= numHops) return null;

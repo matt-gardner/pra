@@ -15,6 +15,7 @@ public class FakeFileWriter extends FileWriter {
 
   private List<String> written;
   private String filename;
+  private boolean isClosed = false;
 
   public FakeFileWriter() throws IOException {
     this(null);
@@ -31,7 +32,18 @@ public class FakeFileWriter extends FileWriter {
     written.add(line);
   }
 
+  @Override
+  public void close() throws IOException {
+    super.close();
+    isClosed = true;
+  }
+
+  public boolean isClosed() {
+    return isClosed;
+  }
+
   public void expectWritten(String expected) {
+    TestCase.assertTrue("File " + filename + " not closed", isClosed);
     String concatenated = "";
     for (String line : written) {
       concatenated += line;

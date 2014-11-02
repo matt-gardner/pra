@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -41,37 +42,25 @@ public class GraphCreator {
   private final String outdir;
   private final FileUtil fileUtil;
   private final boolean deduplicateEdges;
+  private final boolean createMatrices;
+  private final int maxMatrixFileSize;
 
-  public GraphCreator(List<RelationSet> relationSets, String outdir) {
-    this(relationSets, outdir, false);
-  }
-
-  /**
-   * Constructs the GraphCreator with the given set of relation sets, to be written to the outdir,
-   * and perhaps deduplicating edges.
-   *
-   * Edge deduplication is optional because it makes us store each edge that's written in memory,
-   * so we can see if we've already got the edge, and it takes more time because for every edge we
-   * have to query a hash set to see if we've already written it.  If you know that you aren't
-   * going to have any duplicate edges in your relation sets, it will be quicker and less
-   * memory-intensive to just leave deduplicateEdges false.
-   */
-  public GraphCreator(List<RelationSet> relationSets, String outdir, boolean deduplicateEdges) {
-    this(relationSets, outdir, deduplicateEdges, new FileUtil());
+  public GraphCreator(GraphConfig config) {
+    this(config, new FileUtil());
   }
 
   @VisibleForTesting
-  protected GraphCreator(List<RelationSet> relationSets,
-                         String outdir,
-                         boolean deduplicateEdges,
-                         FileUtil fileUtil) {
-    this.relationSets = relationSets;
-    if (!outdir.endsWith("/")) {
-      outdir += "/";
+  protected GraphCreator(GraphConfig config, FileUtil fileUtil) {
+    this.relationSets = config.relationSets;
+    if (!config.outdir.endsWith("/")) {
+      this.outdir = config.outdir + "/";
+    } else {
+      this.outdir = config.outdir;
     }
-    this.outdir = outdir;
+    this.deduplicateEdges = config.deduplicateEdges;
+    this.createMatrices = config.createMatrices;
+    this.maxMatrixFileSize = config.maxMatrixFileSize;
     this.fileUtil = fileUtil;
-    this.deduplicateEdges = deduplicateEdges;
   }
 
   public void createGraphChiRelationGraph() throws IOException {
@@ -133,6 +122,13 @@ public class GraphCreator {
     if (shardGraph) {
       shardGraph(edgeFilename, numShards);
     }
+
+    // This is for if you want to do the path following step with matrix multiplications instead of
+    // with random walks (which I'm expecting to be a lot faster, but haven't finished implementing
+    // yet).
+    if (createMatrices) {
+      outputMatrices(fileUtil.getBufferedReader(edgeFilename), edgeDict.getNextIndex());
+    }
   }
 
   /**
@@ -190,6 +186,59 @@ public class GraphCreator {
     }
   }
 
+  @VisibleForTesting
+  protected void outputMatrices(BufferedReader reader, int numRelations) throws IOException {
+    System.out.println("Creating matrices");
+    fileUtil.mkdirs(outdir + "matrices/");
+    Map<Integer, List<Pair<Integer, Integer>>> matrices = Maps.newHashMap();
+    System.out.println("Reading edge file");
+    String line;
+    while ((line = reader.readLine()) != null) {
+      String fields[] = line.split("\t");
+      int source = Integer.parseInt(fields[0]);
+      int target = Integer.parseInt(fields[1]);
+      int relation = Integer.parseInt(fields[2]);
+      MapUtil.addValueToKeyList(matrices, relation, Pair.makePair(source, target));
+    }
+    reader.close();
+    System.out.println("Outputting matrix files");
+    List<List<Pair<Integer, Integer>>> edgesToWrite = Lists.newArrayList();
+    int startRelation = 1;
+    int edgesSoFar = 0;
+    for (int i = 1; i <= numRelations; i++) {
+      List<Pair<Integer, Integer>> instances = matrices.get(i);
+      if (edgesSoFar > 0 && edgesSoFar + instances.size() > maxMatrixFileSize) {
+        writeEdgesSoFar(startRelation, i - 1, edgesToWrite);
+        startRelation = i;
+      }
+      edgesToWrite.add(instances);
+      edgesSoFar += instances.size();
+    }
+    if (edgesToWrite.size() > 0) {
+      writeEdgesSoFar(startRelation, numRelations, edgesToWrite);
+    }
+    System.out.println("Done creating matrices");
+  }
+
+  private void writeEdgesSoFar(int startRelation,
+                               int endRelation,
+                               List<List<Pair<Integer, Integer>>> edgesToWrite) throws IOException {
+    String filename = outdir + "matrices/" + startRelation;
+    if (endRelation > startRelation) {
+      filename += "-" + endRelation;
+    }
+    FileWriter writer = fileUtil.getFileWriter(filename);
+    for (List<Pair<Integer, Integer>> relation_instances : edgesToWrite) {
+      writer.write("Relation " + startRelation + "\n");
+      for (Pair<Integer, Integer> instance : relation_instances) {
+        writer.write(instance.getLeft() + "\t" + instance.getRight() + "\n");
+      }
+      startRelation++;
+    }
+    writer.close();
+    edgesToWrite.clear();
+  }
+
   /**
    * Create a prefix for each SVO file as necessary, according to how they were embedded.
    *
@@ -219,20 +268,5 @@ public class GraphCreator {
       }
     }
     return prefixes;
-  }
-
-  static String usage = "GraphCreator [outdir] [relation_set_file]+";
-
-  public static void main(String[] args) throws Exception {
-    if (args.length < 2) {
-      System.out.println(usage);
-      return;
-    }
-    String outdir = args[0];
-    List<RelationSet> relationSets = Lists.newArrayList();
-    for (int i = 1; i < args.length; i++) {
-      relationSets.add(RelationSet.fromFile(args[i]));
-    }
-    new GraphCreator(relationSets, outdir).createGraphChiRelationGraph();
   }
 }

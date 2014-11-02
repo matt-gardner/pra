@@ -5,9 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +50,15 @@ public class FileUtil {
       System.exit(-1);
     }
     new File(dirName).mkdirs();
+  }
+
+  public List<String> listDirectoryContents(String filename) throws IOException {
+    File[] contents = new File(filename).listFiles();
+    List<String> list = Lists.newArrayList();
+    for (File file : contents) {
+      list.add(file.getName());
+    }
+    return list;
   }
 
   public FileWriter getFileWriter(String filename) throws IOException {

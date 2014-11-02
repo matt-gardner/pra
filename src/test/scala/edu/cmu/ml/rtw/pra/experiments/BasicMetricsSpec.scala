@@ -2,11 +2,6 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import org.scalatest._
 
-import java.io.StringReader
-
-import scala.collection.mutable
-import scalax.io.Resource
-
 class BasicMetricsSpec extends FlatSpecLike with Matchers {
 
   val predictions = Seq(

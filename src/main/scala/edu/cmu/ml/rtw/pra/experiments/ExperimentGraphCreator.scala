@@ -1,10 +1,13 @@
 package edu.cmu.ml.rtw.pra.experiments
 
+import edu.cmu.ml.rtw.pra.graphs.GraphConfig
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.RelationSet
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
 
+import java.io.BufferedReader
 import java.io.File
+import java.io.FileReader
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
@@ -40,14 +43,10 @@ object ExperimentGraphCreator {
       println(s"Graph directory $graph_dir already exists. Skipping...")
       return
     }
-    val paramLines = Resource.fromFile(spec_file).lines().toList
-    val relation_sets = paramLines.filter(_.startsWith("relation set\t"))
-      .map(_.split("\t")(1))
-      .map(RelationSet.fromFile(_)).toList
-    val params = paramLines.filter(x => !x.startsWith("relation set\t"))
-      .map(x => Tuple2(x.split("\t")(0), x.split("\t")(1))).toMap
-    val deduplicatedEdges = params.get("deduplicate edges").getOrElse("false").toBoolean
-    val graph_creator = new GraphCreator(relation_sets, graph_dir, deduplicatedEdges)
+    val builder = new GraphConfig.Builder
+    builder.setOutdir(graph_dir)
+    builder.setFromSpecFile(new BufferedReader(new FileReader(spec_file)));
+    val graph_creator = new GraphCreator(builder.build)
     graph_creator.createGraphChiRelationGraph()
   }
 }
