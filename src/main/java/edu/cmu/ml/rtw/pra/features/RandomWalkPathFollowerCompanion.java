@@ -20,7 +20,7 @@ import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
-public class PathFollowerCompanion extends TwoKeyCompanion {
+public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
 
   private MatrixRowPolicy acceptPolicy;
   private Set<Integer> allowedTargets;
@@ -33,13 +33,13 @@ public class PathFollowerCompanion extends TwoKeyCompanion {
   /**
    * Creates the PathFollowerCompanion object
    */
-  public PathFollowerCompanion(int numThreads,
-                               long maxMemoryBytes,
-                               VertexIdTranslate translate,
-                               PathType[] pathTypes,
-                               MatrixRowPolicy acceptPolicy,
-                               Set<Integer> allowedTargets,
-                               boolean normalizeWalkProbabilities) throws RemoteException {
+  public RandomWalkPathFollowerCompanion(int numThreads,
+                                         long maxMemoryBytes,
+                                         VertexIdTranslate translate,
+                                         PathType[] pathTypes,
+                                         MatrixRowPolicy acceptPolicy,
+                                         Set<Integer> allowedTargets,
+                                         boolean normalizeWalkProbabilities) throws RemoteException {
     super(numThreads, maxMemoryBytes);
     this.translate = translate;
     this.pathTypes = pathTypes;
@@ -55,12 +55,12 @@ public class PathFollowerCompanion extends TwoKeyCompanion {
 
   @Override
   protected int getFirstKey(long walk, int atVertex) {
-    return translate.backward(sourceVertexIds[PathFollower.staticSourceIdx(walk)]);
+    return translate.backward(sourceVertexIds[RandomWalkPathFollower.staticSourceIdx(walk)]);
   }
 
   @Override
   protected int getSecondKey(long walk, int atVertex) {
-    return PathFollower.Manager.pathType(walk);
+    return RandomWalkPathFollower.Manager.pathType(walk);
   }
 
   @Override

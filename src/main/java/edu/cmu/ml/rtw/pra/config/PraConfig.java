@@ -13,11 +13,14 @@ import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory;
 import edu.cmu.ml.rtw.pra.features.EdgeExcluderFactory;
+import edu.cmu.ml.rtw.pra.features.MatrixPathFollowerFactory;
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
 import edu.cmu.ml.rtw.pra.features.MostFrequentPathTypeSelector;
+import edu.cmu.ml.rtw.pra.features.PathFollowerFactory;
 import edu.cmu.ml.rtw.pra.features.PathTypeFactory;
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy;
 import edu.cmu.ml.rtw.pra.features.PathTypeSelector;
+import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory;
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluderFactory;
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
@@ -143,6 +146,11 @@ public class PraConfig {
   // values for all of the selected features, by following path types in the graph.
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // There are currently two different PathFollowers: one that does random walks to compute path
+  // probabilities, and one that does matrix multiplications.  This parameter lets you set which
+  // one you want to use.
+  public final PathFollowerFactory pathFollowerFactory;
+
   // The number of walks to start for each (source node, path) combination, in the feature
   // computation step.
   public final int walksPerPath;
@@ -227,6 +235,7 @@ public class PraConfig {
     pathTypePolicy = builder.pathTypePolicy;
     pathTypeFactory = builder.pathTypeFactory;
     pathTypeSelector = builder.pathTypeSelector;
+    pathFollowerFactory = builder.pathFollowerFactory;
     walksPerPath = builder.walksPerPath;
     acceptPolicy = builder.acceptPolicy;
     l2Weight = builder.l2Weight;
@@ -259,6 +268,7 @@ public class PraConfig {
     private PathTypePolicy pathTypePolicy = PathTypePolicy.PAIRED_ONLY;
     public PathTypeFactory pathTypeFactory = new BasicPathTypeFactory();
     private PathTypeSelector pathTypeSelector = new MostFrequentPathTypeSelector();
+    private PathFollowerFactory pathFollowerFactory = new RandomWalkPathFollowerFactory();
     private int walksPerPath;
     private MatrixRowPolicy acceptPolicy = MatrixRowPolicy.ALL_TARGETS;
     private double l2Weight;
@@ -286,6 +296,7 @@ public class PraConfig {
     public Builder setGraph(String graph) {this.graph = graph;return this;}
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
+    public Builder setPathFollowerFactory(PathFollowerFactory f) {this.pathFollowerFactory = f;return this;}
     public Builder setWalksPerSource(int w) {this.walksPerSource = w;return this;}
     public Builder setNumPaths(int numPaths) {this.numPaths = numPaths;return this;}
     public Builder setPathTypePolicy(PathTypePolicy p) {this.pathTypePolicy = p;return this;}
@@ -332,6 +343,7 @@ public class PraConfig {
       setPathTypePolicy(config.pathTypePolicy);
       setPathTypeFactory(config.pathTypeFactory);
       setPathTypeSelector(config.pathTypeSelector);
+      setPathFollowerFactory(config.pathFollowerFactory);
       setWalksPerPath(config.walksPerPath);
       setAcceptPolicy(config.acceptPolicy);
       setL2Weight(config.l2Weight);
@@ -387,6 +399,8 @@ public class PraConfig {
           initializeVectorPathTypeFactory(value);
         } else if (parameter.equalsIgnoreCase("path type selector")) {
           initializePathTypeSelector(value);
+        } else if (parameter.equalsIgnoreCase("path follower")) {
+          initializePathFollowerFactory(value);
         } else {
           throw new RuntimeException("Unrecognized parameter specification: " + line);
         }
@@ -430,6 +444,17 @@ public class PraConfig {
         setPathTypeSelector(selector);
       } else {
         throw new RuntimeException("Unrecognized path type selector parameter!");
+      }
+    }
+
+    public void initializePathFollowerFactory(String paramString) {
+      // TODO(matt): this really should validate that none of the other parameters are in conflict
+      // with this one.  For instance, matrix multiplication doesn't currently work with vector
+      // space random walks.
+      if (paramString.equalsIgnoreCase("random walks")) {
+        setPathFollowerFactory(new RandomWalkPathFollowerFactory());
+      } else if (paramString.equalsIgnoreCase("matrix multiplication")) {
+        setPathFollowerFactory(new MatrixPathFollowerFactory());
       }
     }
 

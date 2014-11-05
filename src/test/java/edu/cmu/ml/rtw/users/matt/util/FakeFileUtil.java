@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.users.matt.util;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
@@ -34,6 +35,13 @@ public class FakeFileUtil extends FileUtil {
     throwIOExceptionOnWrite = false;
   }
 
+  private Set<String> allFiles() {
+    Set<String> knownFiles = Sets.newHashSet();
+    knownFiles.addAll(readerFileContents.keySet());
+    knownFiles.addAll(existingPaths);
+    return knownFiles;
+  }
+
   @Override
   public void mkdirOrDie(String dirName) {
   }
@@ -44,7 +52,7 @@ public class FakeFileUtil extends FileUtil {
 
   @Override
   public boolean fileExists(String path) {
-    return existingPaths.contains(path);
+    return allFiles().contains(path);
   }
 
   @Override
@@ -56,6 +64,18 @@ public class FakeFileUtil extends FileUtil {
   @Override
   public List<Double> readDoubleListFromFile(String filename) {
     return doubleList;
+  }
+
+  @Override
+  public List<String> listDirectoryContents(String dirname) {
+    if (dirname.endsWith("/")) dirname = dirname.substring(0, dirname.length() - 1);
+    List<String> contents = Lists.newArrayList();
+    for (String file : allFiles()) {
+      if (new File(file).getParent().equals(dirname)) {
+        contents.add(file.replace(dirname + "/", ""));
+      }
+    }
+    return contents;
   }
 
   @Override

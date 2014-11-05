@@ -14,14 +14,14 @@ import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function;
 
-public class PathFollowerCompanionTest extends TestCase {
+public class RandomWalkPathFollowerCompanionTest extends TestCase {
 
     public void testAcceptableRow() throws RemoteException {
         Set<Integer> allowedTargets = Sets.newHashSet();
         allowedTargets.add(2);
         allowedTargets.add(3);
         allowedTargets.add(10);
-        final PathFollowerCompanion companion = new PathFollowerCompanion(
+        final RandomWalkPathFollowerCompanion companion = new RandomWalkPathFollowerCompanion(
                 1,
                 1024,
                 new FakeVertexIdTranslate(),
@@ -57,7 +57,7 @@ public class PathFollowerCompanionTest extends TestCase {
     }
 
     public void testGetFeatureMatrix() throws RemoteException {
-        final PathFollowerCompanion companion = new PathFollowerCompanion(
+        final RandomWalkPathFollowerCompanion companion = new RandomWalkPathFollowerCompanion(
                 1,
                 1024,
                 new FakeVertexIdTranslate(),

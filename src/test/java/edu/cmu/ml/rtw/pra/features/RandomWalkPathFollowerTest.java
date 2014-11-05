@@ -18,13 +18,13 @@ import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 
-public class PathFollowerTest extends TestCase {
+public class RandomWalkPathFollowerTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
     private Map<Integer, Set<Integer>> sourcesMap = Maps.newHashMap();
     private List<PathType> paths = Lists.newArrayList();
     private FakeChiVertex chiVertex = new FakeChiVertex(1);
     private Vertex vertex;
-    private PathFollower follower;
+    private RandomWalkPathFollower follower;
     private FakeRandom random = new FakeRandom();
     private FakeDrunkardContext context = new FakeDrunkardContext();
     private Map<Integer, List<Integer>> inEdgeMap = Maps.newHashMap();
@@ -40,15 +40,15 @@ public class PathFollowerTest extends TestCase {
         chiVertex.addOutEdge(1, 1);
         chiVertex.addOutEdge(2, 1);
         vertex = new Vertex(chiVertex);
-        follower = new PathFollower("src/test/resources/edges.tsv",
-                                    1,
-                                    sourcesMap,
-                                    Sets.newHashSet(2),
-                                    new SingleEdgeExcluder(edgesToExclude),
-                                    paths,
-                                    0,
-                                    MatrixRowPolicy.EVERYTHING,
-                                    true);
+        follower = new RandomWalkPathFollower("src/test/resources/edges.tsv",
+                                              1,
+                                              sourcesMap,
+                                              Sets.newHashSet(2),
+                                              new SingleEdgeExcluder(edgesToExclude),
+                                              paths,
+                                              0,
+                                              MatrixRowPolicy.EVERYTHING,
+                                              true);
     }
 
     @Override
@@ -126,15 +126,15 @@ public class PathFollowerTest extends TestCase {
     // crashing, which is what the code currently does as of writing this test.
     public void testIgnoresNewSources() {
         MapUtil.addValueToKeySet(sourcesMap, 10000, 20000);
-        follower = new PathFollower("src/test/resources/edges.tsv",
-                                    1,
-                                    sourcesMap,
-                                    Sets.newHashSet(2),
-                                    new SingleEdgeExcluder(edgesToExclude),
-                                    paths,
-                                    0,
-                                    MatrixRowPolicy.EVERYTHING,
-                                    true);
+        follower = new RandomWalkPathFollower("src/test/resources/edges.tsv",
+                                              1,
+                                              sourcesMap,
+                                              Sets.newHashSet(2),
+                                              new SingleEdgeExcluder(edgesToExclude),
+                                              paths,
+                                              0,
+                                              MatrixRowPolicy.EVERYTHING,
+                                              true);
         // We don't care about the results, we just want to be sure that this actually runs.
         follower.execute();
     }

@@ -138,22 +138,17 @@ public class FeatureGenerator {
    */
   public FeatureMatrix computeFeatureValues(List<PathType> pathTypes, Dataset data, String outputFile) {
     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = createEdgesToExclude(data);
-    PathFollower follower = new PathFollower(config.graph,
-                                             config.numShards,
-                                             data.getCombinedSourceMap(),
-                                             config.allowedTargets,
-                                             config.edgeExcluderFactory.create(edgesToExclude),
-                                             pathTypes,
-                                             config.walksPerPath,
-                                             config.acceptPolicy,
-                                             config.normalizeWalkProbabilities);
+    // TODO(matt): make a PathFollowerFactory, replace this call.
+    PathFollower follower = config.pathFollowerFactory.create(pathTypes, config, data, edgesToExclude);
     follower.execute();
-    // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
-    // reason I don't understand.
-    try {
-      Thread.sleep(1000);
-    } catch(InterruptedException e) {
-      throw new RuntimeException(e);
+    if (follower.usesGraphChi()) {
+      // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
+      // reason I don't understand.
+      try {
+        Thread.sleep(1000);
+      } catch(InterruptedException e) {
+        throw new RuntimeException(e);
+      }
     }
     FeatureMatrix featureMatrix = follower.getFeatureMatrix();
     follower.shutDown();
