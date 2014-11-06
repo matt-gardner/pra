@@ -31,8 +31,8 @@ public class GraphConfig {
     private String outdir;
     private List<RelationSet> relationSets = Lists.newArrayList();
     private boolean deduplicateEdges = false;
-    private boolean createMatrices = false;
-    private int maxMatrixFileSize = -1;
+    private boolean createMatrices = true;
+    private int maxMatrixFileSize = 100000;
 
     public Builder() {}
     public Builder setOutdir(String x) {outdir = x; return this;}
