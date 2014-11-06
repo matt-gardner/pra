@@ -200,41 +200,38 @@ class PathMatrixCreator(
     val matrices = new mutable.HashMap[Int, CSCMatrix[Int]]
     val sorted_relations = relations.toSeq.sorted
     var relation_index = 0
-    var current_relation = -1
+    var current_relation = sorted_relations(relation_index)
     var builder: CSCMatrix.Builder[Int] = null
     breakable {
       for (line <- Resource.fromReader(reader).lines()) {
         if (line.startsWith("Relation")) {
           if (builder != null) {
-            val relation = sorted_relations(relation_index)
-            matrices(relation) = removeEdgesAndBuild(builder, relation)
+            matrices(current_relation) = builder.result
             relation_index += 1
             builder = null
             if (relation_index >= sorted_relations.size) break
+            current_relation = sorted_relations(relation_index)
           }
-          if (line.split(" ").last.toInt == sorted_relations(relation_index)) {
+          if (line.split(" ").last.toInt == current_relation) {
             builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
           }
         } else if (builder != null) {
           val fields = line.split("\t")
           val source = fields(0).toInt
           val target = fields(1).toInt
-          builder.add(source, target, 1)
+          if (!edges_to_remove(current_relation).contains((source, target))) {
+            builder.add(source, target, 1)
+          }
         }
       }
     }
     if (builder != null) {
-      val relation = sorted_relations(relation_index)
-      matrices(relation) = removeEdgesAndBuild(builder, relation)
+      matrices(current_relation) = builder.result
     }
     matrices.toMap
   }
 
   def removeEdgesAndBuild(builder: CSCMatrix.Builder[Int], relation: Int) = {
-    val matrix = builder.result
-    for (edge <- edges_to_remove(relation)) {
-      matrix(edge) = 0
-    }
-    matrix
+    builder.result
   }
 }

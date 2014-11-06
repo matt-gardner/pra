@@ -243,7 +243,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       Set(2, 4))
     matrices.size should be (2)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
-    matrices(4).activeKeysIterator.toSet should be (Set((4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (4,6)))
+    matrices(4).activeKeysIterator.toSet should be (Set((4, 1), (4, 3), (4, 4), (4, 5), (4,6)))
   }
 
   it should "remove training edges from connectivity matrices" in {
