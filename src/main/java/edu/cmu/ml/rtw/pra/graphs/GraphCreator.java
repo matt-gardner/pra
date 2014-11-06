@@ -68,6 +68,7 @@ public class GraphCreator {
   }
 
   public void createGraphChiRelationGraph(boolean shardGraph) throws IOException {
+    System.out.println("Making directories");
     // Some preparatory stuff
     fileUtil.mkdirOrDie(outdir);
 
@@ -75,6 +76,7 @@ public class GraphCreator {
     String edgeFilename = outdir + "graph_chi/edges.tsv";
     FileWriter intEdgeFile = fileUtil.getFileWriter(edgeFilename);
 
+    System.out.println("Loading aliases");
     List<Pair<String, Map<String, List<String>>>> aliases = Lists.newArrayList();
     for (RelationSet relationSet : relationSets) {
       if (relationSet.getIsKb()) {
@@ -127,7 +129,7 @@ public class GraphCreator {
     // with random walks (which I'm expecting to be a lot faster, but haven't finished implementing
     // yet).
     if (createMatrices) {
-      outputMatrices(fileUtil.getBufferedReader(edgeFilename), edgeDict.getNextIndex());
+      outputMatrices(fileUtil.getBufferedReader(edgeFilename), edgeDict.getNextIndex() - 1);
     }
   }
 
@@ -207,9 +209,11 @@ public class GraphCreator {
     int edgesSoFar = 0;
     for (int i = 1; i <= numRelations; i++) {
       List<Pair<Integer, Integer>> instances = matrices.get(i);
+      if (instances == null) System.out.println("NULL instance list: " + i);
       if (edgesSoFar > 0 && edgesSoFar + instances.size() > maxMatrixFileSize) {
         writeEdgesSoFar(startRelation, i - 1, edgesToWrite);
         startRelation = i;
+        edgesSoFar = 0;
       }
       edgesToWrite.add(instances);
       edgesSoFar += instances.size();

@@ -81,7 +81,7 @@ public class RelationSet {
         }
       });
     } else if (aliasFileFormat.equals("nell")) {
-      return fileUtil.readInvertedMapListFromTsvReader(reader);
+      return fileUtil.readInvertedMapListFromTsvReader(reader, 1000000);
     } else {
       throw new RuntimeException("Unrecognized alias file format");
     }

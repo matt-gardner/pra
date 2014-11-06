@@ -16,14 +16,25 @@ import scala.collection.parallel.mutable.{ParSeq => MParSeq}
 import scalax.io.Resource
 import scala.util.control.Breaks._
 
+import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class PathMatrixCreator(
     numNodes: Int,
     parent_path_types: JList[PathType],
+    source_nodes: JSet[Integer],
     graph_dir: String,
+    edge_dict: Dictionary,
     fileUtil: FileUtil = new FileUtil) {
+
+  val sources_matrix = {
+    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes, source_nodes.size)
+    for (source <- source_nodes) {
+      builder.add(source, source, 1)
+    }
+    builder.result
+  }
 
   // Unfortunately, it seems like the best way to move forward for the moment is to keep the main
   // code path going through java, and just integrate with new scala code this way.  For the java
@@ -61,6 +72,7 @@ class PathMatrixCreator(
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
+    println("Getting feature matrix for input sources");
     val matrix_rows = sources.par.flatMap(
       x => getFeatureMatrixRowsForSource(x, allowed_targets.map(_.asInstanceOf[Int]).toSet)
       ).seq.toSeq
@@ -111,7 +123,8 @@ class PathMatrixCreator(
     new MatrixRow(source, target, pathTypes.toArray, values.toArray)
   }
 
-  lazy val path_matrices: Map[PathType, CSCMatrix[Int]] = {
+  val path_matrices: Map[PathType, CSCMatrix[Int]] = {
+    println("Creating path matrices")
     val path_types = parent_path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = path_types.flatMap(_.getEdgeTypes).toSet
     val matrix_dir = graph_dir + "matrices/"
@@ -126,11 +139,17 @@ class PathMatrixCreator(
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, CSCMatrix[Int]]): CSCMatrix[Int] = {
+    val str = path_type.encodeAsHumanReadableString(edge_dict)
+    println(s"Creating path matrix for $str")
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
+    println(s"Initial size: ${result.activeSize} ($str)")
     if (path_type.getReverse()(0)) {
       result = result.t
     }
+    result = sources_matrix * result
+    println(s"Filtered size: ${result.activeSize} ($str)")
     for (i <- 1 until path_type.getEdgeTypes().length) {
+      println(s"On step $i with ${result.activeSize} entries, $str")
       val relation_matrix = connectivity_matrices(path_type.getEdgeTypes()(i))
       if (path_type.getReverse()(i)) {
         result = result * relation_matrix.t
@@ -138,6 +157,7 @@ class PathMatrixCreator(
         result = result * relation_matrix
       }
     }
+    println(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
     result
   }
 

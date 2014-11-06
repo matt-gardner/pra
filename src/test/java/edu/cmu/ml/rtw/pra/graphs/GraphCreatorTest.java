@@ -72,6 +72,14 @@ public class GraphCreatorTest extends TestCase {
       "1\t2\t2\n" +
       "3\t4\t2\n";
 
+  private String longerEdgesFile = "/graph_chi/edges.tsv";
+  private String longerEdgeFileContents =
+      "1\t1\t1\n" +
+      "2\t2\t2\n" +
+      "3\t3\t3\n" +
+      "4\t4\t4\n" +
+      "5\t5\t5\n";
+
   private String shardsFile = "/num_shards.tsv";
   private String expectedShardsFileContents = "2\n";
 
@@ -215,6 +223,18 @@ public class GraphCreatorTest extends TestCase {
     relationSets.add(RelationSet.fromFile(kbRelationSetFile, fileUtil));
     GraphCreator creator = makeGraphCreator(relationSets, false, true, 4);
     creator.outputMatrices(new BufferedReader(new StringReader(expectedEdgeFileContents)), 2);
+    fileUtil.expectFilesWritten();
+  }
+
+  public void testOutputMatricesWithLotsOfRelationsSplitsFiles() throws IOException {
+    fileUtil.onlyAllowExpectedFiles();
+    fileUtil.addExpectedFileWritten("/matrices/1-2", "Relation 1\n1\t1\nRelation 2\n2\t2\n");
+    fileUtil.addExpectedFileWritten("/matrices/3-4", "Relation 3\n3\t3\nRelation 4\n4\t4\n");
+    fileUtil.addExpectedFileWritten("/matrices/5", "Relation 5\n5\t5\n");
+
+    List<RelationSet> relationSets = Lists.newArrayList();
+    GraphCreator creator = makeGraphCreator(relationSets, false, true, 2);
+    creator.outputMatrices(new BufferedReader(new StringReader(longerEdgeFileContents)), 5);
     fileUtil.expectFilesWritten();
   }
 

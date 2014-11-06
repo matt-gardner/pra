@@ -20,8 +20,7 @@ import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
-  val numNodes = 1500000
-  val defaultCreator = new PathMatrixCreator(numNodes, null, "/")
+  val numNodes = 100
   val path_type_factory = new BasicPathTypeFactory()
   val relation1File = {
     "Relation 1\n" +
@@ -104,7 +103,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       path_type_factory.fromString("-1-2-"),
       path_type_factory.fromString("-1-_1-")
       ))
-    new PathMatrixCreator(10, path_types, "/", fileUtil)
+    new PathMatrixCreator(numNodes, path_types, Sets.newHashSet(1, 2, 3, 4, 5), "/", fileUtil)
   }
 
   "getFeatureMatrixRow" should "return complete matrix rows" in {
@@ -158,7 +157,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   "readMatricesFromFile" should "read a single-matrix file" in {
     val matrixFile = relation1File
-    val matrices = defaultCreator.readMatricesFromFile(
+    val matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(1))
     matrices.size should be (1)
@@ -167,21 +166,21 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "read a single matrix from a multi-matrix file" in {
     var matrixFile = relation1File + relation2File
-    var matrices = defaultCreator.readMatricesFromFile(
+    var matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(1))
     matrices.size should be (1)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
 
     matrixFile = relation1File + relation2File
-    matrices = defaultCreator.readMatricesFromFile(
+    matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(2))
     matrices.size should be (1)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
 
     matrixFile = relation1File + relation2File + relation3File + relation4File
-    matrices = defaultCreator.readMatricesFromFile(
+    matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(3))
     matrices.size should be (1)
@@ -190,7 +189,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "read all matrices from a multi-matrix file" in {
     val matrixFile = relation1File + relation2File + relation3File
-    val matrices = defaultCreator.readMatricesFromFile(
+    val matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(1, 2, 3))
     matrices.size should be (3)
@@ -201,7 +200,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "read some matrices from a multi-matrix file" in {
     val matrixFile = relation1File + relation2File + relation3File + relation4File
-    var matrices = defaultCreator.readMatricesFromFile(
+    var matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(1, 2, 3))
     matrices.size should be (3)
@@ -209,14 +208,14 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
     matrices(3).activeKeysIterator.toSet should be (Set((3, 1), (3, 2), (3, 3)))
 
-    matrices = defaultCreator.readMatricesFromFile(
+    matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(1, 3))
     matrices.size should be (2)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     matrices(3).activeKeysIterator.toSet should be (Set((3, 1), (3, 2), (3, 3)))
 
-    matrices = defaultCreator.readMatricesFromFile(
+    matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(2, 4))
     matrices.size should be (2)
@@ -225,7 +224,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   "separateRelationsByFile" should "correctly split relations by file" in {
-    val result = defaultCreator.separateRelationsByFile(
+    val result = creatorWithPathTypes.separateRelationsByFile(
       Set(1, 2, 3, 6, 7, 8),
       Set("1-2", "3", "4-7", "8-10"))
     result.size should be (4)
@@ -237,7 +236,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   "createPathMatrix" should "create a simple 2-hop path matrix" in {
     val path_type = path_type_factory.fromString("-1-2-").asInstanceOf[BaseEdgeSequencePathType]
-    val result = defaultCreator.createPathMatrix(path_type, connectivity_matrices)
+    val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
     result.activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     result((1, 1)) should be (1)
     result((1, 2)) should be (1)
@@ -246,7 +245,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   "createPathMatrix" should "return the first matrix in a path type of length 1" in {
     val path_type = path_type_factory.fromString("-1-").asInstanceOf[BaseEdgeSequencePathType]
-    val result = defaultCreator.createPathMatrix(path_type, connectivity_matrices)
+    val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
     result.activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     result((1, 1)) should be (1)
     result((1, 2)) should be (1)
@@ -255,14 +254,14 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "handle inverses correctly" in {
     val path_type = path_type_factory.fromString("-1-_1-").asInstanceOf[BaseEdgeSequencePathType]
-    val result = defaultCreator.createPathMatrix(path_type, connectivity_matrices)
+    val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
     result.activeKeysIterator.toSet should be (Set((1, 1)))
     result((1, 1)) should be (3)
   }
 
   it should "handle initial inverses correctly" in {
     val path_type = path_type_factory.fromString("-_1-1-").asInstanceOf[BaseEdgeSequencePathType]
-    val result = defaultCreator.createPathMatrix(path_type, connectivity_matrices)
+    val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
     result.activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3),
       (3, 1), (3, 2), (3, 3)))
     result((1, 1)) should be (1)

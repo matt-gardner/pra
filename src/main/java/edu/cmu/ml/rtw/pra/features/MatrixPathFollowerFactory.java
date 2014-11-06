@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.features;
 
+import java.io.File;
 import java.util.List;
 
 import edu.cmu.ml.rtw.pra.config.PraConfig;
@@ -14,8 +15,9 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
                              List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
     return new MatrixPathFollower(config.nodeDict.getNextIndex(),
                                   pathTypes,
-                                  config.graph,
+                                  new File(config.graph).getParentFile().getParent() + "/",
                                   data,
+                                  config.edgeDict,
                                   config.allowedTargets);
   }
 }

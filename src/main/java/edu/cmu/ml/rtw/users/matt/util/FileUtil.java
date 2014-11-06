@@ -55,8 +55,10 @@ public class FileUtil {
   public List<String> listDirectoryContents(String filename) throws IOException {
     File[] contents = new File(filename).listFiles();
     List<String> list = Lists.newArrayList();
-    for (File file : contents) {
-      list.add(file.getName());
+    if (contents != null) {
+      for (File file : contents) {
+        list.add(file.getName());
+      }
     }
     return list;
   }
@@ -200,9 +202,19 @@ public class FileUtil {
    * file.  That is, take all of the values, and make them keys, with the original key as a values.
    */
   public Map<String, List<String>> readInvertedMapListFromTsvReader(BufferedReader reader) throws IOException {
+    return readInvertedMapListFromTsvReader(reader, -1);
+  }
+
+  public Map<String, List<String>> readInvertedMapListFromTsvReader(BufferedReader reader,
+                                                                    int logFrequency) throws IOException {
     Map<String, List<String>> map = Maps.newHashMap();
     String line;
+    int line_number = 0;
     while ((line = reader.readLine()) != null) {
+      line_number++;
+      if (logFrequency != -1) {
+        logEvery(logFrequency, line_number);
+      }
       String[] fields = line.split("\t");
       String key = fields[0];
       for (int i = 1; i < fields.length; i++) {
