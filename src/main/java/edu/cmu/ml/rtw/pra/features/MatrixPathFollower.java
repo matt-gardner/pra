@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
+import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class MatrixPathFollower implements PathFollower {
 
@@ -18,14 +19,18 @@ public class MatrixPathFollower implements PathFollower {
   private final Dataset data;
   private final Dictionary edgeDict;
   private final Set<Integer> allowedTargets;
+  private final List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude;
+  private final int maxFanOut;
 
   public MatrixPathFollower(int numNodes,
                             List<PathType> pathTypes,
                             String graphDir,
                             Dataset data,
                             Dictionary edgeDict,
-                            Set<Integer> allowedTargets) {
-    this(numNodes, pathTypes, graphDir, data, edgeDict, allowedTargets, new FileUtil());
+                            Set<Integer> allowedTargets,
+                            List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
+                            int maxFanOut) {
+    this(numNodes, pathTypes, graphDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, new FileUtil());
   }
 
   @VisibleForTesting
@@ -35,14 +40,18 @@ public class MatrixPathFollower implements PathFollower {
                                Dataset data,
                                Dictionary edgeDict,
                                Set<Integer> allowedTargets,
+                               List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
+                               int maxFanOut,
                                FileUtil fileUtil) {
     this.numNodes = numNodes;
     this.pathTypes = pathTypes;
     this.graphDir = graphDir;
-    this.fileUtil = fileUtil;
     this.data = data;
     this.edgeDict = edgeDict;
     this.allowedTargets = allowedTargets;
+    this.edgesToExclude = edgesToExclude;
+    this.maxFanOut = maxFanOut;
+    this.fileUtil = fileUtil;
   }
 
   // We don't need to do anything with these two.
@@ -59,6 +68,8 @@ public class MatrixPathFollower implements PathFollower {
                               data.getCombinedSourceMap().keySet(),
                               graphDir,
                               edgeDict,
+                              edgesToExclude,
+                              maxFanOut,
                               new FileUtil());
     return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets);
   }

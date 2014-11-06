@@ -18,6 +18,8 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
                                   new File(config.graph).getParentFile().getParent() + "/",
                                   data,
                                   config.edgeDict,
-                                  config.allowedTargets);
+                                  config.allowedTargets,
+                                  edgesToExclude,
+                                  config.maxMatrixFeatureFanOut);
   }
 }

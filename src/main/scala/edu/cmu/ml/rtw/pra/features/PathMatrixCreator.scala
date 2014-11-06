@@ -26,6 +26,8 @@ class PathMatrixCreator(
     source_nodes: JSet[Integer],
     graph_dir: String,
     edge_dict: Dictionary,
+    edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]],
+    maxFanOut: Int,
     fileUtil: FileUtil = new FileUtil) {
 
   val sources_matrix = {
@@ -35,6 +37,11 @@ class PathMatrixCreator(
     }
     builder.result
   }
+
+  val edges_to_remove = edgesToExclude
+    .map(x => (x.getRight.asInstanceOf[Int],
+      (x.getLeft.getLeft.asInstanceOf[Int], x.getLeft.getRight.asInstanceOf[Int])))
+    .groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
 
   // Unfortunately, it seems like the best way to move forward for the moment is to keep the main
   // code path going through java, and just integrate with new scala code this way.  For the java
@@ -158,7 +165,11 @@ class PathMatrixCreator(
       }
     }
     println(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
-    result
+    if (result.activeSize / sources_matrix.activeSize > maxFanOut) {
+      new CSCMatrix.Builder[Int](numNodes, numNodes, 0).result
+    } else {
+      result
+    }
   }
 
   def separateRelationsByFile(relations: Set[Int], filenames: Set[String]): Map[String, Set[Int]] = {
@@ -195,7 +206,8 @@ class PathMatrixCreator(
       for (line <- Resource.fromReader(reader).lines()) {
         if (line.startsWith("Relation")) {
           if (builder != null) {
-            matrices(sorted_relations(relation_index)) = builder.result
+            val relation = sorted_relations(relation_index)
+            matrices(relation) = removeEdgesAndBuild(builder, relation)
             relation_index += 1
             builder = null
             if (relation_index >= sorted_relations.size) break
@@ -212,8 +224,17 @@ class PathMatrixCreator(
       }
     }
     if (builder != null) {
-      matrices(sorted_relations(relation_index)) = builder.result
+      val relation = sorted_relations(relation_index)
+      matrices(relation) = removeEdgesAndBuild(builder, relation)
     }
     matrices.toMap
+  }
+
+  def removeEdgesAndBuild(builder: CSCMatrix.Builder[Int], relation: Int) = {
+    val matrix = builder.result
+    for (edge <- edges_to_remove(relation)) {
+      matrix(edge) = 0
+    }
+    matrix
   }
 }

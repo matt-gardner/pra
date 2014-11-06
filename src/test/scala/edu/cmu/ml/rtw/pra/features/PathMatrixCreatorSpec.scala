@@ -5,6 +5,7 @@ import org.scalatest._
 import java.io.BufferedReader
 import java.io.StringReader
 import java.lang.Integer
+import java.util.{List => JList}
 import java.util.{Set => JSet}
 
 import scala.collection.JavaConversions._
@@ -16,6 +17,7 @@ import breeze.linalg._
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -68,13 +70,19 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "Relation 4\n" +
     "4\t1\n" +
     "4\t2\n" +
-    "4\t3\n"
+    "4\t3\n" +
+    "4\t4\n" +
+    "4\t5\n" +
+    "4\t6\n"
   }
   val relation4Matrix = {
     val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
     builder.add(4, 1, 1)
     builder.add(4, 2, 1)
     builder.add(4, 3, 1)
+    builder.add(4, 4, 1)
+    builder.add(4, 5, 1)
+    builder.add(4, 6, 1)
     builder.result
   }
 
@@ -98,12 +106,27 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     val fileUtil = new FakeFileUtil()
     val matrixFile = relation1File + relation2File + relation3File + relation4File
     fileUtil.addFileToBeRead("/matrices/1-4", matrixFile)
+    val edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]] = Lists.newArrayList();
+    val edgeDict = new Dictionary();
+    edgeDict.getIndex("1");
+    edgeDict.getIndex("2");
+    edgeDict.getIndex("3");
+    edgeDict.getIndex("4");
+    edgesToExclude.add(Pair.makePair(Pair.makePair(4, 2), 4))
     val path_types = seqAsJavaList(Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
       path_type_factory.fromString("-1-_1-")
       ))
-    new PathMatrixCreator(numNodes, path_types, Sets.newHashSet(1, 2, 3, 4, 5), "/", fileUtil)
+    new PathMatrixCreator(
+      numNodes,
+      path_types,
+      Sets.newHashSet(1, 2, 3),
+      "/",
+      edgeDict,
+      edgesToExclude,
+      3,
+      fileUtil)
   }
 
   "getFeatureMatrixRow" should "return complete matrix rows" in {
@@ -220,7 +243,17 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       Set(2, 4))
     matrices.size should be (2)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
-    matrices(4).activeKeysIterator.toSet should be (Set((4, 1), (4, 2), (4, 3)))
+    matrices(4).activeKeysIterator.toSet should be (Set((4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (4,6)))
+  }
+
+  it should "remove training edges from connectivity matrices" in {
+    val matrixFile = relation4File
+    var matrices = creatorWithPathTypes.readMatricesFromFile(
+      new BufferedReader(new StringReader(matrixFile)),
+      Set(4))
+    matrices(4)(4, 1) should be (1)
+    matrices(4)(4, 2) should be (0)
+    matrices(4)(4, 3) should be (1)
   }
 
   "separateRelationsByFile" should "correctly split relations by file" in {
@@ -243,7 +276,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     result((1, 3)) should be (1)
   }
 
-  "createPathMatrix" should "return the first matrix in a path type of length 1" in {
+  it should "return the first matrix in a path type of length 1" in {
     val path_type = path_type_factory.fromString("-1-").asInstanceOf[BaseEdgeSequencePathType]
     val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
     result.activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
@@ -273,5 +306,13 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     result((3, 1)) should be (1)
     result((3, 2)) should be (1)
     result((3, 3)) should be (1)
+  }
+
+  it should "remove path matrices with fan outs that are too high" in {
+    // Actual fan out from this path type is 6; the max set above is 3, so this should be cleared
+    // to 0.
+    val path_type = path_type_factory.fromString("-_4-4-").asInstanceOf[BaseEdgeSequencePathType]
+    val result = creatorWithPathTypes.createPathMatrix(path_type, connectivity_matrices)
+    result.activeSize should be (0)
   }
 }

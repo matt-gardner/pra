@@ -151,6 +151,12 @@ public class PraConfig {
   // one you want to use.
   public final PathFollowerFactory pathFollowerFactory;
 
+  // This looks at the average number of targets per feature, and if it is greater than this
+  // number, the feature is discarded.  This is only used in the matrix path follower (as it can't
+  // be efficiently computed by the random walk path follower), and it helps to limit the size of
+  // the feature matrices produced, particularly from large, not-really-useful features.
+  public final int maxMatrixFeatureFanOut;
+
   // The number of walks to start for each (source node, path) combination, in the feature
   // computation step.
   public final int walksPerPath;
@@ -236,6 +242,7 @@ public class PraConfig {
     pathTypeFactory = builder.pathTypeFactory;
     pathTypeSelector = builder.pathTypeSelector;
     pathFollowerFactory = builder.pathFollowerFactory;
+    maxMatrixFeatureFanOut = builder.maxMatrixFeatureFanOut;
     walksPerPath = builder.walksPerPath;
     acceptPolicy = builder.acceptPolicy;
     l2Weight = builder.l2Weight;
@@ -269,6 +276,7 @@ public class PraConfig {
     public PathTypeFactory pathTypeFactory = new BasicPathTypeFactory();
     private PathTypeSelector pathTypeSelector = new MostFrequentPathTypeSelector();
     private PathFollowerFactory pathFollowerFactory = new RandomWalkPathFollowerFactory();
+    private int maxMatrixFeatureFanOut = 100;
     private int walksPerPath;
     private MatrixRowPolicy acceptPolicy = MatrixRowPolicy.ALL_TARGETS;
     private double l2Weight;
@@ -297,6 +305,7 @@ public class PraConfig {
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
     public Builder setPathFollowerFactory(PathFollowerFactory f) {this.pathFollowerFactory = f;return this;}
+    public Builder setMaxMatrixFeatureFanOut(int m) {this.maxMatrixFeatureFanOut = m;return this;}
     public Builder setWalksPerSource(int w) {this.walksPerSource = w;return this;}
     public Builder setNumPaths(int numPaths) {this.numPaths = numPaths;return this;}
     public Builder setPathTypePolicy(PathTypePolicy p) {this.pathTypePolicy = p;return this;}
@@ -344,6 +353,7 @@ public class PraConfig {
       setPathTypeFactory(config.pathTypeFactory);
       setPathTypeSelector(config.pathTypeSelector);
       setPathFollowerFactory(config.pathFollowerFactory);
+      setMaxMatrixFeatureFanOut(config.maxMatrixFeatureFanOut);
       setWalksPerPath(config.walksPerPath);
       setAcceptPolicy(config.acceptPolicy);
       setL2Weight(config.l2Weight);
@@ -401,6 +411,8 @@ public class PraConfig {
           initializePathTypeSelector(value);
         } else if (parameter.equalsIgnoreCase("path follower")) {
           initializePathFollowerFactory(value);
+        } else if (parameter.equalsIgnoreCase("max matrix feature fan out")) {
+          setMaxMatrixFeatureFanOut(Integer.parseInt(value));
         } else {
           throw new RuntimeException("Unrecognized parameter specification: " + line);
         }
