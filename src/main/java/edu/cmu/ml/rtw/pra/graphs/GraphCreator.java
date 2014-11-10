@@ -138,7 +138,7 @@ public class GraphCreator {
    * and if the files are already present, this is a no-op.  So it's only run once for each graph,
    * no matter how many times you run GraphChi code.
    */
-  private void shardGraph(String baseFilename, int numShards) throws IOException {
+  public static void shardGraph(String baseFilename, int numShards) throws IOException {
     FastSharder<EmptyType, Integer> sharder = new FastSharder<EmptyType, Integer>(baseFilename, numShards, null,
         new EdgeProcessor<Integer>() {
           public Integer receiveEdge(int from, int to, String token) {

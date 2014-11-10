@@ -44,9 +44,9 @@ public class RelationSet {
 
   // Fields specific to surface relations.
 
-  // If this is a surface relation set, if this is true, we only add the alias edges that get
-  // generated from the set, not the surface relations themselves.  This was for a random test that
-  // I did.
+  // If this is true, we only add the alias edges that get generated from the set, not the
+  // relations themselves (either from a KB relation set or a surface relation set).  This is still
+  // somewhat experimental, but there are some cases where you might want to try this.
   private final boolean aliasesOnly;
 
   // Fields for embeddings.
@@ -151,7 +151,7 @@ public class RelationSet {
         numEdges += addAliasEdges(arg2, ind2, seenNps, writer, nodeDict, edgeDict, aliases);
       }
 
-      if (!isKb && aliasesOnly) continue;
+      if (aliasesOnly) continue;
       List<String> relationEdges = getEmbeddedRelations(relation, embeddings);
       for (String r : relationEdges) {
         r = prefix + r;

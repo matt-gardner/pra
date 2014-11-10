@@ -1,5 +1,4 @@
-PRA (Path Ranking Algorithm)
-============================
+# PRA (Path Ranking Algorithm)
 
 An implementation of the Path Ranking Algorithm (PRA) using GraphChi, a library for efficient
 processing of large graphs on a single machine.  This algorithm learns models that analyze a graph
@@ -16,8 +15,7 @@ following papers:
 See [the github.io page](http://matt-gardner.github.io/pra/) for code documentation.  Please feel
 free to file bugs, feature requests, or send pull requests.
 
-License
-=======
+# License
 
 This code makes use of a number of other libraries that are distributed under various open source
 licenses (notably the Apache License and the Common Public License).  You can see those
@@ -26,8 +24,19 @@ the terms of the GNU General Public License, version 3 (or, at your choosing, an
 that license).  You can find the text of that license
 [here](http://www.gnu.org/licenses/gpl-3.0.txt).
 
-WARNING
-=======
+# Changelog
+
+Version 1.1:
+
+- Added matrix multiplication as an alternative to random walks in the path following step.  This
+  is still somewhat experimental, and more details will be forthcoming in a few months.  There's a
+new parameter that can be specified in the param file called `path follower`.  Set it to `matrix
+multiplication` to use the new technique.  Current results: it performs better on NELL, in about
+the same amount of time, on the KB and KB + SVO cases.  I haven't gotten KB + clustered SVO to
+work right, and I haven't implemented KB + vector SVO, and it does not currently scale to
+Freebase.
+
+# WARNING
 
 I did a force push on the repository on September 15, 2014, to remove some old jar files that made
 the download for this repository about 25MB.  Now it's about ~200KB.  I thought that breaking the
