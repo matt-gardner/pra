@@ -26,6 +26,9 @@ that license).  You can find the text of that license
 
 # Desired improvements
 
+In rough order of priority.  I will probably do the top two things in the relatively near future.
+The rest are kind of, "this would be nice, but I probably won't get to it any time soon".
+
 - Better experiment analysis.  ExperimentScorer will currently only output a table with metrics
   over a whole dataset.  It would be nice if it (or another piece of code) would also do
 significance testing, and output a table with individual relation results.
