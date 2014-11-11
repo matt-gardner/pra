@@ -138,7 +138,10 @@ object ExperimentScorer {
           metrics(relation)(TIMESTAMP) = timestamp
           println(s"Computing metrics for relation $relation")
           for (metricComputer <- metricComputers) {
-            val test_split_file = s"$split_dir/$relation/testing.tsv"
+            var test_split_file = s"$split_dir/$relation/testing.tsv"
+            if (!new File(test_split_file).exists()) {
+              test_split_file = s"$experiment_dir/$relation/testing_positive_examples.tsv"
+            }
             val relation_metrics = metricComputer.computeRelationMetrics(results_file, test_split_file)
             metrics.update(relation, relation_metrics ++ metrics(relation))
           }

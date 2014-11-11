@@ -1,5 +1,7 @@
 package edu.cmu.ml.rtw.pra.experiments
 
+import java.io.File
+
 import scalax.io.Resource
 import scala.collection.mutable
 
@@ -30,10 +32,12 @@ trait MetricComputer {
 
   def readPositiveInstancesFromDataFile(data_file: String): Map[String, Set[String]] = {
     val instances = new mutable.HashMap[String, mutable.Set[String]]().withDefaultValue(new mutable.HashSet[String])
-    for (line <- Resource.fromFile(data_file).lines()) {
-      val fields = line.split("\t")
-      if (fields.length == 2 || fields(2) == "1") {
-        instances.update(fields(0), instances(fields(0)) + fields(1))
+    if (new File(data_file).exists) {
+      for (line <- Resource.fromFile(data_file).lines()) {
+        val fields = line.split("\t")
+        if (fields.length == 2 || fields(2) == "1") {
+          instances.update(fields(0), instances(fields(0)) + fields(1))
+        }
       }
     }
     instances.map(x => (x._1, x._2.toSet)).toMap
