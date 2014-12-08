@@ -50,7 +50,7 @@ Supplying negative instances as training examples has some important
 implications for how some of the rest of the code runs - the default
 parameters I recommend assume that only positive examples are given.  If you
 want to supply negative evidence, read the documentation for the `matrix accept
-policy` parameter (see [here]({{ site.baseurl }}/input/param_file.html)).
+policy` parameter [here]({{ site.baseurl }}/input/param_file.html).
 
 The code for reading in a data file is found in
 `experiments.Dataset.readFromReader()` (and a few other related methods, but
