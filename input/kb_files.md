@@ -43,5 +43,6 @@ EMNLP 2014 paper, talk to me.)
 
 If you are using PRA with a set of relations that has none of this metadata, such as learning
 models for open-domain relations, I'm pretty sure this directory can be left empty (though you'll
-want to change a few of the settings in your [parameter specification file]({{ site.baseurl
-}}/input/param_file.html)).  If you run into issues with this, let me know.
+want to change a few of the settings in your
+[parameter specification file]({{ site.baseurl }}/input/param_file.html)).  If you run into issues
+with this, let me know.
