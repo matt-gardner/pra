@@ -40,24 +40,24 @@ driver) is sufficient for what you're trying to do.
 keeps track of _all_ targets that are reached.  We generally use non-input targets as negative
 examples at training time, as PRA typically only has positive training data.  But we give a few
 options here, in case you actually have negative examples.  The first (and default, and recommended
-for most use cases) is `all-targets`.  This requires that a range be specified in the KB files for
-the relation currently being learned, and restricts entries in the matrix to have only targets from
-the given range (so, for example, if we end up at a city when we're trying to predict a country, we
-don't use that as a negative example when training, nor do we try to score it as a prediction at
-test time).  A more permissive option is `everything`, which allows _all_ targets into the feature
-matrix.  This is not recommended, but is necessary if you don't have a range for the relation
-you're trying to learn (unless you have your own negative examples, at training _and_ test time).
-The final option is `paired-targets-only`.  This means that the code will _only_ produce feature
-matrix rows for examples that are explicitly listed in the input dataset (both at training time and
-at testing time; if you want to do this only at training time, but use `all-targets` or
-`everything` at test time, you'll have to modify and recompile the code.  Sorry.  You can send me a
-pull request when you're done, though =) ).  If you have your own negative examples, and you don't
-want to augment them with whatever other examples the random walks finds, then this is what you
-should use (to be clear: use `all-targets` if you want to use your own negative examples _and_
-whatever the random walks find; use `paired-targets-only` to _only_ use your provided negative
-examples).  Note that this parameter only affects the _feature computation_ step; it does not
-affect learning in any way, other than determining how the feature matrix used at learning time is
-computed.
+for most use cases) is `all-targets`.  This requires that a range be specified in the [KB files]({{
+site.baseurl }}/input/kb_files.html) for the relation currently being learned, and restricts
+entries in the matrix to have only targets from the given range (so, for example, if we end up at a
+city when we're trying to predict a country, we don't use that as a negative example when training,
+nor do we try to score it as a prediction at test time).  A more permissive option is `everything`,
+which allows _all_ targets into the feature matrix.  This is not recommended, but is necessary if
+you don't have a range for the relation you're trying to learn (unless you have your own negative
+examples, at training _and_ test time).  The final option is `paired-targets-only`.  This means
+that the code will _only_ produce feature matrix rows for examples that are explicitly listed in
+the input dataset (both at training time and at testing time; if you want to do this only at
+training time, but use `all-targets` or `everything` at test time, you'll have to modify and
+recompile the code.  Sorry.  You can send me a pull request when you're done, though =) ).  If you
+have your own negative examples, and you don't want to augment them with whatever other examples
+the random walks finds, then this is what you should use (to be clear: use `all-targets` if you
+want to use your own negative examples _and_ whatever the random walks find; use
+`paired-targets-only` to _only_ use your provided negative examples).  Note that this parameter
+only affects the _feature computation_ step; it does not affect learning in any way, other than
+determining how the feature matrix used at learning time is computed.
 
 * `path accept policy`: this was intended to be similar to `matrix accept policy` for the _feature
   selection_ step, but there's really only one good option.  Use `paired-only`, which means you
