@@ -28,10 +28,11 @@ class PathMatrixCreator(
     edge_dict: Dictionary,
     edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]],
     maxFanOut: Int,
+    normalizeWalkProbabilities: Boolean,
     fileUtil: FileUtil = new FileUtil) {
 
   val sources_matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes, source_nodes.size)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
     for (source <- source_nodes) {
       builder.add(source, source, 1)
     }
@@ -91,7 +92,7 @@ class PathMatrixCreator(
 
   def getFeatureMatrixRowsForSource(source: Int, allowed_targets: Set[Int]): Seq[MatrixRow] = {
     val source_vector = {
-      val builder = new VectorBuilder[Int](numNodes, 1)
+      val builder = new VectorBuilder[Double](numNodes, 1)
       builder.add(source, 1)
       builder.toSparseVector
     }
@@ -99,7 +100,7 @@ class PathMatrixCreator(
       // Breeze can't handle multiplication by transposes of sparse vectors.  But we can transpose
       // the sparse matrix, and multiply on the other side.
       val targets = path_matrices(path_type_with_index._1).t * source_vector
-      val seen_features = new mutable.ListBuffer[(Int, Int, Int)]
+      val seen_features = new mutable.ListBuffer[(Int, Int, Double)]
       var offset = 0
       while(offset < targets.activeSize) {
         val target = targets.indexAt(offset)
@@ -123,7 +124,7 @@ class PathMatrixCreator(
     createMatrixRow(source, target, feature_list)
   }
 
-  def createMatrixRow(source: Int, target: Int, feature_list: Seq[(Int, Int)]): MatrixRow = {
+  def createMatrixRow(source: Int, target: Int, feature_list: Seq[(Int, Double)]): MatrixRow = {
     val pathTypes = new mutable.ArrayBuffer[Int]
     val values = new mutable.ArrayBuffer[Double]
     for (feature <- feature_list) {
@@ -133,14 +134,14 @@ class PathMatrixCreator(
     new MatrixRow(source, target, pathTypes.toArray, values.toArray)
   }
 
-  val path_matrices: Map[PathType, CSCMatrix[Int]] = {
+  val path_matrices: Map[PathType, CSCMatrix[Double]] = {
     println("Creating path matrices")
     val path_types = parent_path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = path_types.flatMap(_.getEdgeTypes).toSet
     val matrix_dir = graph_dir + "matrices/"
     val filenames = fileUtil.listDirectoryContents(matrix_dir).toSet
     val relations_by_filename = separateRelationsByFile(relations, filenames)
-    val connectivity_matrices: Map[Int, CSCMatrix[Int]] = relations_by_filename.par.flatMap(x =>
+    val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
         readMatricesFromFile(fileUtil.getBufferedReader(matrix_dir + x._1), x._2)).seq
 
     path_types.par.map(x => (x, createPathMatrix(x, connectivity_matrices))).seq.toMap
@@ -148,7 +149,7 @@ class PathMatrixCreator(
 
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
-      connectivity_matrices: Map[Int, CSCMatrix[Int]]): CSCMatrix[Int] = {
+      connectivity_matrices: Map[Int, CSCMatrix[Double]]): CSCMatrix[Double] = {
     val str = path_type.encodeAsHumanReadableString(edge_dict)
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
     if (path_type.getReverse()(0)) {
@@ -165,10 +166,27 @@ class PathMatrixCreator(
     }
     println(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
     if (result.activeSize / sources_matrix.activeSize > maxFanOut) {
-      new CSCMatrix.Builder[Int](numNodes, numNodes, 0).result
+      new CSCMatrix.Builder[Double](numNodes, numNodes, 0).result
     } else {
-      result
+      if (normalizeWalkProbabilities) {
+        normalizeMatrix(result)
+      } else {
+        result
+      }
     }
+  }
+
+  def normalizeMatrix(matrix: CSCMatrix[Double]): CSCMatrix[Double] = {
+    val rowTotals = new mutable.HashMap[Int, Double]
+    var offset = 0
+    for (instance <- matrix.activeIterator) {
+      rowTotals(instance._1._1) += instance._2
+    }
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, matrix.activeSize)
+    for (instance <- matrix.activeIterator) {
+      builder.add(instance._1._1, instance._1._2, instance._2 / rowTotals(instance._1._1))
+    }
+    builder.result
   }
 
   def separateRelationsByFile(relations: Set[Int], filenames: Set[String]): Map[String, Set[Int]] = {
@@ -195,12 +213,12 @@ class PathMatrixCreator(
 
   def readMatricesFromFile(
       reader: BufferedReader,
-      relations: Set[Int]): Map[Int, CSCMatrix[Int]] = {
-    val matrices = new mutable.HashMap[Int, CSCMatrix[Int]]
+      relations: Set[Int]): Map[Int, CSCMatrix[Double]] = {
+    val matrices = new mutable.HashMap[Int, CSCMatrix[Double]]
     val sorted_relations = relations.toSeq.sorted
     var relation_index = 0
     var current_relation = sorted_relations(relation_index)
-    var builder: CSCMatrix.Builder[Int] = null
+    var builder: CSCMatrix.Builder[Double] = null
     breakable {
       for (line <- Resource.fromReader(reader).lines()) {
         if (line.startsWith("Relation")) {
@@ -212,7 +230,7 @@ class PathMatrixCreator(
             current_relation = sorted_relations(relation_index)
           }
           if (line.split(" ").last.toInt == current_relation) {
-            builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+            builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
           }
         } else if (builder != null) {
           val fields = line.split("\t")

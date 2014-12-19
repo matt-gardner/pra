@@ -21,6 +21,7 @@ public class MatrixPathFollower implements PathFollower {
   private final Set<Integer> allowedTargets;
   private final List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude;
   private final int maxFanOut;
+  private final boolean normalizeWalkProbabilities;
 
   public MatrixPathFollower(int numNodes,
                             List<PathType> pathTypes,
@@ -29,8 +30,9 @@ public class MatrixPathFollower implements PathFollower {
                             Dictionary edgeDict,
                             Set<Integer> allowedTargets,
                             List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
-                            int maxFanOut) {
-    this(numNodes, pathTypes, graphDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, new FileUtil());
+                            int maxFanOut,
+                            boolean normalizeWalkProbabilities) {
+    this(numNodes, pathTypes, graphDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, normalizeWalkProbabilities, new FileUtil());
   }
 
   @VisibleForTesting
@@ -42,6 +44,7 @@ public class MatrixPathFollower implements PathFollower {
                                Set<Integer> allowedTargets,
                                List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
                                int maxFanOut,
+                               boolean normalizeWalkProbabilities,
                                FileUtil fileUtil) {
     this.numNodes = numNodes;
     this.pathTypes = pathTypes;
@@ -51,6 +54,7 @@ public class MatrixPathFollower implements PathFollower {
     this.allowedTargets = allowedTargets;
     this.edgesToExclude = edgesToExclude;
     this.maxFanOut = maxFanOut;
+    this.normalizeWalkProbabilities = normalizeWalkProbabilities;
     this.fileUtil = fileUtil;
   }
 
@@ -70,6 +74,7 @@ public class MatrixPathFollower implements PathFollower {
                               edgeDict,
                               edgesToExclude,
                               maxFanOut,
+                              normalizeWalkProbabilities,
                               new FileUtil());
     return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets);
   }

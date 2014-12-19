@@ -20,6 +20,7 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
                                   config.edgeDict,
                                   config.allowedTargets,
                                   edgesToExclude,
-                                  config.maxMatrixFeatureFanOut);
+                                  config.maxMatrixFeatureFanOut,
+                                  config.normalizeWalkProbabilities);
   }
 }
