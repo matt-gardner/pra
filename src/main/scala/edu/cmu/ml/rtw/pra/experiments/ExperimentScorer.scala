@@ -262,6 +262,37 @@ object ExperimentScorer {
     }
   }
 
+  def displayRelationMetrics(
+      metrics: ExperimentMetrics,
+      experiments: List[String],
+      metric: String) {
+    val relations = new mutable.HashSet[String]
+    for (experiment <- experiments;
+         relation <- metrics(experiment).map(_._1)
+         if metrics(experiment)(relation).isDefinedAt(metric)) {
+      relations += relation
+    }
+    println(s"\nPer-relation $metric:")
+    val header = "Relation"
+    print(f"$header%-40s")
+    for ((method, i) <- experiments.zipWithIndex) {
+      print(f"      ${i+1}%2d ")
+    }
+    println()
+    for (relation <- relations) {
+      print(f"${relation}%-40s")
+      for (method <- experiments) {
+        if (!metrics(method)(relation).isDefinedAt(metric)) {
+          print("         ")
+        } else {
+          val value = metrics(method)(relation)(metric)
+          print(f" $value%7.5f ")
+        }
+      }
+      println()
+    }
+  }
+
   def testSignificance(metrics: ExperimentMetrics, method1: String, method2: String, metric: String) = {
     val paired_values = new mutable.ListBuffer[(Double, Double)]
     for (relation <- metrics(method1) if metrics(method1)(relation._1).isDefinedAt(metric)) {
