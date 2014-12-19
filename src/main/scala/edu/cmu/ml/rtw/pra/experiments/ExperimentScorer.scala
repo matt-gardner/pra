@@ -100,7 +100,14 @@ object ExperimentScorer {
       val displayName = metrics(experiment)(DISPLAY_NAME).keys.toList(0)
       print(f"${displayName}%-35s")
       for (displayMetric <- displayMetrics) {
-        print(f"${metrics(experiment)(DATASET_RELATION)(displayMetric._1)}%15.4f")
+        try {
+          print(f"${metrics(experiment)(DATASET_RELATION)(displayMetric._1)}%15.4f")
+        } catch {
+          case e: java.util.NoSuchElementException => {
+            val message = "No value"
+            print(f"${message}%15s")
+          }
+        }
       }
       println()
     }
@@ -160,7 +167,8 @@ object ExperimentScorer {
     metrics(DISPLAY_NAME)(name) = 1
 
     var timestamp = -1.0
-    if (saved_metrics != None && saved_metrics.get(DATASET_RELATION).isDefinedAt(TIMESTAMP)) {
+    if (saved_metrics != None && saved_metrics.get.isDefinedAt(DATASET_RELATION) &&
+        saved_metrics.get(DATASET_RELATION).isDefinedAt(TIMESTAMP)) {
       timestamp = saved_metrics.get(DATASET_RELATION)(TIMESTAMP)
     }
     if (last_timestamp > timestamp) {
@@ -176,8 +184,10 @@ object ExperimentScorer {
             makeRelationMetricsImmutable(relation_metrics))
         metrics.update(DATASET_RELATION, dataset_metrics ++ metrics(DATASET_RELATION))
       }
-    } else {
+    } else if (saved_metrics != None) {
       metrics.update(DATASET_RELATION, metrics(DATASET_RELATION) ++ saved_metrics.get(DATASET_RELATION))
+    } else {
+      metrics.update(DATASET_RELATION, metrics(DATASET_RELATION))
     }
     metrics
   }
@@ -185,10 +195,20 @@ object ExperimentScorer {
   def getSortKey(keys: List[String])(metrics: RelationMetrics) = {
     val entries = new mutable.ListBuffer[Double]
     for (key <- keys) {
-      if (key.charAt(0) == '-') {
-        entries += -metrics(DATASET_RELATION)(key.substring(1))
-      } else {
-        entries += metrics(DATASET_RELATION)(key)
+      try {
+        if (key.charAt(0) == '-') {
+          entries += -metrics(DATASET_RELATION)(key.substring(1))
+        } else {
+          entries += metrics(DATASET_RELATION)(key)
+        }
+      } catch {
+        case e: java.util.NoSuchElementException => {
+          if (key.charAt(0) == '-') {
+            entries += 1.0
+          } else {
+            entries += -1.0
+          }
+        }
       }
     }
     entries.toList
