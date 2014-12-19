@@ -29,11 +29,12 @@ object ExperimentScorer {
     ("MMAP Predicted", "MMAP+"),
     ("MMRR Predicted", "MMRR+")
   )
+  val significanceTests_ = List("AP")
 
   def main(args: Array[String]) {
     val pra_base = args(0)
     val filter = if (args.length > 1) args(1) else ""
-    scoreExperiments(pra_base, filter, displayMetrics_, sortResultsBy_, metricComputers_)
+    scoreExperiments(pra_base, filter, displayMetrics_, sortResultsBy_, metricComputers_, significanceTests_)
   }
 
   def scoreExperiments(
@@ -41,7 +42,8 @@ object ExperimentScorer {
       experiment_filter: String,
       displayMetrics: List[(String, String)],
       sortResultsBy: List[String],
-      metricComputers: List[MetricComputer]) {
+      metricComputers: List[MetricComputer],
+      significanceTests: List[String]) {
     val results_dir = pra_base + RESULTS_DIR
     val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir), """settings.txt""".r)
       .map(_.getParentFile)
@@ -78,14 +80,15 @@ object ExperimentScorer {
       }
     }
     val finishedMetrics = makeExperimentMetricsImmutable(metrics)
-    displayExperiments(finishedMetrics, displayMetrics, sortResultsBy)
+    displayExperiments(finishedMetrics, displayMetrics, sortResultsBy, significanceTests)
     saveMetrics(makeExperimentMetricsImmutable(savedMetrics), savedMetricsFile)
   }
 
   def displayExperiments(
       metrics: ExperimentMetrics,
       displayMetrics: List[(String, String)],
-      sortResultsBy: List[String]) {
+      sortResultsBy: List[String],
+      significanceTests: List[String]) {
     println()
     val experiment_title = "Experiment"
     val sortKeyFunction = getSortKey(sortResultsBy) _
@@ -110,6 +113,10 @@ object ExperimentScorer {
         }
       }
       println()
+    }
+
+    for (metric <- significanceTests) {
+      displaySignificanceTests(metrics, experiments, metric)
     }
   }
 
@@ -137,7 +144,6 @@ object ExperimentScorer {
         relations_seen += 1
         val timestamp = new File(results_file).lastModified
         if (timestamp > last_timestamp) last_timestamp = timestamp
-        // TODO(matt): check timestamps here
         if (saved_metrics == None
             || !saved_metrics.get.isDefinedAt(relation)
             || !saved_metrics.get(relation).isDefinedAt(TIMESTAMP)
@@ -186,8 +192,6 @@ object ExperimentScorer {
       }
     } else if (saved_metrics != None) {
       metrics.update(DATASET_RELATION, metrics(DATASET_RELATION) ++ saved_metrics.get(DATASET_RELATION))
-    } else {
-      metrics.update(DATASET_RELATION, metrics(DATASET_RELATION))
     }
     metrics
   }
@@ -212,6 +216,80 @@ object ExperimentScorer {
       }
     }
     entries.toList
+  }
+
+  def displaySignificanceTests(
+      metrics: ExperimentMetrics,
+      experiments: List[String],
+      metric: String) {
+    println(s"\nSignificance tests for metric $metric")
+    println("Methods:")
+    for ((method, i) <- experiments.zipWithIndex) {
+      val displayName = metrics(method)(DISPLAY_NAME).keys.toList(0)
+      println(s"${i+1}: $displayName")
+    }
+    println()
+    print("     ")
+    for ((method, i) <- experiments.zipWithIndex) {
+      print(s"       ${i+1}   ")
+    }
+    println()
+    for ((method1, i) <- experiments.zipWithIndex) {
+      print(s"${i+1}  ")
+      for ((method2, j) <- experiments.zipWithIndex) {
+        if (j <= i) {
+          print("           ")
+        } else {
+          val p_value = testSignificance(metrics, method1, method2, metric)
+          print(f" $p_value%9.6f ")
+        }
+      }
+      println()
+    }
+  }
+
+  def testSignificance(metrics: ExperimentMetrics, method1: String, method2: String, metric: String) = {
+    val paired_values = new mutable.ListBuffer[(Double, Double)]
+    for (relation <- metrics(method1) if metrics(method1)(relation._1).isDefinedAt(metric)) {
+      if (metrics(method2)(relation._1).isDefinedAt(metric)) {
+        paired_values += Tuple2(metrics(method1)(relation._1)(metric),
+          metrics(method2)(relation._1)(metric))
+      }
+    }
+    if (paired_values.size > 0) {
+      getPValue(paired_values.toList)
+    } else {
+      -1.0
+    }
+  }
+
+  def getPValue(values: List[(Double, Double)]) = {
+    val diffs = values.map(x => x._1 - x._2)
+    val mean_diff = math.abs(diffs.sum) / diffs.length
+    var n = 0.0
+    val iters = math.pow(2, diffs.length)
+    var i = 0
+    while (i < iters) {
+      var a = i
+      var index = 1
+      var diff = 0.0
+      while (index <= diffs.length) {
+        if (a % 2 == 1) {
+          diff -= diffs(diffs.length - index)
+        }
+        else {
+          diff += diffs(diffs.length - index)
+        }
+        if (a > 0) {
+          a = a >> 1
+        }
+        index += 1
+      }
+      diff = math.abs(diff / diffs.length)
+      if (diff >= mean_diff) n += 1
+      i += 1
+    }
+    n / iters
   }
 
   def saveMetrics(metrics: ExperimentMetrics, metrics_file: String) {
