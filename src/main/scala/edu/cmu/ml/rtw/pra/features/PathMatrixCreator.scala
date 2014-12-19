@@ -147,16 +147,12 @@ class PathMatrixCreator(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, CSCMatrix[Int]]): CSCMatrix[Int] = {
     val str = path_type.encodeAsHumanReadableString(edge_dict)
-    println(s"Creating path matrix for $str")
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
-    println(s"Initial size: ${result.activeSize} ($str)")
     if (path_type.getReverse()(0)) {
       result = result.t
     }
     result = sources_matrix * result
-    println(s"Filtered size: ${result.activeSize} ($str)")
     for (i <- 1 until path_type.getEdgeTypes().length) {
-      println(s"On step $i with ${result.activeSize} entries, $str")
       val relation_matrix = connectivity_matrices(path_type.getEdgeTypes()(i))
       if (path_type.getReverse()(i)) {
         result = result * relation_matrix.t
