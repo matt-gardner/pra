@@ -177,10 +177,10 @@ class PathMatrixCreator(
   }
 
   def normalizeMatrix(matrix: CSCMatrix[Double]): CSCMatrix[Double] = {
-    val rowTotals = new mutable.HashMap[Int, Double]
+    val rowTotals = new mutable.HashMap[Int, Double].withDefaultValue(0.0)
     var offset = 0
     for (instance <- matrix.activeIterator) {
-      rowTotals(instance._1._1) += instance._2
+      rowTotals.update(instance._1._1, rowTotals(instance._1._1) + instance._2)
     }
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, matrix.activeSize)
     for (instance <- matrix.activeIterator) {
