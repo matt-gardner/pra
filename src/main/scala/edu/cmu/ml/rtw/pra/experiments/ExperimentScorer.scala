@@ -282,7 +282,7 @@ object ExperimentScorer {
     for (relation <- relations) {
       print(f"${relation}%-40s")
       for (method <- experiments) {
-        if (!metrics(method)(relation).isDefinedAt(metric)) {
+        if (!metrics(method).isDefinedAt(relation)) {
           print("         ")
         } else {
           val value = metrics(method)(relation)(metric)
@@ -296,7 +296,7 @@ object ExperimentScorer {
   def testSignificance(metrics: ExperimentMetrics, method1: String, method2: String, metric: String) = {
     val paired_values = new mutable.ListBuffer[(Double, Double)]
     for (relation <- metrics(method1) if metrics(method1)(relation._1).isDefinedAt(metric)) {
-      if (metrics(method2)(relation._1).isDefinedAt(metric)) {
+      if (metrics(method2).isDefinedAt(relation._1)) {
         paired_values += Tuple2(metrics(method1)(relation._1)(metric),
           metrics(method2)(relation._1)(metric))
       }
