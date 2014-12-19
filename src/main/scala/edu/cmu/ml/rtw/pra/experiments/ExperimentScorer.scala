@@ -99,9 +99,9 @@ object ExperimentScorer {
       print(f"$metricHeader%15s")
     }
     println()
-    for (experiment <- experiments) {
+    for ((experiment, i) <- experiments.zipWithIndex) {
       val displayName = metrics(experiment)(DISPLAY_NAME).keys.toList(0)
-      print(f"${displayName}%-35s")
+      print(f"(${i+1}%2d) ${displayName}%-31s")
       for (displayMetric <- displayMetrics) {
         try {
           print(f"${metrics(experiment)(DATASET_RELATION)(displayMetric._1)}%15.4f")
@@ -223,25 +223,21 @@ object ExperimentScorer {
       experiments: List[String],
       metric: String) {
     println(s"\nSignificance tests for metric $metric")
-    println("Methods:")
+    print("   ")
     for ((method, i) <- experiments.zipWithIndex) {
-      val displayName = metrics(method)(DISPLAY_NAME).keys.toList(0)
-      println(s"${i+1}: $displayName")
-    }
-    println()
-    print("     ")
-    for ((method, i) <- experiments.zipWithIndex) {
-      print(s"       ${i+1}   ")
+      print(f" ${i+1}%2d      ")
     }
     println()
     for ((method1, i) <- experiments.zipWithIndex) {
-      print(s"${i+1}  ")
+      print(f"${i+1}%2d  ")
       for ((method2, j) <- experiments.zipWithIndex) {
-        if (j <= i) {
-          print("           ")
+        if (j == 0) {
+          print("   ")
+        } else if (j <= i) {
+          print("         ")
         } else {
           val p_value = testSignificance(metrics, method1, method2, metric)
-          print(f" $p_value%9.6f ")
+          print(f" $p_value%7.5f ")
         }
       }
       println()
