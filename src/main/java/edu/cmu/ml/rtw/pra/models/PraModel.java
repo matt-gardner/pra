@@ -200,7 +200,7 @@ public class PraModel {
     }
     logger.info("Number of positive features: " + numPositiveFeatures);
     logger.info("Number of negative features: " + numNegativeFeatures);
-    if (numNegativeFeatures < numPositiveFeatures && !config.onlyExplicitNegatives) {
+    if (numNegativeFeatures < numPositiveFeatures) {
       logger.info("Using unseen examples to make up the difference");
       int difference = numPositiveFeatures - numNegativeFeatures;
       int numUnseenFeatures = 0;

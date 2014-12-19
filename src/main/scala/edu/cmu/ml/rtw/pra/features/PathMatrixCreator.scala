@@ -67,8 +67,12 @@ class PathMatrixCreator(
    * targets in the resultant vector that are also in allowed_targets.
    */
   def getFeatureMatrix(sources: JSet[Integer], allowed_targets: JSet[Integer]): FeatureMatrix = {
-    getFeatureMatrix(sources.map(_.asInstanceOf[Int]).toSet,
-      allowed_targets.map(_.asInstanceOf[Int]).toSet)
+    if (allowed_targets != null) {
+      getFeatureMatrix(sources.map(_.asInstanceOf[Int]).toSet,
+        allowed_targets.map(_.asInstanceOf[Int]).toSet)
+    } else {
+      getFeatureMatrix(sources.map(_.asInstanceOf[Int]).toSet, null)
+    }
   }
 
   // NO JAVA INTERFACING CODE BELOW HERE!
@@ -81,8 +85,7 @@ class PathMatrixCreator(
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
     println("Getting feature matrix for input sources");
     val matrix_rows = sources.par.flatMap(
-      x => getFeatureMatrixRowsForSource(x, allowed_targets.map(_.asInstanceOf[Int]).toSet)
-      ).seq.toSeq
+      x => getFeatureMatrixRowsForSource(x, allowed_targets)).seq.toSeq
     new FeatureMatrix(matrix_rows)
   }
 
@@ -101,7 +104,7 @@ class PathMatrixCreator(
       while(offset < targets.activeSize) {
         val target = targets.indexAt(offset)
         val value = targets.valueAt(offset)
-        if (allowed_targets.contains(target)) {
+        if (allowed_targets == null || allowed_targets.contains(target)) {
           seen_features += Tuple3(target, path_type_with_index._2, value)
         }
         offset += 1
@@ -147,16 +150,12 @@ class PathMatrixCreator(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, CSCMatrix[Int]]): CSCMatrix[Int] = {
     val str = path_type.encodeAsHumanReadableString(edge_dict)
-    println(s"Creating path matrix for $str")
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
-    println(s"Initial size: ${result.activeSize} ($str)")
     if (path_type.getReverse()(0)) {
       result = result.t
     }
     result = sources_matrix * result
-    println(s"Filtered size: ${result.activeSize} ($str)")
     for (i <- 1 until path_type.getEdgeTypes().length) {
-      println(s"On step $i with ${result.activeSize} entries, $str")
       val relation_matrix = connectivity_matrices(path_type.getEdgeTypes()(i))
       if (path_type.getReverse()(i)) {
         result = result * relation_matrix.t

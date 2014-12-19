@@ -185,12 +185,6 @@ public class PraConfig {
   // feature matrix.
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // Whether to use examples as negative instances that were not explicitly given as negative.
-  // That is, if the random walks find a connection between a source node and a target node that
-  // was not given as either a positive or negative example, should we use it as a negative
-  // example?  If this parameter is true, we will not use it.
-  public final boolean onlyExplicitNegatives;
-
   // Weight to use for L2 regularization.
   public final double l2Weight;
 
@@ -248,7 +242,6 @@ public class PraConfig {
     l2Weight = builder.l2Weight;
     l1Weight = builder.l1Weight;
     binarizeFeatures = builder.binarizeFeatures;
-    onlyExplicitNegatives = builder.onlyExplicitNegatives;
     allData = builder.allData;
     percentTraining = builder.percentTraining;
     trainingData = builder.trainingData;
@@ -282,7 +275,6 @@ public class PraConfig {
     private double l2Weight;
     private double l1Weight;
     private boolean binarizeFeatures = false;
-    private boolean onlyExplicitNegatives;
     private Dataset allData;
     private double percentTraining;
     private Dataset trainingData;
@@ -316,7 +308,6 @@ public class PraConfig {
     public Builder setL2Weight(double l2Weight) {this.l2Weight = l2Weight;return this;}
     public Builder setL1Weight(double l1Weight) {this.l1Weight = l1Weight;return this;}
     public Builder setBinarizeFeatures(boolean b) {this.binarizeFeatures = b;return this;}
-    public Builder onlyExplicitNegatives() {this.onlyExplicitNegatives = true;return this;}
     public Builder setAllData(Dataset d) {this.allData = d;return this;}
     public Builder setPercentTraining(double p) {this.percentTraining = p;return this;}
     public Builder setTrainingData(Dataset t) {this.trainingData = t;return this;}
@@ -359,7 +350,6 @@ public class PraConfig {
       setL2Weight(config.l2Weight);
       setL1Weight(config.l1Weight);
       setBinarizeFeatures(config.binarizeFeatures);
-      if (config.onlyExplicitNegatives) onlyExplicitNegatives();
       setAllData(config.allData);
       setPercentTraining(config.percentTraining);
       setTrainingData(config.trainingData);
@@ -395,8 +385,6 @@ public class PraConfig {
           setNumIters(Integer.parseInt(value));
         } else if (parameter.equalsIgnoreCase("number of paths to keep")) {
           setNumPaths(Integer.parseInt(value));
-        } else if (parameter.equalsIgnoreCase("only explicit negative evidence")) {
-          onlyExplicitNegatives();
         } else if (parameter.equalsIgnoreCase("binarize features")) {
           setBinarizeFeatures(Boolean.parseBoolean(value));
         } else if (parameter.equalsIgnoreCase("normalize walk probabilities")) {
