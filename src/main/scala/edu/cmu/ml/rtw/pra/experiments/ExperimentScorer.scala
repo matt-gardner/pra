@@ -30,11 +30,19 @@ object ExperimentScorer {
     ("MMRR Predicted", "MMRR+")
   )
   val significanceTests_ = List("AP")
+  val relationMetrics_ = List("AP")
 
   def main(args: Array[String]) {
     val pra_base = args(0)
     val filter = if (args.length > 1) args(1) else ""
-    scoreExperiments(pra_base, filter, displayMetrics_, sortResultsBy_, metricComputers_, significanceTests_)
+    scoreExperiments(
+      pra_base,
+      filter,
+      displayMetrics_,
+      sortResultsBy_,
+      metricComputers_,
+      significanceTests_,
+      relationMetrics_)
   }
 
   def scoreExperiments(
@@ -43,7 +51,8 @@ object ExperimentScorer {
       displayMetrics: List[(String, String)],
       sortResultsBy: List[String],
       metricComputers: List[MetricComputer],
-      significanceTests: List[String]) {
+      significanceTests: List[String],
+      relationMetrics: List[String]) {
     val results_dir = pra_base + RESULTS_DIR
     val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir), """settings.txt""".r)
       .map(_.getParentFile)
@@ -80,7 +89,12 @@ object ExperimentScorer {
       }
     }
     val finishedMetrics = makeExperimentMetricsImmutable(metrics)
-    displayExperiments(finishedMetrics, displayMetrics, sortResultsBy, significanceTests)
+    displayExperiments(
+      finishedMetrics,
+      displayMetrics,
+      sortResultsBy,
+      significanceTests,
+      relationMetrics)
     saveMetrics(makeExperimentMetricsImmutable(savedMetrics), savedMetricsFile)
   }
 
@@ -88,7 +102,8 @@ object ExperimentScorer {
       metrics: ExperimentMetrics,
       displayMetrics: List[(String, String)],
       sortResultsBy: List[String],
-      significanceTests: List[String]) {
+      significanceTests: List[String],
+      relationMetrics: List[String]) {
     println()
     val experiment_title = "Experiment"
     val sortKeyFunction = getSortKey(sortResultsBy) _
@@ -117,6 +132,9 @@ object ExperimentScorer {
 
     for (metric <- significanceTests) {
       displaySignificanceTests(metrics, experiments, metric)
+    }
+    for (metric <- significanceTests) {
+      displayRelationMetrics(metrics, experiments, metric)
     }
   }
 
