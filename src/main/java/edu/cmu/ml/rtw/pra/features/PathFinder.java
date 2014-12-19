@@ -383,10 +383,10 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
      * trackBit, and off methods of the base LongWalkManager, which doesn't use the top 32 bits.
      */
     static long encode(int walkId, int hopNum, int sourceId, boolean track, int off) {
-      assert(off < 128);
-      assert(walkId < MAX_ENCODABLE_WALKS);
-      assert(hopNum < MAX_ENCODABLE_HOPS);
-      assert(sourceId < MAX_SOURCES);
+      if (off >= 128) throw new AssertionError("off too high: " + off);
+      if (walkId >= MAX_ENCODABLE_WALKS) throw new AssertionError("walkId too high: " + walkId);
+      if (hopNum >= MAX_ENCODABLE_HOPS) throw new AssertionError("hopNum too high: " + hopNum);
+      if (sourceId >= MAX_SOURCES) throw new AssertionError("sourceId too high: " + sourceId);
       int trackBit = (track ? 1 : 0);
       return ((long) walkId & 0x7ffffff) << 37 |
           ((long)(hopNum & 0x1f)) << 32 |

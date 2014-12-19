@@ -86,6 +86,20 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     builder.result
   }
 
+  val relation5File = {
+    "Relation 5\n" +
+    "5\t1\n" +
+    "5\t1\n" +
+    "5\t1\n" +
+    "5\t2\n"
+  }
+  val relation5Matrix = {
+    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    builder.add(5, 1, 1)
+    builder.add(5, 2, 1)
+    builder.result
+  }
+
   val connectivity_matrices = {
     val matrices = new mutable.HashMap[Int, CSCMatrix[Int]]
     matrices(1) = relation1Matrix
@@ -254,6 +268,15 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     matrices(4)(4, 1) should be (1)
     matrices(4)(4, 2) should be (0)
     matrices(4)(4, 3) should be (1)
+  }
+
+  it should "have entries higher than 1 when relation instances are repeated" in {
+    val matrixFile = relation5File
+    var matrices = creatorWithPathTypes.readMatricesFromFile(
+      new BufferedReader(new StringReader(matrixFile)),
+      Set(5))
+    matrices(5)(5, 1) should be (3)
+    matrices(5)(5, 2) should be (1)
   }
 
   "separateRelationsByFile" should "correctly split relations by file" in {

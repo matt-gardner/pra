@@ -267,6 +267,7 @@ public class KbPraDriver {
    */
   public Map<Integer, Integer> createInverses(String filename, Dictionary dict) throws IOException {
     Map<Integer, Integer> inverses = new HashMap<Integer, Integer>();
+    if (!fileUtil.fileExists(filename)) return inverses;
     BufferedReader reader = new BufferedReader(new FileReader(filename));
     String line;
     while ((line = reader.readLine()) != null) {

@@ -75,7 +75,13 @@ public class Dataset {
       if (fields.length == 2) {
         positive = true;
       } else {
-        positive = fields[2].equals("1");
+        // We could just test for equality with "1" here, but actually parsing to an integer
+        // catches potential errors if the input file is formatted incorrectly.
+        try {
+          positive = Integer.parseInt(fields[2]) == 1;
+        } catch (NumberFormatException e) {
+          throw new RuntimeException("Input split file not formatted correctly", e);
+        }
       }
       int source;
       int target;
