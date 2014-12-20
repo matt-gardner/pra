@@ -26,6 +26,15 @@ that license).  You can find the text of that license
 
 # Changelog
 
+Planned for version 1.2:
+
+- Better parameter specification.
+
+- Working synthetic data generation.
+
+- A matrix multiplication implementation of the vector space random walks from the EMNLP 2014
+  paper.
+
 Version 1.1 (released on 12/20/2014):
 
 - ExperimentScorer now shows more information.  It used to only show each experiment ranked by an
