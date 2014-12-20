@@ -37,7 +37,9 @@ If you are using maven, you can include the PRA code by putting the following un
 
 Available PRA versions (see the [changelog](https://github.com/matt-gardner/pra) in the code's
 README for more info on what's new in each version):
+
 - 1.1
+
 - 1.0
 
 ## License
