@@ -28,20 +28,55 @@ that license).  You can find the text of that license
 
 Version 1.1:
 
+- ExperimentScorer now shows more information.  It used to only show each experiment ranked by an
+  overall score (like MAP); now it does a significance test on those metrics, and shows a table of
+each experiment's performance on each individual relation in the test.  ExperimentScorer is not
+currently very configurable, though - you have to change the code if you want to show something
+else.  This is relatively easy, though, as the parameters are all at the top of the file.  You
+could also write another class that calls ExperimentScorer with your own parameters, if you want.
+
 - Added matrix multiplication as an alternative to random walks in the path following step.  This
   is still somewhat experimental, and more details will be forthcoming in a few months.  There's a
 new parameter that can be specified in the param file called `path follower`.  Set it to `matrix
-multiplication` to use the new technique.  Current results: it performs better on NELL, in about
-the same amount of time, on the KB and KB + SVO cases.  I haven't gotten KB + clustered SVO to
-work right, and I haven't implemented KB + vector SVO, and it does not currently scale to
-Freebase.
+multiplication` to use the new technique.  The value of this is mostly theoretical at this point,
+as performance is pretty much identical to using random walks, except it's slower and less
+scalable.  I plan on getting the vector space random walk idea into the matrix multiplication code
+soon.
 
-# WARNING
+# Desired improvements
 
-I did a force push on the repository on September 15, 2014, to remove some old jar files that made
-the download for this repository about 25MB.  Now it's about ~200KB.  I thought that breaking the
-history was worth it, given the small number of current users of the code, and the fact that I'm
-the only one contributing right now.  What this means is that if you cloned the repository before
-Sept. 15, 2014, and you want to update the repository, you're going to have to re-clone the
-repository.  The good news is that it shouldn't be that big a deal, because you probably didn't
-modify the code, and the download is now just 200KB.
+In rough order of priority.  I will probably do the top two things in the relatively near future.
+The rest are kind of, "this would be nice, but I probably won't get to it any time soon".
+
+- Better parameter specification.  The current method for inputting parameters is something of a
+  mess.  I started out using these TSV parameter files, then I added the .spec files, and they
+really are redundant.  And if you want to use all of the same parameters except one, you need to
+create a whole new file for them - being able to extend a parameter file would be nice.  This
+really could be done better, and I'm sure there exist somewhat standard solutions for inputting
+parameters; I should use one of them.
+
+- Better feature selection.  The first step of PRA is selecting a set of path types that will be
+  used as features in the rest of the algorithm.  That is currently done by using random walks to
+find frequently seen path types.  It would be pretty simple to select features by some measure of
+specificity, instead of simply by count, so that you have some hope of getting more useful features
+out.
+
+- Better negative example selection.  The main code path here is to specify only positive examples
+  as the training data, and let the algorithm find negative examples using a closed-world
+assumption.  It would be nice to have a better way of finding negative examples, then input them
+as explicitly as negative examples, not bothering with any kind of closed world assumption.  Note
+that if you have negative examples, the functionality for specifying negative examples and only
+keeping specified rows in the feature matrix is already there.  There just isn't any kind of smart
+technique for picking those negative examples.
+
+- Single-sided features.  This is something that Ni Lao had in his implementation of PRA that I
+  haven't done.  These act like biases on certain target or source nodes; for instance, this could
+encode the fact that `Gender(X, Female)` has a very high negative weight for the relation
+`FatherOf(X, Y)`.
+
+- Allow for weighted edges.  The random walks I currently do cannot handle any kind of weights on
+  the edges of the graph.  They might be useful in some circumstances.
+
+- Better training methods.  Maximum likelihood estimation of a log-linear model might not be the
+  best model we can use; it might be nice to have the option to use other loss functions or
+training methods, like a ranking loss, or something.

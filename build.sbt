@@ -2,7 +2,7 @@ organization := "edu.cmu.ml.rtw"
 
 name := "pra"
 
-version := "1.0"
+version := "1.1"
 
 scalaVersion := "2.11.2"
 
