@@ -31,7 +31,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "1\t3\n"
   }
   val relation1Matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
     builder.add(1, 1, 1)
     builder.add(1, 2, 1)
     builder.add(1, 3, 1)
@@ -45,7 +45,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "2\t3\n"
   }
   val relation2Matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
     builder.add(2, 1, 1)
     builder.add(2, 2, 1)
     builder.add(2, 3, 1)
@@ -59,7 +59,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "3\t3\n"
   }
   val relation3Matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
     builder.add(3, 1, 1)
     builder.add(3, 2, 1)
     builder.add(3, 3, 1)
@@ -76,7 +76,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "4\t6\n"
   }
   val relation4Matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
     builder.add(4, 1, 1)
     builder.add(4, 2, 1)
     builder.add(4, 3, 1)
@@ -94,14 +94,14 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "5\t2\n"
   }
   val relation5Matrix = {
-    val builder = new CSCMatrix.Builder[Int](numNodes, numNodes)
+    val builder = new CSCMatrix.Builder[Double](numNodes, numNodes)
     builder.add(5, 1, 1)
     builder.add(5, 2, 1)
     builder.result
   }
 
   val connectivity_matrices = {
-    val matrices = new mutable.HashMap[Int, CSCMatrix[Int]]
+    val matrices = new mutable.HashMap[Int, CSCMatrix[Double]]
     matrices(1) = relation1Matrix
     matrices(2) = relation2Matrix
     matrices(3) = relation3Matrix
@@ -127,6 +127,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     edgeDict.getIndex("3");
     edgeDict.getIndex("4");
     edgesToExclude.add(Pair.makePair(Pair.makePair(4, 2), 4))
+    edgesToExclude.add(Pair.makePair(Pair.makePair(1, 4), 4))
     val path_types = seqAsJavaList(Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
@@ -140,6 +141,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       edgeDict,
       edgesToExclude,
       3,
+      false,
       fileUtil)
   }
 
@@ -257,7 +259,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       Set(2, 4))
     matrices.size should be (2)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
-    matrices(4).activeKeysIterator.toSet should be (Set((4, 1), (4, 3), (4, 4), (4, 5), (4,6)))
+    matrices(4).activeKeysIterator.toSet should be (Set((4, 3), (4, 4), (4, 5), (4,6)))
   }
 
   it should "remove training edges from connectivity matrices" in {
@@ -265,7 +267,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     var matrices = creatorWithPathTypes.readMatricesFromFile(
       new BufferedReader(new StringReader(matrixFile)),
       Set(4))
-    matrices(4)(4, 1) should be (1)
+    matrices(4)(4, 1) should be (0)
     matrices(4)(4, 2) should be (0)
     matrices(4)(4, 3) should be (1)
   }

@@ -236,7 +236,8 @@ class PathMatrixCreator(
           val fields = line.split("\t")
           val source = fields(0).toInt
           val target = fields(1).toInt
-          if (!edges_to_remove(current_relation).contains((source, target))) {
+          if (!edges_to_remove(current_relation).contains((source, target))
+              && !edges_to_remove(current_relation).contains((target, source))) {
             builder.add(source, target, 1)
           }
         }
