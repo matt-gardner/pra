@@ -26,7 +26,7 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 1.1:
+Version 1.1 (released on 12/20/2014):
 
 - ExperimentScorer now shows more information.  It used to only show each experiment ranked by an
   overall score (like MAP); now it does a significance test on those metrics, and shows a table of
@@ -42,6 +42,13 @@ multiplication` to use the new technique.  The value of this is mostly theoretic
 as performance is pretty much identical to using random walks, except it's slower and less
 scalable.  I plan on getting the vector space random walk idea into the matrix multiplication code
 soon.
+
+- Removed the onlyExplicitNegatives option, because it turns out it's redundant with a setting of
+  the matrix accept policy.
+
+- Started work on synthetic data generation, but it's not done yet (well, you can generate some
+  data, but learning from it doesn't turn out as I expect.  Something is up...).  A final release
+of working synthetic data generation will have to wait until version 1.2.
 
 # Desired improvements
 
