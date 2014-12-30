@@ -192,7 +192,6 @@ public class KbPraDriver {
                            PraConfig.Builder builder,
                            String outputBase,
                            FileUtil fileUtil) throws IOException {
-    // TODO(matt): allow this to be left unspecified.
     Map<Integer, Integer> inverses = createInverses(directory + "inverses.tsv", builder.edgeDict);
     builder.setRelationInverses(inverses);
 

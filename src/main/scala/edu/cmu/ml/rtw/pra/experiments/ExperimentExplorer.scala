@@ -32,7 +32,7 @@ object ExperimentExplorer {
   def exploreFeaturesFromSpec(exploration_base_dir: String)(spec_file: File) {
     println(s"Running PRA from spec file $spec_file")
     val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".spec", "")
-    val exploration_out_dir = exploration_base_dir + experiment
+    val exploration_out_dir = exploration_base_dir + experiment + "/"
     if (new File(exploration_out_dir).exists) {
       println(s"Result directory $exploration_out_dir already exists. Skipping...")
       return
@@ -44,8 +44,10 @@ object ExperimentExplorer {
       val relation_file = s"${split_dir}${relation}/testing.tsv"
       val output_base = s"${exploration_out_dir}${relation}/"
       println(s"Getting test-set features for relation ${relation}")
-      PathExplorer.exploreFeatures(
+      new PathExplorer().exploreFeatures(
+        settings("kb files"),
         settings("graph files"),
+        relation,
         relation_file,
         settings("param file"),
         output_base)

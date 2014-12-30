@@ -14,9 +14,12 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator;
 import edu.cmu.ml.rtw.pra.features.PathType;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
@@ -28,6 +31,39 @@ import edu.cmu.ml.rtw.users.matt.util.Pair;
  * graph to be able to make a correct prediction, for instance.
  */
 public class PathExplorer {
+  private final FileUtil fileUtil;
+
+  public PathExplorer() {
+    this(new FileUtil());
+  }
+
+  @VisibleForTesting
+  protected PathExplorer(FileUtil fileUtil) {
+    this.fileUtil = fileUtil;
+  }
+
+  public void exploreFeatures(String kbDirectory,
+                              String graphDirectory,
+                              String relation,
+                              String inputFile,
+                              String parameterFile,
+                              String outputBase) throws IOException, InterruptedException {
+    if (!graphDirectory.endsWith("/")) graphDirectory += "/";
+    PraConfig.Builder builder = new PraConfig.Builder();
+    builder.setFromParamFile(new BufferedReader(new FileReader(parameterFile)));
+    new File(outputBase).mkdirs();
+    builder.setOutputBase(outputBase);
+    DatasetFactory datasetFactory = new DatasetFactory();
+    new KbPraDriver().parseGraphFiles(graphDirectory, builder);
+    builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict));
+    new KbPraDriver().parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
+    PraConfig config = builder.build();
+
+    FeatureGenerator generator = new FeatureGenerator(config);
+    Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCounts =
+        generator.findConnectingPaths(config.trainingData);
+  }
+
   public static void main(String[] args) throws IOException, InterruptedException {
     Options cmdLineOptions = createOptionParser();
     CommandLine cmdLine = null;
@@ -47,8 +83,15 @@ public class PathExplorer {
   public static Options createOptionParser() {
     Options cmdLineOptions = new Options();
 
+    // A KB directory, the same as seen in KbPraDriver.
+    cmdLineOptions.addOption("k", "kb-files", true, "KB files directory");
+
     // A graph directory, the same as seen in KbPraDriver.
     cmdLineOptions.addOption("g", "graph-files", true, "Graph files directory");
+
+    // The relation that these nodes are training or testing examples for.  Used to exclude edges,
+    // if desired.  Can be left blank.
+    cmdLineOptions.addOption("r", "relation", true, "Relation to exclude in the walks");
 
     // A tab-separated file containing at least two columns.  The first column should be the source
     // node (name, not id - we'll use the graph's node dictionary).  The second column should be
@@ -68,33 +111,13 @@ public class PathExplorer {
   }
 
   public static void exploreFeatures(CommandLine cmdLine) throws IOException, InterruptedException {
+    String kbDirectory = cmdLine.getOptionValue("kb-files");
     String outputBase = cmdLine.getOptionValue("out-dir");
     String graphDirectory = cmdLine.getOptionValue("graph-files");
+    String relation = cmdLine.getOptionValue("relation", "");
     String inputFile = cmdLine.getOptionValue("input-file");
     String parameterFile = cmdLine.getOptionValue("param-file");
-    exploreFeatures(graphDirectory, inputFile, parameterFile, outputBase);
-  }
-
-  public static void exploreFeatures(String graphDirectory,
-                                     String inputFile,
-                                     String parameterFile,
-                                     String outputBase) throws IOException, InterruptedException {
-    if (!graphDirectory.endsWith("/")) graphDirectory += "/";
-    PraConfig.Builder builder = new PraConfig.Builder();
-    builder.setFromParamFile(new BufferedReader(new FileReader(parameterFile)));
-    new File(outputBase).mkdirs();
-    builder.setOutputBase(outputBase);
-    DatasetFactory datasetFactory = new DatasetFactory();
-    new KbPraDriver().parseGraphFiles(graphDirectory, builder);
-    builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict));
-    // TODO(matt): this will need to be fixed if we ever want to use this for something more than
-    // exploratory analysis!
-    builder.setUnallowedEdges(new ArrayList<Integer>());
-    PraConfig config = builder.build();
-
-    FeatureGenerator generator = new FeatureGenerator(config);
-    Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCounts =
-        generator.findConnectingPaths(config.trainingData);
+    new PathExplorer().exploreFeatures(kbDirectory, graphDirectory, relation, inputFile, parameterFile, outputBase);
   }
 
 }
