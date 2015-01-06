@@ -87,6 +87,14 @@ public class FileUtil {
     return dirName + File.separator;
   }
 
+  public List<String> readLinesFromFile(String filename) throws IOException {
+    List<String> lines = Lists.newArrayList();
+    BufferedReader reader = getBufferedReader(filename);
+    String line;
+    while ((line = reader.readLine()) != null) lines.add(line);
+    return lines;
+  }
+
   public List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {
     return readStringPairsFromReader(getBufferedReader(filename));
   }
