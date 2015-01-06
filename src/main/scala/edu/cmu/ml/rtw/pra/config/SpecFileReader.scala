@@ -33,37 +33,66 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
 
   def setPraConfigFromParams(params: JValue, config: PraConfig.Builder) {
     var value = params \ "l1 weight"
-    if (value != JNothing) config.setL1Weight(value.extract[Double])
+    if (!value.equals(JNothing)) {
+      config.setL1Weight(value.extract[Double])
+    }
     value = params \ "l2 weight"
-    if (value != JNothing) config.setL2Weight(value.extract[Double])
+    if (!value.equals(JNothing)) {
+      config.setL2Weight(value.extract[Double])
+    }
     value = params \ "walks per source"
-    if (value != JNothing) config.setWalksPerSource(value.extract[Int])
+    if (!value.equals(JNothing)) {
+      config.setWalksPerSource(value.extract[Int])
+    }
     value = params \ "walks per path"
-    if (value != JNothing) config.setWalksPerPath(value.extract[Int])
+    if (!value.equals(JNothing)) {
+      config.setWalksPerPath(value.extract[Int])
+    }
     value = params \ "path finding iterations"
-    if (value != JNothing) config.setNumIters(value.extract[Int])
+    if (!value.equals(JNothing)) {
+      config.setNumIters(value.extract[Int])
+    }
     value = params \ "number of paths to keep"
-    if (value != JNothing) config.setNumPaths(value.extract[Int])
+    if (!value.equals(JNothing)) {
+      config.setNumPaths(value.extract[Int])
+    }
     value = params \ "binarize features"
-    if (value != JNothing) config.setBinarizeFeatures(value.extract[Boolean])
-    value = params \ "normalize walks probabilities"
-    if (value != JNothing) config.setNormalizeWalkProbabilities(value.extract[Boolean])
+    if (!value.equals(JNothing)) {
+      config.setBinarizeFeatures(value.extract[Boolean])
+    }
+    value = params \ "normalize walk probabilities"
+    if (!value.equals(JNothing)) {
+      config.setNormalizeWalkProbabilities(value.extract[Boolean])
+    }
     value = params \ "matrix accept policy"
-    if (value != JNothing) config.setAcceptPolicy(MatrixRowPolicy.parseFromString(value.extract[String]))
+    if (!value.equals(JNothing)) {
+      config.setAcceptPolicy(MatrixRowPolicy.parseFromString(value.extract[String]))
+    }
     value = params \ "path accept policy"
-    if (value != JNothing) config.setPathTypePolicy(PathTypePolicy.parseFromString(value.extract[String]))
+    if (!value.equals(JNothing)) {
+      config.setPathTypePolicy(PathTypePolicy.parseFromString(value.extract[String]))
+    }
     value = params \ "max matrix feature fan out"
-    if (value != JNothing) config.setMaxMatrixFeatureFanOut(value.extract[Int])
+    if (!value.equals(JNothing)) {
+      config.setMaxMatrixFeatureFanOut(value.extract[Int])
+    }
     value = params \ "path type factory"
-    if (value != JNothing) initializePathTypeFactory(value, config);
+    if (!value.equals(JNothing)) {
+      initializePathTypeFactory(value, config);
+    }
     value = params \ "path type selector"
-    if (value != JNothing) initializePathTypeSelector(value, config);
+    if (!value.equals(JNothing)) {
+      initializePathTypeSelector(value, config);
+    }
     value = params \ "path follower"
-    if (value != JNothing) initializePathFollowerFactory(value, config);
+    if (!value.equals(JNothing)) {
+      initializePathFollowerFactory(value, config);
+    }
   }
 
   def initializePathTypeFactory(params: JValue, config: PraConfig.Builder) {
-    if ((params \ "name").extract[String] == "VectorPathTypeFactory") {
+    val name = (params \ "name").extract[String]
+    if (name.equals("VectorPathTypeFactory")) {
       initializeVectorPathTypeFactory(params, config)
     } else {
       throw new RuntimeException("Unrecognized path type factory")
@@ -74,6 +103,7 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
     println("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
+    println(s"RESET WEIGHT SET TO $resetWeight")
     val embeddingsFiles = (params \ "embeddings").extract[List[String]]
     val embeddings = config.readEmbeddingsVectors(embeddingsFiles)
     config.setPathTypeFactory(
@@ -81,7 +111,8 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
   }
 
   def initializePathTypeSelector(params: JValue, config: PraConfig.Builder) {
-    if ((params \ "name").extract[String] == "VectorClusteringPathTypeSelector") {
+    val name = (params \ "name").extract[String]
+    if (name.equals("VectorClusteringPathTypeSelector")) {
       initializeVectorClusteringPathTypeSelector(params, config)
     } else {
       throw new RuntimeException("Unrecognized path type selector")
@@ -98,10 +129,12 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
 
   def initializePathFollowerFactory(params: JValue, config: PraConfig.Builder) {
     val name = params.extract[String]
-    if (name == "random walks") {
+    if (name.equals("random walks")) {
       config.setPathFollowerFactory(new RandomWalkPathFollowerFactory());
-    } else if (name == "matrix multiplication") {
+    } else if (name.equals("matrix multiplication")) {
       config.setPathFollowerFactory(new MatrixPathFollowerFactory());
+    } else {
+      throw new RuntimeException("Unrecognized path follower")
     }
   }
 }

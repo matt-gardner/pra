@@ -119,15 +119,20 @@ public class OutputterTest extends TestCase {
     builder.setNegativeTargets(Lists.newArrayList(6, 13));
     Dataset testingData = builder.build();
     PraConfig config = new PraConfig.Builder()
+        .testing()
         .setTrainingData(trainingData)
         .setTestingData(testingData)
         .build();
 
     Map<Integer, List<Pair<Integer, Double>>> sourceScores = Maps.newHashMap();
-    sourceScores.put(3, Lists.newArrayList(Pair.makePair(7, 0.1),
-                                           Pair.makePair(4, 0.6),
-                                           Pair.makePair(8, 0.3)));
-    sourceScores.put(12, Lists.newArrayList(Pair.makePair(1, 0.1)));
+    List<Pair<Integer, Double>> list3 = Lists.newArrayList();
+    list3.add(Pair.makePair(7, 0.1));
+    list3.add(Pair.makePair(4, 0.6));
+    list3.add(Pair.makePair(8, 0.3));
+    sourceScores.put(3, list3);
+    List<Pair<Integer, Double>> list12 = Lists.newArrayList();
+    list12.add(Pair.makePair(1, 0.1));
+    sourceScores.put(12, list12);
 
     String scoresFile = "/scores file";
     String expectedScoresFileContents =

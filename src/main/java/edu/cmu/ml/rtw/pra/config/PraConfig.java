@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -26,6 +27,7 @@ import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluderFactory;
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
 
 public class PraConfig {
@@ -284,7 +286,10 @@ public class PraConfig {
     public Dictionary edgeDict = new Dictionary();
     public Outputter outputter = null;
 
-    public Builder() { }
+    private boolean testing = false;
+    private FileUtil fileUtil;
+
+    public Builder() { fileUtil = new FileUtil(); }
     public Builder setGraph(String graph) {this.graph = graph;return this;}
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
@@ -318,6 +323,10 @@ public class PraConfig {
       if (outputter == null) {
         outputter = new Outputter(nodeDict, edgeDict);
       }
+      if (testing) return new PraConfig(this);
+
+      // Check that we have a consistent state, with everything specified that is necessary for
+      // running PRA.
       if (graph == null) throw new IllegalStateException("graph must be set");
       if (numShards == -1) throw new IllegalStateException("numShards must be set");
       if (allData != null && percentTraining == -1.0) throw new IllegalStateException(
@@ -426,7 +435,7 @@ public class PraConfig {
 
     protected void readVectorsFromFile(String embeddingsFile,
                                        Map<Integer, Vector> embeddings) throws IOException {
-      BufferedReader reader = new BufferedReader(new FileReader(embeddingsFile));
+      BufferedReader reader = fileUtil.getBufferedReader(embeddingsFile);
       String line;
       // Embeddings files are formated as tsv, where the first column is the relation name
       // and the rest of the columns make up the vector.
@@ -465,6 +474,21 @@ public class PraConfig {
       } else if (paramString.equalsIgnoreCase("matrix multiplication")) {
         setPathFollowerFactory(new MatrixPathFollowerFactory());
       }
+    }
+
+    /**
+     * Called to disable consistency checks, so that building tests takes a bit less overhead.
+     */
+    @VisibleForTesting
+    public Builder testing() {
+      this.testing = true;
+      return this;
+    }
+
+    @VisibleForTesting
+    public Builder setFileUtil(FileUtil fileUtil) {
+      this.fileUtil = fileUtil;
+      return this;
     }
   }
 }

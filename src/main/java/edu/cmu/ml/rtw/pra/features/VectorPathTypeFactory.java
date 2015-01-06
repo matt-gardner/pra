@@ -49,6 +49,14 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     return embeddingsMap;
   }
 
+  public double getResetWeight() {
+    return resetWeight;
+  }
+
+  public double getSpikiness() {
+    return spikiness;
+  }
+
   public void initializeEmbeddings() {
     int maxIndex = edgeDict.getNextIndex();
     embeddings = new Vector[maxIndex + 1];

@@ -40,6 +40,9 @@ instrumentSettings
 
 jacoco.settings
 
+jacoco.reportFormats in jacoco.Config := Seq(
+  de.johoop.jacoco4sbt.ScalaHTMLReport(encoding = "utf-8", withBranchCoverage = true))
+
 publishMavenStyle := true
 
 pomIncludeRepository := { _ => false }

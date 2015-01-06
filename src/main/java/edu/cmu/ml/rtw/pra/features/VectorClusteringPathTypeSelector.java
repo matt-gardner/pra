@@ -26,6 +26,10 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
     nextClusterIndex = 1;
   }
 
+  public double getSimilarityThreshold() {
+    return similarityThreshold;
+  }
+
   @Override
   public List<PathType> selectPathTypes(Map<PathType, Integer> pathCounts, int numPathsToKeep) {
     Map<PathType, Integer> clusteredPathTypes = Maps.newHashMap();
