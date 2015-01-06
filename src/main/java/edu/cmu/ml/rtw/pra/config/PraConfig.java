@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
@@ -80,11 +81,6 @@ public class PraConfig {
   // (otherwise edge exclusion will not work correctly), and it should use the edgeDict to map
   // those relations to integers.
   public final Map<Integer, Integer> relationInverses;
-
-  // Let's wait on these two, until I settle on the right way to provide training data to the PRA
-  // code.  These might end up in a separate NELL-PRA piece of code.
-  //public final Set<Integer> domainNodes;
-  //public final Set<Integer> rangeNodes;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Path Finding parameters
@@ -246,8 +242,6 @@ public class PraConfig {
     percentTraining = builder.percentTraining;
     trainingData = builder.trainingData;
     testingData = builder.testingData;
-    //domainNodes = builder.domainNodes;
-    //rangeNodes = builder.rangeNodes;
     allowedTargets = builder.allowedTargets;
     normalizeWalkProbabilities = builder.normalizeWalkProbabilities;
     unallowedEdges = builder.unallowedEdges;
@@ -261,33 +255,31 @@ public class PraConfig {
 
   public static class Builder {
     private String graph;
-    private int numShards;
-    private int numIters;
-    private int walksPerSource;
-    private int numPaths;
+    private int numShards = -1;
+    private int numIters = 3;
+    private int walksPerSource = 200;
+    private int numPaths = 500;
     private PathTypePolicy pathTypePolicy = PathTypePolicy.PAIRED_ONLY;
     public PathTypeFactory pathTypeFactory = new BasicPathTypeFactory();
     private PathTypeSelector pathTypeSelector = new MostFrequentPathTypeSelector();
     private PathFollowerFactory pathFollowerFactory = new RandomWalkPathFollowerFactory();
     private int maxMatrixFeatureFanOut = 100;
-    private int walksPerPath;
+    private int walksPerPath = 50;
     private MatrixRowPolicy acceptPolicy = MatrixRowPolicy.ALL_TARGETS;
-    private double l2Weight;
-    private double l1Weight;
+    private double l2Weight = 1;
+    private double l1Weight = 0.05;
     private boolean binarizeFeatures = false;
     private Dataset allData;
-    private double percentTraining;
+    private double percentTraining = -1.0;
     private Dataset trainingData;
     private Dataset testingData;
-    //private Set<Integer> domainNodes;
-    //private Set<Integer> rangeNodes;
     private Set<Integer> allowedTargets;
     private boolean normalizeWalkProbabilities = true;
     private List<Integer> unallowedEdges;
     private EdgeExcluderFactory edgeExcluderFactory = new SingleEdgeExcluderFactory();
     private Map<Integer, Integer> relationInverses;
     private String outputBase;
-    // These two are public because that makes things easier in KbPraDriver.
+    // These three are public because that makes things easier in KbPraDriver.
     public Dictionary nodeDict = new Dictionary();
     public Dictionary edgeDict = new Dictionary();
     public Outputter outputter = null;
@@ -312,8 +304,6 @@ public class PraConfig {
     public Builder setPercentTraining(double p) {this.percentTraining = p;return this;}
     public Builder setTrainingData(Dataset t) {this.trainingData = t;return this;}
     public Builder setTestingData(Dataset t) {this.testingData = t;return this;}
-    //public Builder setDomainNodes(Set<Integer> n) {this.domainNodes = n;return this;}
-    //public Builder setRangeNodes(Set<Integer> n) {this.rangeNodes = n;return this;}
     public Builder setAllowedTargets(Set<Integer> a) {this.allowedTargets = a;return this;}
     public Builder setNormalizeWalkProbabilities(boolean b) {this.normalizeWalkProbabilities = b;return this;}
     public Builder setUnallowedEdges(List<Integer> e) {this.unallowedEdges = e;return this;}
@@ -328,7 +318,14 @@ public class PraConfig {
       if (outputter == null) {
         outputter = new Outputter(nodeDict, edgeDict);
       }
-      // TODO(matt): verify that all necessary options have been set.
+      if (graph == null) throw new IllegalStateException("graph must be set");
+      if (numShards == -1) throw new IllegalStateException("numShards must be set");
+      if (allData != null && percentTraining == -1.0) throw new IllegalStateException(
+          "Must give percent training when specifying allData");
+      if (allData != null && trainingData != null) throw new IllegalStateException(
+          "allData and trainingData are mutually exclusive");
+      if (allData == null && trainingData == null) throw new IllegalStateException(
+          "Must specify either allData or trainingData");
       return new PraConfig(this);
     }
 
@@ -354,8 +351,6 @@ public class PraConfig {
       setPercentTraining(config.percentTraining);
       setTrainingData(config.trainingData);
       setTestingData(config.testingData);
-      //setDomainNodes(config.domainNodes);
-      //setRangeNodes(config.rangeNodes);
       setAllowedTargets(config.allowedTargets);
       setNormalizeWalkProbabilities(config.normalizeWalkProbabilities);
       setUnallowedEdges(config.unallowedEdges);
@@ -412,25 +407,39 @@ public class PraConfig {
       String[] params = paramString.split(",");
       double spikiness = Double.parseDouble(params[0]);
       double resetWeight = Double.parseDouble(params[1]);
-      Map<Integer, Vector> embeddings = Maps.newHashMap();
+      List<String> embeddingsFiles = Lists.newArrayList();
       for (int embeddingsIndex = 2; embeddingsIndex < params.length; embeddingsIndex++) {
-        String embeddingsFile = params[embeddingsIndex];
-        System.out.println("Embeddings file: " + embeddingsFile);
-        BufferedReader reader = new BufferedReader(new FileReader(embeddingsFile));
-        String line;
-        // Embeddings files are formated as tsv, where the first column is the relation name
-        // and the rest of the columns make up the vector.
-        while ((line = reader.readLine()) != null) {
-          String[] fields = line.split("\t");
-          int relationIndex = edgeDict.getIndex(fields[0]);
-          double[] vector = new double[fields.length - 1];
-          for (int i = 0; i < vector.length; i++) {
-            vector[i] = Double.parseDouble(fields[i + 1]);
-          }
-          embeddings.put(relationIndex, new Vector(vector));
-        }
+        embeddingsFiles.add(params[embeddingsIndex]);
       }
+      Map<Integer, Vector> embeddings = readEmbeddingsVectors(embeddingsFiles);
       setPathTypeFactory(new VectorPathTypeFactory(edgeDict, embeddings, spikiness, resetWeight));
+    }
+
+    protected Map<Integer, Vector> readEmbeddingsVectors(List<String> embeddingsFiles) throws IOException {
+      Map<Integer, Vector> embeddings = Maps.newHashMap();
+      for (String embeddingsFile : embeddingsFiles) {
+        System.out.println("Embeddings file: " + embeddingsFile);
+        readVectorsFromFile(embeddingsFile, embeddings);
+      }
+      return embeddings;
+    }
+
+    protected void readVectorsFromFile(String embeddingsFile,
+                                       Map<Integer, Vector> embeddings) throws IOException {
+      BufferedReader reader = new BufferedReader(new FileReader(embeddingsFile));
+      String line;
+      // Embeddings files are formated as tsv, where the first column is the relation name
+      // and the rest of the columns make up the vector.
+      while ((line = reader.readLine()) != null) {
+        String[] fields = line.split("\t");
+        int relationIndex = edgeDict.getIndex(fields[0]);
+        double[] vector = new double[fields.length - 1];
+        for (int i = 0; i < vector.length; i++) {
+          vector[i] = Double.parseDouble(fields[i + 1]);
+        }
+        embeddings.put(relationIndex, new Vector(vector));
+      }
+      reader.close();
     }
 
     public void initializePathTypeSelector(String paramString) {
@@ -457,6 +466,5 @@ public class PraConfig {
         setPathFollowerFactory(new MatrixPathFollowerFactory());
       }
     }
-
   }
 }

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -88,5 +89,14 @@ public class CollectionsUtil {
         values.add(value);
       }
     }
+  }
+
+  public static <V> List<V> scalaToJavaList(scala.collection.Seq<V> scalaList) {
+    List<V> javaList = Lists.newArrayList();
+    scala.collection.Iterator<V> iterator = scalaList.iterator();
+    while (iterator.hasNext()) {
+      javaList.add(iterator.next());
+    }
+    return javaList;
   }
 }

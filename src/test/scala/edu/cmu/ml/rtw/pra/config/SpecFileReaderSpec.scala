@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.experiments
+package edu.cmu.ml.rtw.pra.config
 
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
@@ -97,5 +97,9 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "read nested parameters" in {
     new SpecFileReader(fileUtil).readSpecFile(nestedSpecFilename) should be(nestedParams)
+    println(nestedParams \ "level 5")
+  }
+
+  "setPraConfigFromParams" should "initialize simple params" in {
   }
 }
