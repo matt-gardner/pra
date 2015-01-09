@@ -35,7 +35,7 @@ public class FeatureGeneratorTest extends TestCase {
         inverses.put(1, 2);
 
         FeatureGenerator generator = new FeatureGenerator(new PraConfig.Builder()
-                                                                .testing()
+                                                                .noChecks()
                                                                 .setPathTypeFactory(factory)
                                                                 .build());
         Map<PathType, Integer> collapsed = generator.collapseInverses(pathCounts, inverses);
@@ -57,7 +57,7 @@ public class FeatureGeneratorTest extends TestCase {
         inverses.put(1, 2);
 
         FeatureGenerator generator = new FeatureGenerator(new PraConfig.Builder()
-                                                                .testing()
+                                                                .noChecks()
                                                                 .setPathTypeFactory(factory)
                                                                 .build());
         Map<Pair<Integer, Integer>, Map<PathType, Integer>> collapsed =
@@ -77,7 +77,7 @@ public class FeatureGeneratorTest extends TestCase {
         int node3Index = nodeDict.getIndex(node3);
         int node4Index = nodeDict.getIndex(node4);
         List<Integer> unallowedEdges = Arrays.asList(1, 3, 2);
-        PraConfig config = new PraConfig.Builder().testing().setUnallowedEdges(unallowedEdges).build();
+        PraConfig config = new PraConfig.Builder().noChecks().setUnallowedEdges(unallowedEdges).build();
         FeatureGenerator generator = new FeatureGenerator(config);
         String dataFile = "";
         dataFile += node1 + "\t" + node2 + "\n";

@@ -286,7 +286,7 @@ public class PraConfig {
     public Dictionary edgeDict = new Dictionary();
     public Outputter outputter = null;
 
-    private boolean testing = false;
+    private boolean noChecks = false;
     private FileUtil fileUtil;
 
     public Builder() { fileUtil = new FileUtil(); }
@@ -323,7 +323,7 @@ public class PraConfig {
       if (outputter == null) {
         outputter = new Outputter(nodeDict, edgeDict);
       }
-      if (testing) return new PraConfig(this);
+      if (noChecks) return new PraConfig(this);
 
       // Check that we have a consistent state, with everything specified that is necessary for
       // running PRA.
@@ -477,11 +477,12 @@ public class PraConfig {
     }
 
     /**
-     * Called to disable consistency checks, so that building tests takes a bit less overhead.
+     * Disables consistency checks. This can be used if you're building an intermediate Builder
+     * object (as in KbPraDriver.java or Driver.scala), or if you're just writing a simple test of
+     * something that needs part of a PraConfig, but not all of it.
      */
-    @VisibleForTesting
-    public Builder testing() {
-      this.testing = true;
+    public Builder noChecks() {
+      this.noChecks = true;
       return this;
     }
 

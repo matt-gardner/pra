@@ -6,6 +6,7 @@ import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
+import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConversions._
@@ -17,10 +18,17 @@ import org.json4s.native.JsonMethods._
 class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
+  def readSpecFile(file: java.io.File): JValue = {
+    readSpecFile(fileUtil.readLinesFromFile(file))
+  }
+
   def readSpecFile(filename: String): JValue = {
+    readSpecFile(fileUtil.readLinesFromFile(filename))
+  }
+
+  def readSpecFile(lines: Seq[String]): JValue = {
     val params = new JObject(Nil)
-    val specs = fileUtil.readLinesFromFile(filename)
-    populateParamsFromSpecs(specs, params)
+    populateParamsFromSpecs(lines, params)
   }
 
   def populateParamsFromSpecs(specs: Seq[String], params: JValue): JValue = {
@@ -32,7 +40,14 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
   }
 
   def setPraConfigFromParams(params: JValue, config: PraConfig.Builder) {
-    var value = params \ "l1 weight"
+    // It's important that this one happens first.  Well, it's at least important that this happens
+    // before anything that uses the dictionaries (like initializePathTypeFactory, for instance),
+    // so we just put it here at the top to be safe.
+    var value = params \ "graph files"
+    if (!value.equals(JNothing)) {
+      initializeGraphParameters(value.extract[String], config)
+    }
+    value = params \ "l1 weight"
     if (!value.equals(JNothing)) {
       config.setL1Weight(value.extract[Double])
     }
@@ -88,6 +103,20 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
     if (!value.equals(JNothing)) {
       initializePathFollowerFactory(value, config);
     }
+  }
+
+  def initializeGraphParameters(graphDirectory: String, config: PraConfig.Builder) {
+    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
+    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv");
+    println(s"Loading node and edge dictionaries from graph directory: $dir");
+    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
+    config.setNumShards(numShards)
+    val nodeDict = new Dictionary();
+    nodeDict.setFromFile(dir + "node_dict.tsv");
+    config.setNodeDictionary(nodeDict);
+    val edgeDict = new Dictionary();
+    edgeDict.setFromFile(dir + "edge_dict.tsv");
+    config.setEdgeDictionary(edgeDict);
   }
 
   def initializePathTypeFactory(params: JValue, config: PraConfig.Builder) {

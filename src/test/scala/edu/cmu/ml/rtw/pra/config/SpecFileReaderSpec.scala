@@ -112,6 +112,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     f.addFileToBeRead(overwrittenSpecFilename, overwrittenSpecFile)
     f.addFileToBeRead(nestedSpecFilename, nestedSpecFile)
     f.addFileToBeRead(relationEmbeddingsFilename, relationEmbeddingsFile)
+    f.addFileToBeRead("nell graph files/num_shards.tsv", "1\n")
     f
   }
 
@@ -134,7 +135,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   "setPraConfigFromParams" should "initialize simple params" in {
     val builder = new PraConfig.Builder
-    builder.testing()
+    builder.noChecks()
     new SpecFileReader(fileUtil).setPraConfigFromParams(baseParams, builder)
     val config = builder.build()
     config.numIters should be(9)
@@ -153,7 +154,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "give default values with empty params" in {
     val builder = new PraConfig.Builder
-    builder.testing()
+    builder.noChecks()
     new SpecFileReader(fileUtil).setPraConfigFromParams(new JObject(Nil), builder)
     val config = builder.build()
     config.numIters should be(3)
@@ -175,7 +176,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "handle path type factories" in {
     val builder = new PraConfig.Builder
-    builder.testing().setFileUtil(fileUtil)
+    builder.noChecks().setFileUtil(fileUtil)
     new SpecFileReader(fileUtil).setPraConfigFromParams(pathTypeFactoryParams, builder)
     val config = builder.build()
     val factory = config.pathTypeFactory.asInstanceOf[VectorPathTypeFactory]
@@ -193,7 +194,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "handle path follower factories" in {
     val builder = new PraConfig.Builder
-    builder.testing()
+    builder.noChecks()
     var params: JValue = ("path follower" -> "random walks")
     new SpecFileReader(fileUtil).setPraConfigFromParams(params, builder)
     val config = builder.build()
@@ -208,7 +209,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "handle path type selectors" in {
     val builder = new PraConfig.Builder
-    builder.testing().setFileUtil(fileUtil)
+    builder.noChecks().setFileUtil(fileUtil)
     val params: JValue = ("path type selector" ->
       ("name" -> "VectorClusteringPathTypeSelector") ~ ("similarity threshold" -> .3))
     new SpecFileReader(fileUtil).setPraConfigFromParams(pathTypeFactoryParams merge params, builder)

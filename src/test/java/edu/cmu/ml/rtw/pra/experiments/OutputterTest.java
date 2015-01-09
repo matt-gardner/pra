@@ -119,7 +119,7 @@ public class OutputterTest extends TestCase {
     builder.setNegativeTargets(Lists.newArrayList(6, 13));
     Dataset testingData = builder.build();
     PraConfig config = new PraConfig.Builder()
-        .testing()
+        .noChecks()
         .setTrainingData(trainingData)
         .setTestingData(testingData)
         .build();

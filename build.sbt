@@ -29,12 +29,16 @@ libraryDependencies ++= Seq(
   // MALLET, for optimization
   "cc.mallet" % "mallet" % "2.0.7",
   // GraphChi
-  "org.graphchi" %%  "graphchi-java" % "0.2.1",
+  "org.graphchi" %%  "graphchi-java" % "0.2.2",
   // Testing dependencies
   "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
   "com.novocode" % "junit-interface" % "0.11" % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 )
+
+// GraphChi leaves some threads running, so we need to call System.exit().  This makes that play
+// nicely while in an sbt console.
+fork in run := true
 
 instrumentSettings
 

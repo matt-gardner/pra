@@ -88,7 +88,7 @@ public class KbPraDriver {
     writer.write("End of parameters\n");
     writer.close();
 
-    PraConfig baseConfig = baseBuilder.build();
+    PraConfig baseConfig = baseBuilder.noChecks().build();
 
     String relationsFile = splitsDirectory + "relations_to_run.tsv";
     String line;

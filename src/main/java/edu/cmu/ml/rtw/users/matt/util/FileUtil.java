@@ -75,6 +75,10 @@ public class FileUtil {
     return new BufferedReader(new FileReader(filename));
   }
 
+  public BufferedReader getBufferedReader(File file) throws IOException {
+    return new BufferedReader(new FileReader(file));
+  }
+
   /**
    * Calls new File(dirName).mkdirs().
    */
@@ -87,12 +91,20 @@ public class FileUtil {
     return dirName + File.separator;
   }
 
-  public List<String> readLinesFromFile(String filename) throws IOException {
+  public List<String> readLinesFromReader(BufferedReader reader) throws IOException {
     List<String> lines = Lists.newArrayList();
-    BufferedReader reader = getBufferedReader(filename);
     String line;
     while ((line = reader.readLine()) != null) lines.add(line);
+    reader.close();
     return lines;
+  }
+
+  public List<String> readLinesFromFile(String filename) throws IOException {
+    return readLinesFromReader(getBufferedReader(filename));
+  }
+
+  public List<String> readLinesFromFile(File file) throws IOException {
+    return readLinesFromReader(getBufferedReader(file));
   }
 
   public List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {
