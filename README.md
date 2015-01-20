@@ -28,12 +28,16 @@ that license).  You can find the text of that license
 
 Planned for version 1.2:
 
-- Better parameter specification.
+- Better parameter specification. (This is working in the master branch now.)
 
-- Working synthetic data generation.
+- Working synthetic data generation.  (Not yet started, except for what's in version 1.1.)
 
 - A matrix multiplication implementation of the vector space random walks from the EMNLP 2014
-  paper.
+  paper.  (Not yet started.)
+
+- Better handling of JVM exit (version 1.1 and earlier tend to spit out InterruptedExceptions at 
+  you when it terminates, and most of the time won't give you back the sbt console).  (This is 
+fixed in the master branch now.)
 
 Version 1.1 (released on 12/20/2014):
 
