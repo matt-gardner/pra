@@ -54,7 +54,6 @@ class SimilarityMatrixCreator(
   def computeSimilarities(
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
-    println(s"Processing vector number ${vec._1}")
     val start = System.currentTimeMillis
     val close_vectors = new mutable.HashSet[(Int, DenseVector[Double])]
     for (index <- 0 until num_hashes) {
@@ -64,7 +63,6 @@ class SimilarityMatrixCreator(
         }
       }
     }
-    println(s"Number of close vectors: ${close_vectors.size}")
     val similarities = new mutable.ArrayBuffer[(Int, Int, Double)]
     for (vec2 <- close_vectors) {
       val similarity = vec._3 dot vec2._2
@@ -73,9 +71,7 @@ class SimilarityMatrixCreator(
       }
     }
     var seconds = ((System.currentTimeMillis - start) / 1000.0)
-    println(s"Took $seconds seconds")
-    val total_minutes = num_vectors * seconds / 60;
-    println(s"Estimated total minutes: $total_minutes")
+    println(s"Close vectors: ${close_vectors.size}; Time: $seconds seconds")
 
     similarities.toSeq
   }
