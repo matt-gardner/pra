@@ -16,11 +16,19 @@ class SimilarityMatrixCreator(
   var num_vectors: Int = 0
   var dimension: Int = 0
 
-  def createSimilarityMatrix(embeddingsFile: String, outFile: String) {
+  def createSimilarityMatrix(embeddingsFile: String, ignoreFile: String, outFile: String) {
+    val to_ignore: Set[String] = if (ignoreFile == null) Resource.fromFile(ignoreFile).lines().toSet else Set()
     val dict = new Dictionary
     println("Reading vectors")
-    val vectors = Resource.fromFile(embeddingsFile).lines().map(_.split("\t")).map(x =>
-        (dict.getIndex(x(0)), normalize(DenseVector(x.drop(1).map(_.toDouble))))).filter(x => norm(x._2) > 0)
+    val vectors = for {
+      line <- Resource.fromFile(embeddingsFile).lines()
+      fields = line.split("\t")
+      relation = fields(0)
+      if (!to_ignore.contains(relation))
+      vector = normalize(DenseVector(fields.drop(1).map(_.toDouble)))
+      if (norm(vector) > 0)
+    } yield (dict.getIndex(relation), vector)
+
     num_vectors = vectors.size
     dimension = vectors(0)._2.size
     println("Finding max and min vectors")
@@ -88,7 +96,7 @@ class SimilarityMatrixCreator(
     for (hash_num <- 1 to num_hashes) {
       val hash_function = new mutable.ArrayBuffer[DenseVector[Double]]
       for (hash_dim <- 1 to hash_size) {
-        hash_function += DenseVector.rand(dimension) :* (max - min) + min
+        hash_function += normalize(DenseVector.rand(dimension) :* (max - min) + min)
       }
       hash_functions += hash_function.toSeq
     }
@@ -113,6 +121,7 @@ object SimilarityMatrixCreator {
   def main(args: Array[String]) {
     new SimilarityMatrixCreator(.8, 3, 15).createSimilarityMatrix(
       "/home/mg1/pra/embeddings/pca_svo/embeddings.tsv",
+      "/home/mg1/pra/embeddings/pca_svo/to_ignore.txt",
       "/home/mg1/pra/embeddings/pca_svo/similarity_matrix.tsv")
   }
 }
