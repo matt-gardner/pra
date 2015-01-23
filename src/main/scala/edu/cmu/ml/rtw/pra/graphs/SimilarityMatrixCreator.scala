@@ -5,6 +5,7 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import breeze.linalg._
 
 import java.io.PrintWriter
+import java.util.Random
 
 import scala.collection.mutable
 import scalax.io.Resource
@@ -31,14 +32,8 @@ class SimilarityMatrixCreator(
 
     num_vectors = vectors.size
     dimension = vectors(0)._2.size
-    println("Finding max and min vectors")
-    val extremes = findExtremes(vectors)
-    val min = extremes._1
-    val max = extremes._2
-    println(s"Min vector: $min")
-    println(s"Max vector: $max")
     println("Creating hash functions")
-    val hash_functions = createHashFunctions(min, max)
+    val hash_functions = createHashFunctions(vectors.map(_._2))
     println("Hashing vectors")
     val hashed_vectors = vectors.par.map(x => (x._1, hashVector(x._2, hash_functions), x._2))
     val hash_maps = (0 until num_hashes).map(index => {
@@ -76,23 +71,35 @@ class SimilarityMatrixCreator(
     similarities.toSeq
   }
 
-  def findExtremes(vectors: Traversable[(Int, DenseVector[Double])]) = {
-    val minVector = DenseVector.zeros[Double](dimension)
-    val maxVector = DenseVector.zeros[Double](dimension)
-    for (vec <- vectors.map(_._2);
-         i <- 0 until dimension) {
-      if (vec(i) < minVector(i)) minVector(i) = vec(i)
-      if (vec(i) > maxVector(i)) maxVector(i) = vec(i)
+  def createHashFunctions(vectors: Traversable[DenseVector[Double]]): Seq[Seq[DenseVector[Double]]] = {
+    val sum = DenseVector.zeros[Double](dimension)
+    for (vector <- vectors) {
+      sum += vector
     }
-    (minVector, maxVector)
-  }
-
-  def createHashFunctions(min: DenseVector[Double], max: DenseVector[Double]): Seq[Seq[DenseVector[Double]]] = {
+    val mean = sum * (1.0 / num_vectors)
+    val squared_diffs = DenseVector.zeros[Double](dimension)
+    for (vector <- vectors) {
+      val diff = vector - mean
+      squared_diffs += diff :* diff
+    }
+    val variance = squared_diffs * (1.0 / num_vectors)
+    val gaussians = {
+      val tmp = new mutable.ArrayBuffer[(Double, Double)]
+      for (i <- 0 until dimension) {
+        tmp += Tuple2(mean(i), Math.sqrt(variance(i)))
+      }
+      tmp.toSeq
+    }
+    val random = new Random
     val hash_functions = new mutable.ArrayBuffer[Seq[DenseVector[Double]]]
     for (hash_num <- 1 to num_hashes) {
       val hash_function = new mutable.ArrayBuffer[DenseVector[Double]]
       for (hash_dim <- 1 to hash_size) {
-        hash_function += normalize(DenseVector.rand(dimension) :* (max - min) + min)
+        val vector = DenseVector.zeros[Double](dimension)
+        for (i <- 0 until dimension) {
+          vector(i) = random.nextGaussian() * gaussians(i)._2 + gaussians(i)._1
+        }
+        hash_function += normalize(vector)
       }
       hash_functions += hash_function.toSeq
     }
