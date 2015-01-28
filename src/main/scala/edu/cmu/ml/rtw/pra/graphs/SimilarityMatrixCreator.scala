@@ -18,17 +18,23 @@ class SimilarityMatrixCreator(
   var dimension: Int = 0
 
   def createSimilarityMatrix(embeddingsFile: String, ignoreFile: String, outFile: String) {
-    val to_ignore: Set[String] = if (ignoreFile == null) Resource.fromFile(ignoreFile).lines().toSet else Set()
+    val to_ignore: Set[String] = if (ignoreFile != null) Resource.fromFile(ignoreFile).lines().toSet else Set()
     val dict = new Dictionary
     println("Reading vectors")
-    val vectors = for {
-      line <- Resource.fromFile(embeddingsFile).lines()
-      fields = line.split("\t")
-      relation = fields(0)
-      if (!to_ignore.contains(relation))
-      vector = normalize(DenseVector(fields.drop(1).map(_.toDouble)))
-      if (norm(vector) > 0)
-    } yield (dict.getIndex(relation), vector)
+    val vectors = {
+      val tmp = new mutable.ArrayBuffer[(Int, DenseVector[Double])]
+      for (line <- Resource.fromFile(embeddingsFile).lines()) {
+        val fields = line.split("\t")
+        val relation = fields(0)
+        if (!to_ignore.contains(relation)) {
+          val vector = normalize(DenseVector(fields.drop(1).map(_.toDouble)))
+          if (norm(vector) > 0) {
+            tmp += Tuple2(dict.getIndex(relation), vector)
+          }
+        }
+      }
+      tmp.toSeq
+    }
 
     num_vectors = vectors.size
     dimension = vectors(0)._2.size
@@ -66,8 +72,6 @@ class SimilarityMatrixCreator(
       }
     }
     var seconds = ((System.currentTimeMillis - start) / 1000.0)
-    println(s"Close vectors: ${close_vectors.size}; Time: $seconds seconds")
-
     similarities.toSeq
   }
 
