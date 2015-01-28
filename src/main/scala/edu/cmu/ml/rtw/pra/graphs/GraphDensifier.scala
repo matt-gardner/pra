@@ -26,23 +26,32 @@ class GraphDensifier(
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     println("Creating dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
-    println("Re-keying by relation and creating relation matrices")
-    val relation_matrices = dense_edge_vectors.flatMap(x => {
-      val entries = new mutable.ListBuffer[(Int, Int, Int, Double)]
+    val tmp_matrix_file = matrix_out_dir + "tmp_graph.tsv"
+    println(s"Writing edges temporarily to $tmp_matrix_file")
+    val writer = file_util.getFileWriter(tmp_matrix_file)
+    dense_edge_vectors.seq.map(x => {
       var offset = 0
       while (offset < x._2.activeSize) {
         val relation = x._2.indexAt(offset)
         val value = x._2.valueAt(offset)
-        entries += Tuple4(relation, x._1._1, x._1._2, value)
+        writer.write(s"${x._1._1}\t${x._1._2}\t${relation}\t${value}\n")
       }
-      entries.toSeq
-    }).groupBy(_._1).map(x => {
-      val builder = new CSCMatrix.Builder[Double](node_dict.getNextIndex, node_dict.getNextIndex)
-      for (entry <- x._2) {
-        builder.add(entry._2, entry._3, entry._4)
+    })
+    writer.close()
+    println("Reading temporary file and loading into matrices")
+    val relation_matrices = {
+      val tmp_matrices = new mutable.HashMap[Int, CSCMatrix.Builder[Double]]
+      for (line <- Resource.fromFile(tmp_matrix_file).lines()) {
+        val fields = line.split("\t")
+        val source = fields(0).toInt
+        val target = fields(1).toInt
+        val relation = fields(2).toInt
+        val value = fields(3).toDouble
+        val builder = tmp_matrices.getOrElseUpdate(relation, emptyMatrixBuilder)
+        builder.add(source, target, value)
       }
-      (x._1, builder.result)
-    }).seq.toMap
+      tmp_matrices.par.map(x => (x._1, x._2.result)).seq.toMap
+    }
     println("Outputting relation matrices")
     val edges_to_write = new mutable.ArrayBuffer[CSCMatrix[Double]]
     var start_relation = 1
@@ -64,8 +73,12 @@ class GraphDensifier(
     println("Done creating matrices")
   }
 
+  def emptyMatrixBuilder(): CSCMatrix.Builder[Double] = {
+    new CSCMatrix.Builder[Double](node_dict.getNextIndex, node_dict.getNextIndex)
+  }
+
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[CSCMatrix[Double]]) {
-    var filename = matrix_out_dir + "matrices/" + start_relation
+    var filename = matrix_out_dir + start_relation
     var start_relation = _start_relation
     if (end_relation > start_relation) {
       filename += "-" + end_relation
