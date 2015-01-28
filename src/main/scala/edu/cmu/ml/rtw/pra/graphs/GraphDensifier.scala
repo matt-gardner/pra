@@ -20,11 +20,11 @@ class GraphDensifier(
   node_dict.setFromFile(graph_dir + "/node_dict.tsv")
 
   def densifyGraph(similarity_matrix_file: String) {
-    println("Reading the graph")
-    val edge_vectors = readGraphEdges(graph_dir + "/graph_chi/edges.tsv")
     println("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
-    println("Creating dense entity pair vectors")
+    println("Reading the graph")
+    val edge_vectors = readGraphEdges(graph_dir + "/graph_chi/edges.tsv")
+    println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
     val tmp_matrix_file = matrix_out_dir + "tmp_graph.tsv"
     println(s"Writing edges temporarily to $tmp_matrix_file")
@@ -78,8 +78,8 @@ class GraphDensifier(
   }
 
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[CSCMatrix[Double]]) {
-    var filename = matrix_out_dir + start_relation
     var start_relation = _start_relation
+    var filename = matrix_out_dir + start_relation
     if (end_relation > start_relation) {
       filename += "-" + end_relation
     }
@@ -115,17 +115,29 @@ class GraphDensifier(
   }
 
   def readSimilarityMatrix(filename: String): CSCMatrix[Double] = {
-    val builder = new CSCMatrix.Builder[Double](rows=edge_dict.getNextIndex, cols=edge_dict.getNextIndex)
+    val entries = new mutable.ListBuffer[(Int, Int, Double)]
     for (line <- Resource.fromFile(filename).lines()) {
       val fields = line.split("\t")
       val relation1 = edge_dict.getIndex(fields(0))
       val relation2 = edge_dict.getIndex(fields(1))
       val weight = fields(2).toDouble
-      builder.add(relation1, relation2, weight)
+      entries += Tuple3(relation1, relation2, weight)
+    }
+    val builder = new CSCMatrix.Builder[Double](rows=edge_dict.getNextIndex, cols=edge_dict.getNextIndex)
+    for (entry <- entries) {
+      builder.add(entry._1, entry._2, entry._3)
     }
     for (i <- 0 until edge_dict.getNextIndex) {
       builder.add(i, i, 1.0)
     }
     builder.result
+  }
+}
+
+object GraphDensifier {
+  def main(args: Array[String]) {
+    new GraphDensifier("/home/mg1/pra/graphs/nell/kb_svo/",
+      "/home/mg1/pra/graphs/nell/kb_svo/vector_matrices_test/").densifyGraph(
+      "/home/mg1/pra/embeddings/pca_svo/similarity_matrix.tsv")
   }
 }
