@@ -28,6 +28,7 @@ class GraphDensifier(
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
     val tmp_matrix_file = matrix_out_dir + "tmp_graph.tsv"
     println(s"Writing edges temporarily to $tmp_matrix_file")
+    file_util.mkdirs(matrix_out_dir)
     val writer = file_util.getFileWriter(tmp_matrix_file)
     dense_edge_vectors.seq.map(x => {
       var offset = 0
