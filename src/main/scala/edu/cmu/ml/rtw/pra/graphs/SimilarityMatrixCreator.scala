@@ -16,6 +16,7 @@ class SimilarityMatrixCreator(
     hash_size: Int) {
   var num_vectors: Int = 0
   var dimension: Int = 0
+  val upper_threshold = 0.99999
 
   def createSimilarityMatrix(embeddingsFile: String, ignoreFile: String, outFile: String) {
     val to_ignore: Set[String] = if (ignoreFile != null) Resource.fromFile(ignoreFile).lines().toSet else Set()
@@ -48,8 +49,10 @@ class SimilarityMatrixCreator(
     }).toSeq
     println("Computing similarities")
     val similarities = hashed_vectors.flatMap(x => computeSimilarities(x, hash_maps))
+    println("Done computing similarities; outputting results")
     val out = new PrintWriter(outFile)
     similarities.map(x => out.println(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}"))
+    out.close()
   }
 
   def computeSimilarities(
@@ -67,7 +70,7 @@ class SimilarityMatrixCreator(
     val similarities = new mutable.ArrayBuffer[(Int, Int, Double)]
     for (vec2 <- close_vectors) {
       val similarity = vec._3 dot vec2._2
-      if (similarity > threshold) {
+      if (similarity > threshold && similarity < upper_threshold) {
         similarities += Tuple3(vec._1, vec2._1, similarity)
       }
     }
