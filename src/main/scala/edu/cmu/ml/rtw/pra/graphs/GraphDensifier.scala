@@ -36,37 +36,37 @@ class GraphDensifier(
         val relation = x._2.indexAt(offset)
         val value = x._2.valueAt(offset)
         writer.write(s"${x._1._1}\t${x._1._2}\t${relation}\t${value}\n")
+        offset += 1
       }
     })
     writer.close()
     println("Reading temporary file and loading into matrices")
     val relation_matrices = {
-      val tmp_matrices = new mutable.HashMap[Int, CSCMatrix.Builder[Double]]
+      val tmp_matrices = new mutable.HashMap[Int, Set[(Int, Int, Double)]]
       for (line <- Resource.fromFile(tmp_matrix_file).lines()) {
         val fields = line.split("\t")
         val source = fields(0).toInt
         val target = fields(1).toInt
         val relation = fields(2).toInt
         val value = fields(3).toDouble
-        val builder = tmp_matrices.getOrElseUpdate(relation, emptyMatrixBuilder)
-        builder.add(source, target, value)
+        tmp_matrices.update(relation, tmp_matrices(relation) + Tuple3(source, target, value))
       }
-      tmp_matrices.par.map(x => (x._1, x._2.result)).seq.toMap
+      tmp_matrices.toMap
     }
     println("Outputting relation matrices")
-    val edges_to_write = new mutable.ArrayBuffer[CSCMatrix[Double]]
+    val edges_to_write = new mutable.ArrayBuffer[Set[(Int, Int, Double)]]
     var start_relation = 1
     var edges_so_far = 0
     for (i <- 1 until edge_dict.getNextIndex) {
       val matrix = relation_matrices(i)
-      if (edges_so_far > 0 && edges_so_far + matrix.activeSize > maxMatrixFileSize) {
+      if (edges_so_far > 0 && edges_so_far + matrix.size > maxMatrixFileSize) {
         writeEdgesSoFar(start_relation, i - 1, edges_to_write.toSeq)
         edges_to_write.clear()
         start_relation = i
         edges_so_far = 0
       }
       edges_to_write += matrix
-      edges_so_far += matrix.activeSize
+      edges_so_far += matrix.size
     }
     if (edges_to_write.size > 0) {
       writeEdgesSoFar(start_relation, edge_dict.getNextIndex, edges_to_write)
@@ -78,7 +78,7 @@ class GraphDensifier(
     new CSCMatrix.Builder[Double](node_dict.getNextIndex, node_dict.getNextIndex)
   }
 
-  def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[CSCMatrix[Double]]) {
+  def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[Set[(Int, Int, Double)]]) {
     var start_relation = _start_relation
     var filename = matrix_out_dir + start_relation
     if (end_relation > start_relation) {
@@ -87,8 +87,8 @@ class GraphDensifier(
     val writer = file_util.getFileWriter(filename)
     for (matrix <- edges_to_write) {
       writer.write("Relation " + start_relation + "\n")
-      for (entry <- matrix.activeIterator) {
-        writer.write(entry._1._1 + "\t" + entry._1._2 + "\t" + entry._2 + "\n")
+      for (entry <- matrix) {
+        writer.write(entry._1 + "\t" + entry._2 + "\t" + entry._3 + "\n")
       }
       start_relation += 1
     }
