@@ -29,29 +29,17 @@ class GraphDensifier(
     val tmp_matrix_file = matrix_out_dir + "tmp_graph.tsv"
     println(s"Writing edges temporarily to $tmp_matrix_file")
     val writer = file_util.getFileWriter(tmp_matrix_file)
-    dense_edge_vectors.seq.map(x => {
+    val relation_matrices = dense_edge_vectors.flatMap(x => {
+      val entries = new mutable.ArrayBuffer[(Int, Int, Int, Double)]
       var offset = 0
       while (offset < x._2.activeSize) {
         val relation = x._2.indexAt(offset)
         val value = x._2.valueAt(offset)
-        writer.write(s"${x._1._1}\t${x._1._2}\t${relation}\t${value}\n")
+        entries += Tuple4(relation, x._1._1, x._1._2, value)
         offset += 1
       }
-    })
-    writer.close()
-    println("Reading temporary file and loading into matrices")
-    val relation_matrices = {
-      val tmp_matrices = new mutable.HashMap[Int, Set[(Int, Int, Double)]]
-      for (line <- Resource.fromFile(tmp_matrix_file).lines()) {
-        val fields = line.split("\t")
-        val source = fields(0).toInt
-        val target = fields(1).toInt
-        val relation = fields(2).toInt
-        val value = fields(3).toDouble
-        tmp_matrices.update(relation, tmp_matrices(relation) + Tuple3(source, target, value))
-      }
-      tmp_matrices.toMap
-    }
+      entries.toSeq
+    }).groupBy(_._1).mapValues(x => x.map(y => (y._2, y._3, y._4)).seq.toSet).seq
     println("Outputting relation matrices")
     val edges_to_write = new mutable.ArrayBuffer[Set[(Int, Int, Double)]]
     var start_relation = 1
