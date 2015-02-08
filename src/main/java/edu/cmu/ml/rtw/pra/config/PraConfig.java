@@ -41,6 +41,10 @@ public class PraConfig {
   // Path to the graph file to use for the random walks.
   public final String graph;
 
+  // Location to find matrices (when using the matrix path follower), if not in the default
+  // location (which is graph + 'matrices/')
+  public final String matrixDir;
+
   // The number of shards that the graph is (or should be) sharded into.
   public final int numShards;
 
@@ -226,6 +230,7 @@ public class PraConfig {
 
   private PraConfig(Builder builder) {
     graph = builder.graph;
+    matrixDir = builder.matrixDir;
     numShards = builder.numShards;
     numIters = builder.numIters;
     walksPerSource = builder.walksPerSource;
@@ -257,6 +262,7 @@ public class PraConfig {
 
   public static class Builder {
     private String graph;
+    private String matrixDir;
     private int numShards = -1;
     private int numIters = 3;
     private int walksPerSource = 200;
@@ -291,6 +297,7 @@ public class PraConfig {
 
     public Builder() { fileUtil = new FileUtil(); }
     public Builder setGraph(String graph) {this.graph = graph;return this;}
+    public Builder setMatrixDir(String m) {this.matrixDir = m;return this;}
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
     public Builder setPathFollowerFactory(PathFollowerFactory f) {this.pathFollowerFactory = f;return this;}
@@ -335,6 +342,13 @@ public class PraConfig {
           "allData and trainingData are mutually exclusive");
       if (allData == null && trainingData == null) throw new IllegalStateException(
           "Must specify either allData or trainingData");
+      if (pathTypeFactory instanceof VectorPathTypeFactory
+          && pathFollowerFactory instanceof MatrixPathFollowerFactory) {
+        if (matrixDir == null) {
+          throw new IllegalStateException(
+              "Currently must specify matrixDir when using matrix implementation of vector space walks");
+        }
+      }
       return new PraConfig(this);
     }
 
@@ -342,6 +356,7 @@ public class PraConfig {
     // things, and pass it to another method (PraDriver.trainAndTest, in this case).
     public Builder(PraConfig config) {
       setGraph(config.graph);
+      setMatrixDir(config.matrixDir);
       setNumShards(config.numShards);
       setNumIters(config.numIters);
       setWalksPerSource(config.walksPerSource);

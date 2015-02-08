@@ -137,7 +137,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       numNodes,
       path_types,
       Sets.newHashSet(1, 2, 3),
-      "/",
+      "/matrices/",
       edgeDict,
       edgesToExclude,
       3,

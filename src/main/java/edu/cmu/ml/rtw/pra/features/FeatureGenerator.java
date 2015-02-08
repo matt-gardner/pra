@@ -138,7 +138,6 @@ public class FeatureGenerator {
    */
   public FeatureMatrix computeFeatureValues(List<PathType> pathTypes, Dataset data, String outputFile) {
     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = createEdgesToExclude(data);
-    // TODO(matt): make a PathFollowerFactory, replace this call.
     PathFollower follower = config.pathFollowerFactory.create(pathTypes, config, data, edgesToExclude);
     follower.execute();
     if (follower.usesGraphChi()) {

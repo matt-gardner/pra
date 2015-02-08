@@ -13,9 +13,16 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
                              PraConfig config,
                              Dataset data,
                              List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
+    String matrixDir;
+    if (config.matrixDir != null) {
+      matrixDir = config.matrixDir;
+    } else {
+      String graphDir = new File(config.graph).getParentFile().getParent() + "/";
+      matrixDir = graphDir + "matrices/";
+    }
     return new MatrixPathFollower(config.nodeDict.getNextIndex(),
                                   pathTypes,
-                                  new File(config.graph).getParentFile().getParent() + "/",
+                                  matrixDir,
                                   data,
                                   config.edgeDict,
                                   config.allowedTargets,

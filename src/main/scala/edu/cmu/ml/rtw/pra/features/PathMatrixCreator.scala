@@ -24,7 +24,7 @@ class PathMatrixCreator(
     numNodes: Int,
     parent_path_types: JList[PathType],
     source_nodes: JSet[Integer],
-    graph_dir: String,
+    matrix_dir: String,
     edge_dict: Dictionary,
     edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]],
     maxFanOut: Int,
@@ -138,7 +138,6 @@ class PathMatrixCreator(
     println("Creating path matrices")
     val path_types = parent_path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = path_types.flatMap(_.getEdgeTypes).toSet
-    val matrix_dir = graph_dir + "matrices/"
     val filenames = fileUtil.listDirectoryContents(matrix_dir).toSet
     val relations_by_filename = separateRelationsByFile(relations, filenames)
     val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
@@ -236,9 +235,10 @@ class PathMatrixCreator(
           val fields = line.split("\t")
           val source = fields(0).toInt
           val target = fields(1).toInt
+          val value = if (fields.size == 2) 1 else fields(2).toDouble
           if (!edges_to_remove(current_relation).contains((source, target))
               && !edges_to_remove(current_relation).contains((target, source))) {
-            builder.add(source, target, 1)
+            builder.add(source, target, value)
           }
         }
       }

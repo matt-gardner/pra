@@ -112,10 +112,10 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
     val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
     config.setNumShards(numShards)
     val nodeDict = new Dictionary();
-    nodeDict.setFromFile(dir + "node_dict.tsv");
+    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
     config.setNodeDictionary(nodeDict);
     val edgeDict = new Dictionary();
-    edgeDict.setFromFile(dir + "edge_dict.tsv");
+    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
     config.setEdgeDictionary(edgeDict);
   }
 
@@ -134,6 +134,10 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
     val resetWeight = (params \ "reset weight").extract[Double]
     println(s"RESET WEIGHT SET TO $resetWeight")
     val embeddingsFiles = (params \ "embeddings").extract[List[String]]
+    val matrixDir = params \ "matrix dir"
+    if (!matrixDir.equals(JNothing)) {
+      config.setMatrixDir(matrixDir.extract[String])
+    }
     val embeddings = config.readEmbeddingsVectors(embeddingsFiles)
     config.setPathTypeFactory(
       new VectorPathTypeFactory(config.edgeDict, embeddings, spikiness, resetWeight))

@@ -14,7 +14,7 @@ public class MatrixPathFollower implements PathFollower {
 
   private final int numNodes;
   private final List<PathType> pathTypes;
-  private final String graphDir;
+  private final String matrixDir;
   private final FileUtil fileUtil;
   private final Dataset data;
   private final Dictionary edgeDict;
@@ -25,20 +25,20 @@ public class MatrixPathFollower implements PathFollower {
 
   public MatrixPathFollower(int numNodes,
                             List<PathType> pathTypes,
-                            String graphDir,
+                            String matrixDir,
                             Dataset data,
                             Dictionary edgeDict,
                             Set<Integer> allowedTargets,
                             List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
                             int maxFanOut,
                             boolean normalizeWalkProbabilities) {
-    this(numNodes, pathTypes, graphDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, normalizeWalkProbabilities, new FileUtil());
+    this(numNodes, pathTypes, matrixDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, normalizeWalkProbabilities, new FileUtil());
   }
 
   @VisibleForTesting
   protected MatrixPathFollower(int numNodes,
                                List<PathType> pathTypes,
-                               String graphDir,
+                               String matrixDir,
                                Dataset data,
                                Dictionary edgeDict,
                                Set<Integer> allowedTargets,
@@ -48,7 +48,7 @@ public class MatrixPathFollower implements PathFollower {
                                FileUtil fileUtil) {
     this.numNodes = numNodes;
     this.pathTypes = pathTypes;
-    this.graphDir = graphDir;
+    this.matrixDir = matrixDir;
     this.data = data;
     this.edgeDict = edgeDict;
     this.allowedTargets = allowedTargets;
@@ -70,7 +70,7 @@ public class MatrixPathFollower implements PathFollower {
         new PathMatrixCreator(numNodes,
                               pathTypes,
                               data.getCombinedSourceMap().keySet(),
-                              graphDir,
+                              matrixDir,
                               edgeDict,
                               edgesToExclude,
                               maxFanOut,
