@@ -20,16 +20,14 @@ class GraphDensifier(
   node_dict.setFromFile(graph_dir + "/node_dict.tsv")
 
   def densifyGraph(similarity_matrix_file: String) {
+    file_util.mkdirs(matrix_out_dir)
     println("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     println("Reading the graph")
     val edge_vectors = readGraphEdges(graph_dir + "/graph_chi/edges.tsv")
     println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
-    val tmp_matrix_file = matrix_out_dir + "tmp_graph.tsv"
-    println(s"Writing edges temporarily to $tmp_matrix_file")
-    file_util.mkdirs(matrix_out_dir)
-    val writer = file_util.getFileWriter(tmp_matrix_file)
+    println(s"Rekey-ing by relation")
     val relation_matrices = dense_edge_vectors.flatMap(x => {
       val entries = new mutable.ArrayBuffer[(Int, Int, Int, Double)]
       var offset = 0
@@ -46,7 +44,7 @@ class GraphDensifier(
     var start_relation = 1
     var edges_so_far = 0
     for (i <- 1 until edge_dict.getNextIndex) {
-      val matrix = relation_matrices(i)
+      val matrix = relation_matrices.getOrElse(i, Set())
       if (edges_so_far > 0 && edges_so_far + matrix.size > maxMatrixFileSize) {
         writeEdgesSoFar(start_relation, i - 1, edges_to_write.toSeq)
         edges_to_write.clear()

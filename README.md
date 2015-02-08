@@ -30,10 +30,10 @@ Planned for version 1.2:
 
 - Better parameter specification. (This is working in the master branch now.)
 
-- Working synthetic data generation.  (Not yet started, except for what's in version 1.1.)
+- Working synthetic data generation.  (This is working in the master branch now.)
 
 - A matrix multiplication implementation of the vector space random walks from the EMNLP 2014
-  paper.  (Not yet started.)
+  paper.  (Close to finished.)
 
 - Better handling of JVM exit (version 1.1 and earlier tend to spit out InterruptedExceptions at 
   you when it terminates, and most of the time won't give you back the sbt console).  (This is 
@@ -80,6 +80,10 @@ parameters; I should use one of them.
 find frequently seen path types.  It would be pretty simple to select features by some measure of
 specificity, instead of simply by count, so that you have some hope of getting more useful features
 out.
+
+- Allow for in-memory graphs when the graph is small or the machine is large.  Also allow for
+  using GraphLab as a backend, instead of GraphChi, so that a cluster could be used for very large
+graphs.
 
 - Better negative example selection.  The main code path here is to specify only positive examples
   as the training data, and let the algorithm find negative examples using a closed-world
