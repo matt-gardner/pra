@@ -88,4 +88,9 @@ public class MatrixPathFollower implements PathFollower {
   public boolean usesGraphChi() {
     return false;
   }
+
+  @VisibleForTesting
+  protected String getMatrixDir() {
+    return matrixDir;
+  }
 }
