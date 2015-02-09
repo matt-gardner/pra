@@ -115,7 +115,7 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
     nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
     config.setNodeDictionary(nodeDict);
     val edgeDict = new Dictionary();
-    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
+    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
     config.setEdgeDictionary(edgeDict);
   }
 

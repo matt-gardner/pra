@@ -27,7 +27,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   val relationEmbeddingsFilename = "/relation/embeddings"
   val relationEmbeddingsFile = "relation1\t0.1\t0.2\n"
 
-  val dictionaryFile = "1\t1\n"
+  val nodeDictionaryFile = "1\tnode\n2\tnode 2\n"
+  val edgeDictionaryFile = "1\tedge\n2\tedge 2\n"
   val graphDir = "nell graph files"
 
   val baseSpecFilename = "/base/spec/file"
@@ -112,8 +113,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   val fileUtil: FakeFileUtil = {
     val f = new FakeFileUtil
-    f.addFileToBeRead(graphDir + "/node_dict.tsv", dictionaryFile)
-    f.addFileToBeRead(graphDir + "/edge_dict.tsv", dictionaryFile)
+    f.addFileToBeRead(graphDir + "/node_dict.tsv", nodeDictionaryFile)
+    f.addFileToBeRead(graphDir + "/edge_dict.tsv", edgeDictionaryFile)
     f.addFileToBeRead(baseSpecFilename, baseSpecFile)
     f.addFileToBeRead(extendedSpecFilename, extendedSpecFile)
     f.addFileToBeRead(overwrittenSpecFilename, overwrittenSpecFile)
@@ -157,6 +158,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.l1Weight should be(9.05)
     config.binarizeFeatures should be(true)
     config.pathFollowerFactory.getClass should be(classOf[MatrixPathFollowerFactory])
+    config.nodeDict.getIndex("node 2") should be(2);
+    config.edgeDict.getIndex("edge 2") should be(2);
   }
 
   it should "give default values with empty params" in {
