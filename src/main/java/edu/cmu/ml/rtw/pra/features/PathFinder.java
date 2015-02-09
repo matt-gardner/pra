@@ -93,11 +93,17 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     // time to finish each iteration.
     Set<Integer> allSourceNodes = new HashSet<Integer>();
     for (int i=0; i<origSources.size(); i++) {
-      if (origSources.get(i) > drunkardMobEngine.getEngine().numVertices()) continue;
+      if (origSources.get(i) > drunkardMobEngine.getEngine().numVertices()) {
+        logger.warning("Found a node with a higher index than is in the graph: " + origSources.get(i));
+        continue;
+      }
       int translatedSource = vertexIdTranslate.forward(origSources.get(i));
       allSourceNodes.add(translatedSource);
       if (origTargets != null) {
-        if (origTargets.get(i) > drunkardMobEngine.getEngine().numVertices()) continue;
+        if (origTargets.get(i) > drunkardMobEngine.getEngine().numVertices()) {
+          logger.warning("Found a node with a higher index than is in the graph: " + origTargets.get(i));
+          continue;
+        }
         int translatedTarget = vertexIdTranslate.forward(origTargets.get(i));
         allSourceNodes.add(translatedTarget);
       }

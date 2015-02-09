@@ -116,6 +116,7 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
 
   @Override
   public void execute() {
+    logger.info("Creating feature matrix using random walks");
     try {
       drunkardMobEngine.run(numIters);
     } catch(IOException e) {

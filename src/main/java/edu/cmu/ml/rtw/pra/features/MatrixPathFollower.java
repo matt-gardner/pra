@@ -2,15 +2,19 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class MatrixPathFollower implements PathFollower {
+
+  private static final Logger logger = ChiLogger.getLogger("matrix-path-follower");
 
   private final int numNodes;
   private final List<PathType> pathTypes;
@@ -66,6 +70,7 @@ public class MatrixPathFollower implements PathFollower {
 
   @Override
   public FeatureMatrix getFeatureMatrix() {
+    logger.info("Creating feature matrix with matrix multiplication");
     PathMatrixCreator matrixCreator =
         new PathMatrixCreator(numNodes,
                               pathTypes,

@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
@@ -19,6 +21,8 @@ import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class FeatureGenerator {
   private PraConfig config;
+
+  private static final Logger logger = ChiLogger.getLogger("feature-generator");
 
   public FeatureGenerator(PraConfig config) {
     this.config = config;
@@ -39,6 +43,7 @@ public class FeatureGenerator {
    *     {@link PathType} objects.
    */
   public List<PathType> selectPathFeatures(Dataset data) {
+    logger.info("Selecting path features with " + data.getAllSources().size() + " training instances");
     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = createEdgesToExclude(data);
     PathFinder finder = new PathFinder(config.graph,
                                        config.numShards,
@@ -78,6 +83,7 @@ public class FeatureGenerator {
    * @return A map from (source, target) pairs to (path type, count) pairs.
    */
   public Map<Pair<Integer, Integer>, Map<PathType, Integer>> findConnectingPaths(Dataset data) {
+    logger.info("Finding connecting paths");
     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = createEdgesToExclude(data);
     PathFinder finder = new PathFinder(config.graph,
                                        config.numShards,
@@ -137,6 +143,7 @@ public class FeatureGenerator {
    *     there will be no row in the matrix for that source.
    */
   public FeatureMatrix computeFeatureValues(List<PathType> pathTypes, Dataset data, String outputFile) {
+    logger.info("Computing feature values");
     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = createEdgesToExclude(data);
     PathFollower follower = config.pathFollowerFactory.create(pathTypes, config, data, edgesToExclude);
     follower.execute();
