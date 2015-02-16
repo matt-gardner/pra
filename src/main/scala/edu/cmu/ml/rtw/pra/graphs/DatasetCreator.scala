@@ -13,40 +13,73 @@ class DatasetCreator(
     pra_dir: String,
     split_name: String,
     num_entities: Int,
+
     num_base_relations: Int,
-    num_complex_relations: Int,
-    num_complex_relation_instances: Int,
+    num_base_relation_training_duplicates: Int,
+    num_base_relation_testing_duplicates: Int,
+    num_base_relation_overlapping_instances: Int,
+
+    num_pra_relations: Int,
+    num_pra_relation_training_instances: Int,
+    num_pra_relation_testing_instances: Int,
     num_rules: Int,
-    percent_training: Double = 0.8,
+    min_rule_length: Int,
+    max_rule_length: Int,
     rule_prob_mean: Double = .6,
-    rule_prob_stddev: Double = .2) {
+    rule_prob_stddev: Double = .2,
+
+    num_noise_relations: Int,
+    num_noise_relation_instances: Int
+
+    ) {
 
   val r = new Random
   val fileUtil = new FileUtil
   val split_dir = s"$pra_dir/splits/${split_name}/"
+  val relation_sets: Array[(Array[String], Array[String])] = {
+    val tmp = new mutable.ArrayBuffer[(Array[String], Array[String])]
+    for (base <- 1 to num_base_relations) {
+      val training_set = new mutable.ArrayBuffer[String]
+      for (duplicate <- 1 to num_base_relation_training_duplicates) {
+        val rel_name = f"base_${base}%02d_training_${duplicate}%02d"
+        training_set += rel_name
+      }
+      if (num_base_relation_testing_duplicates > 0) {
+        val testing_set = new mutable.ArrayBuffer[String]
+        for (duplicate <- 1 to num_base_relation_testing_duplicates) {
+          val rel_name = f"base_${base}%02d_testing_${duplicate}%02d"
+          testing_set += rel_name
+        }
+        tmp += Tuple2(training_set.toArray, testing_set.toArray)
+      } else {
+        tmp += Tuple2(training_set.toArray, training_set.toArray)
+      }
+    }
+    tmp.toArray
+  }
 
   def createRelationSet() {
     fileUtil.mkdirs(split_dir)
-    val complex_relations = (1 to num_complex_relations).toList.par.map(generateComplexRelations)
-    val instances = complex_relations.flatMap(generateRelationInstances)
-    outputRelationSet(instances.seq)
-    outputSplitFiles(complex_relations.map(x => (x._1, x._2)).toMap.seq)
-    outputRules(complex_relations.flatMap(x => x._3.map(y => (x._1, y._1, y._2))).seq)
+    val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
+    val instances = (new mutable.ArrayBuffer[(Int, String, Int)],
+      new mutable.ArrayBuffer[(Int, String, Int)])
+    val pra_instances = pra_relations.map(generateRelationInstances).seq
+    for (rel_instances <- pra_instances) {
+      instances._1 ++= rel_instances._1
+      instances._2 ++= rel_instances._2
+    }
+    instances._1 ++= relation_sets.par.flatMap(generateOverlappingInstances).seq
+    instances._1 ++= generateNoiseInstances()
+    outputRelationSet(instances._1)
+    outputSplitFiles(instances._1.toSet, instances._2.toSet, pra_relations.map(_._1).seq.toSet)
+    outputRules(pra_relations.flatMap(x => x._2.map(y => (x._1, y._1, y._2))).seq)
   }
 
-  def generateComplexRelations(relation_index: Int) = {
-    val instances = new mutable.HashSet[(Int, Int)]
-    val entities = (1 to num_entities).toList
-    for (i <- 1 to num_complex_relation_instances) {
-      val shuffled = r.shuffle(entities)
-      val source = shuffled(0)
-      val target = shuffled(1)
-      instances += Tuple2(source, target)
-    }
+  def generatePraRelations(relation_index: Int) = {
     val rules = new mutable.ArrayBuffer[(Seq[Int], Double)]
     for (rule <- 1 to num_rules) {
       val relations = (1 to num_base_relations).toList
-      val path_lengths = Seq(2, 3, 4)
+      val path_lengths = min_rule_length to max_rule_length
       val shuffled = r.shuffle(relations)
       val path_length = r.shuffle(path_lengths).head
       var rule_prob = r.nextGaussian() * rule_prob_stddev + rule_prob_mean
@@ -54,30 +87,90 @@ class DatasetCreator(
       if (rule_prob < 0.0) rule_prob = 0.0
       rules += Tuple2(shuffled.take(path_length), rule_prob)
     }
-    (f"complex$relation_index%02d", instances.toSet, rules.toSeq)
+    (f"pra_${relation_index}%02d", rules.toSeq)
   }
 
-  def generateRelationInstances(complex_relation: (String, Set[(Int, Int)], Seq[(Seq[Int], Double)])) = {
-    val instances = new mutable.HashSet[(Int, String, Int)]
-    for (instance <- complex_relation._2) {
-      instances += Tuple3(instance._1, complex_relation._1, instance._2)
-      for (rule <- complex_relation._3) {
-        if (r.nextDouble < rule._2) {
-          var i = 0
-          var current_node = instance._1
-          while (i < rule._1.size - 1) {
-            val next_node = r.nextInt(num_entities)
-            val relation = f"relation${rule._1(i)}%02d"
-            instances += Tuple3(current_node, relation, next_node)
-            current_node = next_node
-            i += 1
-          }
-          val relation = f"relation${rule._1(i)}%02d"
-          instances += Tuple3(current_node, relation, instance._2)
+  def generateRelationInstances(pra_relation: (String, Seq[(Seq[Int], Double)])) = {
+    val training_instances = new mutable.HashSet[(Int, String, Int)]
+    val testing_instances = new mutable.HashSet[(Int, String, Int)]
+    for (i <- 1 to num_pra_relation_training_instances) {
+      val instances = generatePraInstance(pra_relation._1, pra_relation._2, true)
+      training_instances ++= instances._1
+      testing_instances ++= instances._2
+    }
+    for (i <- 1 to num_pra_relation_testing_instances) {
+      val instances = generatePraInstance(pra_relation._1, pra_relation._2, false)
+      training_instances ++= instances._1
+      testing_instances ++= instances._2
+    }
+    (training_instances.toSeq, testing_instances.toSeq)
+  }
+
+  def generatePraInstance(name: String, rules: Seq[(Seq[Int], Double)], isTraining: Boolean) = {
+    val training_instances = new mutable.HashSet[(Int, String, Int)]
+    val testing_instances = new mutable.HashSet[(Int, String, Int)]
+    val source = r.nextInt(num_entities)
+    val target = r.nextInt(num_entities)
+    if (isTraining) {
+      training_instances += Tuple3(source, name, target)
+    } else {
+      testing_instances += Tuple3(source, name, target)
+    }
+    for (rule <- rules) {
+      if (r.nextDouble < rule._2) {
+        var i = 0
+        var current_node = source
+        while (i < rule._1.size - 1) {
+          val next_node = r.nextInt(num_entities)
+          val relation = getConcreteBaseRelation(rule._1(i), isTraining)
+          training_instances += Tuple3(current_node, relation, next_node)
+          current_node = next_node
+          i += 1
         }
+        val relation = getConcreteBaseRelation(rule._1(i), isTraining)
+        training_instances += Tuple3(current_node, relation, target)
       }
     }
-    instances.toSeq
+    (training_instances.toSet, testing_instances.toSet)
+  }
+
+  def getConcreteBaseRelation(index: Int, isTraining: Boolean) = {
+    val base_relation = relation_sets(index-1)
+    //println(index + " " + base_relation._1.size + " " + base_relation._2.size)
+    if (isTraining) {
+      base_relation._1(r.nextInt(base_relation._1.size))
+    } else {
+      base_relation._2(r.nextInt(base_relation._2.size))
+    }
+  }
+
+  def generateOverlappingInstances(relation_set: (Array[String], Array[String])): Set[(Int, String, Int)] = {
+    val instances = new mutable.HashSet[(Int, String, Int)]
+    val relations = (relation_set._1 ++ relation_set._2).toSet.toList
+    if (relations.size < 2) return Set()
+    for (i <- 1 to num_base_relation_overlapping_instances) {
+      val source = r.nextInt(num_entities)
+      val target = r.nextInt(num_entities)
+      val shuffled = r.shuffle(relations)
+      val rel_1 = shuffled(0)
+      val rel_2 = shuffled(1)
+      instances += Tuple3(source, rel_1, target)
+      instances += Tuple3(source, rel_2, target)
+    }
+    instances.toSet
+  }
+
+  def generateNoiseInstances() = {
+    val instances = new mutable.HashSet[(Int, String, Int)]
+    for (i <- 1 to num_noise_relations) {
+      val name = f"noise_${i}%02d"
+      for (j <- 1 to num_noise_relation_instances) {
+        val source = r.nextInt(num_entities)
+        val target = r.nextInt(num_entities)
+        instances += Tuple3(source, name, target)
+      }
+    }
+    instances.toSet
   }
 
   def outputRelationSet(all_instances: Seq[(Int, String, Int)]) {
@@ -98,30 +191,40 @@ class DatasetCreator(
     out.close
   }
 
-  def outputSplitFiles(complex_relation_instances: Map[String, Set[(Int, Int)]]) {
+  def outputSplitFiles(
+      training_instances: Set[(Int, String, Int)],
+      testing_instances: Set[(Int, String, Int)],
+      pra_relations: Set[String]) {
     val relations_to_run_filename = s"$split_dir/relations_to_run.tsv"
     var out = new PrintWriter(relations_to_run_filename)
-    for (relation <- complex_relation_instances.keys) {
+    for (relation <- pra_relations) {
       out.println(relation)
     }
     out.close
-    for (relation_instances <- complex_relation_instances) {
-      val shuffled = r.shuffle(relation_instances._2.toList)
-      val num_training = (shuffled.size * percent_training).toInt
-      val (training, testing) = shuffled.splitAt(num_training)
-      val relation_dir = split_dir + relation_instances._1 + "/"
+    val relation_instances: Map[String, (Set[(Int, Int)], Set[(Int, Int)])] = {
+      val training_instance_map = rekeyByRelation(training_instances)
+      val testing_instance_map = rekeyByRelation(testing_instances)
+      pra_relations.map(name => (name, (training_instance_map(name),
+        testing_instance_map(name)))).toMap
+    }
+    for (relation_instance_set <- relation_instances) {
+      val relation_dir = split_dir + relation_instance_set._1 + "/"
       fileUtil.mkdirs(relation_dir)
       out = new PrintWriter(relation_dir + "training.tsv")
-      for (instance <- training) {
+      for (instance <- relation_instance_set._2._1) {
         out.println(s"${instance._1}\t${instance._2}")
       }
       out.close
       out = new PrintWriter(relation_dir + "testing.tsv")
-      for (instance <- testing) {
+      for (instance <- relation_instance_set._2._2) {
         out.println(s"${instance._1}\t${instance._2}")
       }
       out.close
     }
+  }
+
+  def rekeyByRelation(instances: Set[(Int, String, Int)]): Map[String, Set[(Int, Int)]] = {
+    instances.groupBy(_._2).mapValues(set => set.map(instance => (instance._1, instance._3)))
   }
 
   def outputRules(rules: Seq[(String, Seq[Int], Double)]) {
@@ -139,11 +242,25 @@ object DatasetCreator {
   def main(args: Array[String]) {
     new DatasetCreator(
       "/home/mg1/pra/",
-      "synthetic",
-      10000,
-      100,
+      "synthetic_easy",
+      1000,
+
+      25,
       5,
-      2000,
-      4).createRelationSet()
+      0,
+      250,
+
+      2,
+      500,
+      100,
+      10,
+      1,
+      5,
+      .6,
+      .2,
+
+      20,
+      2500
+      ).createRelationSet()
   }
 }
