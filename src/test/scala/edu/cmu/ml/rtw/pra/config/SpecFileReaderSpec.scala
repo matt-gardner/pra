@@ -22,38 +22,99 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
-class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
-  val relationEmbeddingsFilename = "/relation/embeddings"
-  val relationEmbeddingsFile = "relation1\t0.1\t0.2\n"
+class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   val nodeDictionaryFile = "1\tnode\n2\tnode 2\n"
   val edgeDictionaryFile = "1\tedge\n2\tedge 2\n"
+
+  val relationEmbeddingsFilename = "/relation/embeddings"
+  val relationEmbeddingsFile = "edge\t0.1\t0.2\n"
+
   val graphDir = "nell graph files"
+  val relationMetadataFilename = "nell relation metadata"
+  val splitName = "nell split"
+  val relationSetFilename = "relation set filename"
+  val generatedDataName = "generated data name"
 
   val baseSpecFilename = "/base/spec/file"
   val baseSpecFile = s"""{
-    |  "kb files": "nell kb files",
-    |  "graph files": "$graphDir",
-    |  "split": "nell split",
-    |  "l1 weight": 9.05,
-    |  "l2 weight": 9,
-    |  "walks per source": 900,
-    |  "walks per path": 90,
-    |  "path finding iterations": 9,
-    |  "number of paths to keep": 9000,
-    |  "matrix accept policy": "everything",
-    |  "path accept policy": "everything",
-    |  "max matrix feature fan out": 90,
-    |  "normalize walk probabilities": false,
-    |  "binarize features": true,
-    |  "path follower": "matrix multiplication",
+    |  "graph": {
+    |    "name": "$graphDir",
+    |    "relation sets": [
+    |      "$relationSetFilename",
+    |      {
+    |        "type": "generated",
+    |        "generation params": {
+    |          "name": "$generatedDataName",
+    |          "num_entities": 1,
+    |          "num_base_relations": 2,
+    |          "num_base_relation_training_duplicates": 3,
+    |          "num_base_relation_testing_duplicates": 4,
+    |          "num_base_relation_overlapping_instances": 5,
+    |          "num_base_relation_noise_instances": 6,
+    |          "num_pra_relations": 7,
+    |          "num_pra_relation_training_instances": 8,
+    |          "num_pra_relation_testing_instances": 9,
+    |          "num_rules": 10,
+    |          "min_rule_length": 11,
+    |          "max_rule_length": 12,
+    |          "rule_prob_mean": 0.6,
+    |          "rule_prob_stddev": 0.2,
+    |          "num_noise_relations": 13,
+    |          "num_noise_relation_instances": 14
+    |        }
+    |      }
+    |    ],
+    |    "deduplicate edges": true
+    |  },
+    |  "relation metadata": "$relationMetadataFilename",
+    |  "split": "$splitName",
+    |  "pra parameters": {
+    |    "pra mode": "standard",
+    |    "l1 weight": 9.05,
+    |    "l2 weight": 9,
+    |    "walks per source": 900,
+    |    "walks per path": 90,
+    |    "path finding iterations": 9,
+    |    "number of paths to keep": 9000,
+    |    "matrix accept policy": "everything",
+    |    "path accept policy": "everything",
+    |    "max matrix feature fan out": 90,
+    |    "normalize walk probabilities": false,
+    |    "binarize features": true,
+    |    "path follower": "matrix multiplication",
+    |  }
     |}""".stripMargin
 
-  val baseParams: JValue =
-    ("kb files" -> "nell kb files") ~
-    ("graph files" -> "nell graph files") ~
-    ("split" -> "nell split") ~
+  val generatedRelationSetSpec: JValue =
+    ("type" -> "generated") ~
+    ("generation params" ->
+      ("name" -> generatedDataName) ~
+      ("num_entities" -> 1) ~
+      ("num_base_relations" -> 2) ~
+      ("num_base_relation_training_duplicates" -> 3) ~
+      ("num_base_relation_testing_duplicates" -> 4) ~
+      ("num_base_relation_overlapping_instances" -> 5) ~
+      ("num_base_relation_noise_instances" -> 6) ~
+      ("num_pra_relations" -> 7) ~
+      ("num_pra_relation_training_instances" -> 8) ~
+      ("num_pra_relation_testing_instances" -> 9) ~
+      ("num_rules" -> 10) ~
+      ("min_rule_length" -> 11) ~
+      ("max_rule_length" -> 12) ~
+      ("num_noise_relations" -> 13) ~
+      ("num_noise_relation_instances" -> 14) ~
+      ("rule_prob_mean" -> 0.6) ~
+      ("rule_prob_stddev" -> 0.2))
+
+  val graphSpec: JValue =
+    ("name" -> graphDir) ~
+    ("relation sets" -> List(JString(relationSetFilename), generatedRelationSetSpec)) ~
+    ("deduplicate edges" -> true)
+
+  val praSpec: JValue =
+    ("pra mode" -> "standard") ~
     ("l1 weight" -> 9.05) ~
     ("l2 weight" -> 9) ~
     ("walks per source" -> 900) ~
@@ -66,6 +127,14 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("matrix accept policy" -> "everything") ~
     ("path follower" -> "matrix multiplication") ~
     ("path accept policy" -> "everything")
+
+  val baseParams: JValue =
+    ("relation metadata" -> relationMetadataFilename) ~
+    ("graph" -> graphSpec) ~
+    ("split" -> splitName) ~
+    ("pra parameters" -> praSpec)
+
+  val justGraphSpec: JValue = ("graph" -> graphSpec)
 
   val extendedSpecFilename = "/extended/spec/file"
   val extendedSpecFile = """load /base/spec/file
@@ -104,47 +173,50 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("level 1" -> ("level 2" -> ("level 3" -> ("level 4" -> "finished"))))
 
   val pathTypeFactoryParams: JValue =
-    ("path type factory" ->
+    ("pra parameters" -> ("path type factory" ->
       ("name" -> "VectorPathTypeFactory") ~
       ("spikiness" -> .2) ~
       ("reset weight" -> .8) ~
       ("matrix dir" -> "matrix dir") ~
-      ("embeddings" -> List(relationEmbeddingsFilename)))
+      ("embeddings" -> List(relationEmbeddingsFilename))))
 
   val fileUtil: FakeFileUtil = {
     val f = new FakeFileUtil
-    f.addFileToBeRead(graphDir + "/node_dict.tsv", nodeDictionaryFile)
-    f.addFileToBeRead(graphDir + "/edge_dict.tsv", edgeDictionaryFile)
+    f.addFileToBeRead("/graphs/" + graphDir + "/node_dict.tsv", nodeDictionaryFile)
+    f.addFileToBeRead("/graphs/" + graphDir + "/edge_dict.tsv", edgeDictionaryFile)
+    f.addFileToBeRead("/graphs/" + graphDir + "/num_shards.tsv", "1\n")
     f.addFileToBeRead(baseSpecFilename, baseSpecFile)
     f.addFileToBeRead(extendedSpecFilename, extendedSpecFile)
     f.addFileToBeRead(overwrittenSpecFilename, overwrittenSpecFile)
     f.addFileToBeRead(nestedSpecFilename, nestedSpecFile)
     f.addFileToBeRead(relationEmbeddingsFilename, relationEmbeddingsFile)
-    f.addFileToBeRead("nell graph files/num_shards.tsv", "1\n")
     f
   }
 
   "readSpecFile" should "read a simple map" in {
-    new SpecFileReader(fileUtil).readSpecFile(baseSpecFilename) should be(baseParams)
+    val params = new SpecFileReader("", fileUtil).readSpecFile(baseSpecFilename)
+    params \ "graph" should be(graphSpec)
+    params \ "pra parameters" should be(praSpec)
+    params should be(baseParams)
   }
 
   it should "read a file with an extension" in {
-    new SpecFileReader(fileUtil).readSpecFile(extendedSpecFilename) should be(extendedParams)
+    new SpecFileReader("", fileUtil).readSpecFile(extendedSpecFilename) should be(extendedParams)
   }
 
   it should "overwrite parameters and do nested loads" in {
-    new SpecFileReader(fileUtil).readSpecFile(overwrittenSpecFilename) should be(overwrittenParams)
+    new SpecFileReader("", fileUtil).readSpecFile(overwrittenSpecFilename) should be(overwrittenParams)
   }
 
   it should "read nested parameters" in {
-    new SpecFileReader(fileUtil).readSpecFile(nestedSpecFilename) should be(nestedParams)
+    new SpecFileReader("", fileUtil).readSpecFile(nestedSpecFilename) should be(nestedParams)
     println(nestedParams \ "level 5")
   }
 
   "setPraConfigFromParams" should "initialize simple params" in {
     val builder = new PraConfig.Builder
     builder.noChecks()
-    new SpecFileReader(fileUtil).setPraConfigFromParams(baseParams, builder)
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(baseParams, builder)
     val config = builder.build()
     config.numIters should be(9)
     config.walksPerSource should be(900)
@@ -165,7 +237,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "give default values with empty params" in {
     val builder = new PraConfig.Builder
     builder.noChecks()
-    new SpecFileReader(fileUtil).setPraConfigFromParams(new JObject(Nil), builder)
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(justGraphSpec, builder)
     val config = builder.build()
     config.numIters should be(3)
     config.walksPerSource should be(200)
@@ -187,18 +259,20 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "handle path type factories" in {
     val builder = new PraConfig.Builder
     builder.noChecks().setFileUtil(fileUtil)
-    new SpecFileReader(fileUtil).setPraConfigFromParams(pathTypeFactoryParams, builder)
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(
+      pathTypeFactoryParams merge justGraphSpec, builder)
     val config = builder.build()
     config.matrixDir should be("matrix dir")
     val factory = config.pathTypeFactory.asInstanceOf[VectorPathTypeFactory]
     factory.getResetWeight should be(Math.exp(0.2 * 0.8))
     factory.getSpikiness should be(0.2)
     factory.getEmbeddingsMap.size should be(1)
+    println(factory.getEmbeddingsMap)
     factory.getEmbeddingsMap.get(1) should be(new Vector(Array(0.1, 0.2)))
-    val badParams: JValue = ("path type factory" -> ("name" -> "nope"))
-    TestUtil.expectError(classOf[RuntimeException], new Function() {
+    val badParams: JValue = ("pra parameters" -> ("path type factory" -> ("name" -> "nope")))
+    TestUtil.expectError(classOf[RuntimeException], "Unrecognized path type factory", new Function() {
       def call() {
-        new SpecFileReader(fileUtil).setPraConfigFromParams(badParams, builder)
+        new SpecFileReader("", fileUtil).setPraConfigFromParams(badParams merge justGraphSpec, builder)
       }
     })
   }
@@ -208,7 +282,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     builder.setFileUtil(fileUtil)
     val params = (pathTypeFactoryParams removeField { _ == JField("matrix dir", JString("matrix dir")) }
       merge baseParams)
-    new SpecFileReader(fileUtil).setPraConfigFromParams(params, builder)
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(params, builder)
     builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null));
     TestUtil.expectError(classOf[IllegalStateException], "must specify matrixDir", new Function() {
       def call() {
@@ -220,14 +294,14 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "handle path follower factories" in {
     val builder = new PraConfig.Builder
     builder.noChecks()
-    var params: JValue = ("path follower" -> "random walks")
-    new SpecFileReader(fileUtil).setPraConfigFromParams(params, builder)
+    var params: JValue = ("pra parameters" -> ("path follower" -> "random walks"))
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)
     val config = builder.build()
     config.pathFollowerFactory.getClass should be(classOf[RandomWalkPathFollowerFactory])
-    params = ("path follower" -> "bad")
-    TestUtil.expectError(classOf[RuntimeException], new Function() {
+    params = ("pra parameters" -> ("path follower" -> "bad"))
+    TestUtil.expectError(classOf[RuntimeException], "Unrecognized path follower", new Function() {
       def call() {
-        new SpecFileReader(fileUtil).setPraConfigFromParams(params, builder)
+        new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)
       }
     })
   }
@@ -235,16 +309,17 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "handle path type selectors" in {
     val builder = new PraConfig.Builder
     builder.noChecks().setFileUtil(fileUtil)
-    val params: JValue = ("path type selector" ->
-      ("name" -> "VectorClusteringPathTypeSelector") ~ ("similarity threshold" -> .3))
-    new SpecFileReader(fileUtil).setPraConfigFromParams(pathTypeFactoryParams merge params, builder)
+    val params: JValue = ("pra parameters" -> ("path type selector" ->
+      ("name" -> "VectorClusteringPathTypeSelector") ~ ("similarity threshold" -> .3)))
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(
+      pathTypeFactoryParams merge params merge justGraphSpec, builder)
     val config = builder.build()
     val selector = config.pathTypeSelector.asInstanceOf[VectorClusteringPathTypeSelector]
     selector.getSimilarityThreshold should be(.3)
-    val badParams: JValue = ("path type selector" -> ("name" -> "nope"))
-    TestUtil.expectError(classOf[RuntimeException], new Function() {
+    val badParams: JValue = ("pra parameters" -> ("path type selector" -> ("name" -> "nope")))
+    TestUtil.expectError(classOf[RuntimeException], "Unrecognized path type selector", new Function() {
       def call() {
-        new SpecFileReader(fileUtil).setPraConfigFromParams(badParams, builder)
+        new SpecFileReader("", fileUtil).setPraConfigFromParams(badParams merge justGraphSpec, builder)
       }
     })
   }

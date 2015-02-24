@@ -8,8 +8,8 @@ import scala.util.Random
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 class DatasetCreator(
-    pra_dir: String,
-    split_name: String,
+    base_dir: String,
+    name: String,
     num_entities: Int,
 
     num_base_relations: Int,
@@ -34,7 +34,7 @@ class DatasetCreator(
 
   val r = new Random
   val fileUtil = new FileUtil
-  val split_dir = s"$pra_dir/splits/${split_name}/"
+  val split_dir = s"$base_dir/splits/${name}/"
   val relation_sets: Array[(Array[String], Array[String])] = {
     val tmp = new mutable.ArrayBuffer[(Array[String], Array[String])]
     for (base <- 1 to num_base_relations) {
@@ -182,18 +182,18 @@ class DatasetCreator(
   }
 
   def outputRelationSet(all_instances: Seq[(Int, String, Int)]) {
-    val relation_data_filename = s"${pra_dir}relation_sets/${split_name}_data.tsv"
+    val relation_data_filename = s"${base_dir}relation_sets/${name}_data.tsv"
     var out = new PrintWriter(relation_data_filename)
     for (instance <- all_instances) {
       out.println(s"${instance._1}\t${instance._2}\t${instance._3}\t1")
     }
     out.close
-    val relation_set_filename = s"${pra_dir}relation_sets/${split_name}.tsv"
+    val relation_set_filename = s"${base_dir}relation_sets/${name}.tsv"
     out = new PrintWriter(relation_set_filename)
     out.println(s"relation file\t$relation_data_filename")
     out.println(s"is kb\tfalse")
     out.close
-    val graph_spec_filename = s"$pra_dir/graph_specs/${split_name}.spec"
+    val graph_spec_filename = s"$base_dir/graph_specs/${name}.spec"
     out = new PrintWriter(graph_spec_filename)
     out.println(s"relation set\t$relation_set_filename")
     out.close

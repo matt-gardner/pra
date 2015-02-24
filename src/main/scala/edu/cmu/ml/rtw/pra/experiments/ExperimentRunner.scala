@@ -44,8 +44,8 @@ object ExperimentRunner {
     }
     val spec_lines = new FileUtil().readLinesFromFile(spec_file)
     if (spec_lines.get(0).startsWith("load") || spec_lines.get(0).startsWith("{")) {
-      val params = new SpecFileReader().readSpecFile(spec_file)
-      new Driver().runPra(result_dir, params)
+      val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
+      new Driver(pra_base).runPra(result_dir, params)
     } else {
       val settings = spec_lines.map(_.split("\t")).map(x => (x(0), x(1))).toMap
       new KbPraDriver().runPra(

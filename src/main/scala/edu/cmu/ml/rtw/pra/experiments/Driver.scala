@@ -10,7 +10,7 @@ import scala.collection.JavaConversions._
 import org.json4s.{DefaultFormats,JValue}
 import org.json4s.native.JsonMethods.{pretty,render}
 
-class Driver(fileUtil: FileUtil = new FileUtil()) {
+class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   private val logger = ChiLogger.getLogger("pra-driver");
 
   implicit val formats = DefaultFormats
@@ -31,7 +31,7 @@ class Driver(fileUtil: FileUtil = new FileUtil()) {
 
     // This takes care of setting everything in the config builder that is consistent across
     // relations.
-    new SpecFileReader(fileUtil).setPraConfigFromParams(params, baseBuilder)
+    new SpecFileReader(praBase, fileUtil).setPraConfigFromParams(params, baseBuilder)
 
     var nodeNames: java.util.Map[String, String] = null;
     if (fileUtil.fileExists(kbDirectory + "node_names.tsv")) {

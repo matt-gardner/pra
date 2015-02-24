@@ -6,6 +6,7 @@ import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
+import edu.cmu.ml.rtw.pra.graphs.GraphConfig
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -15,7 +16,7 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
-class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
+class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
   def readSpecFile(file: java.io.File): JValue = {
@@ -40,68 +41,85 @@ class SpecFileReader(fileUtil: FileUtil = new FileUtil()) {
   }
 
   def setPraConfigFromParams(params: JValue, config: PraConfig.Builder) {
-    // It's important that this one happens first.  Well, it's at least important that this happens
+    // It's important that this happens first.  Well, it's at least important that this happens
     // before anything that uses the dictionaries (like initializePathTypeFactory, for instance),
     // so we just put it here at the top to be safe.
-    var value = params \ "graph files"
-    if (!value.equals(JNothing)) {
-      initializeGraphParameters(value.extract[String], config)
-    }
-    value = params \ "l1 weight"
+    initializeGraphParameters(getGraphDirectory(params), config)
+
+    val pra_params = params \ "pra parameters"
+
+    var value = pra_params \ "l1 weight"
     if (!value.equals(JNothing)) {
       config.setL1Weight(value.extract[Double])
     }
-    value = params \ "l2 weight"
+    value = pra_params \ "l2 weight"
     if (!value.equals(JNothing)) {
       config.setL2Weight(value.extract[Double])
     }
-    value = params \ "walks per source"
+    value = pra_params \ "walks per source"
     if (!value.equals(JNothing)) {
       config.setWalksPerSource(value.extract[Int])
     }
-    value = params \ "walks per path"
+    value = pra_params \ "walks per path"
     if (!value.equals(JNothing)) {
       config.setWalksPerPath(value.extract[Int])
     }
-    value = params \ "path finding iterations"
+    value = pra_params \ "path finding iterations"
     if (!value.equals(JNothing)) {
       config.setNumIters(value.extract[Int])
     }
-    value = params \ "number of paths to keep"
+    value = pra_params \ "number of paths to keep"
     if (!value.equals(JNothing)) {
       config.setNumPaths(value.extract[Int])
     }
-    value = params \ "binarize features"
+    value = pra_params \ "binarize features"
     if (!value.equals(JNothing)) {
       config.setBinarizeFeatures(value.extract[Boolean])
     }
-    value = params \ "normalize walk probabilities"
+    value = pra_params \ "normalize walk probabilities"
     if (!value.equals(JNothing)) {
       config.setNormalizeWalkProbabilities(value.extract[Boolean])
     }
-    value = params \ "matrix accept policy"
+    value = pra_params \ "matrix accept policy"
     if (!value.equals(JNothing)) {
       config.setAcceptPolicy(MatrixRowPolicy.parseFromString(value.extract[String]))
     }
-    value = params \ "path accept policy"
+    value = pra_params \ "path accept policy"
     if (!value.equals(JNothing)) {
       config.setPathTypePolicy(PathTypePolicy.parseFromString(value.extract[String]))
     }
-    value = params \ "max matrix feature fan out"
+    value = pra_params \ "max matrix feature fan out"
     if (!value.equals(JNothing)) {
       config.setMaxMatrixFeatureFanOut(value.extract[Int])
     }
-    value = params \ "path type factory"
+    value = pra_params \ "path type factory"
     if (!value.equals(JNothing)) {
       initializePathTypeFactory(value, config);
     }
-    value = params \ "path type selector"
+    value = pra_params \ "path type selector"
     if (!value.equals(JNothing)) {
       initializePathTypeSelector(value, config);
     }
-    value = params \ "path follower"
+    value = pra_params \ "path follower"
     if (!value.equals(JNothing)) {
       initializePathFollowerFactory(value, config);
+    }
+  }
+
+  def getGraphDirectory(params: JValue): String = {
+    var value = params \ "graph"
+    try {
+      val name = value.extract[String]
+      if (name.startsWith("/")) {
+        return name
+      } else {
+        return baseDir + "/graphs/" + name
+      }
+    } catch {
+      case e: MappingException => {
+        val name = (value \ "name").extract[String]
+        return baseDir + "/graphs/" + name
+      }
     }
   }
 
