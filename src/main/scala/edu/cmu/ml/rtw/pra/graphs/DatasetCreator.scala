@@ -1,7 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import breeze.linalg.CSCMatrix
-
 import java.io.PrintWriter
 
 import scala.collection.mutable
@@ -18,6 +16,7 @@ class DatasetCreator(
     num_base_relation_training_duplicates: Int,
     num_base_relation_testing_duplicates: Int,
     num_base_relation_overlapping_instances: Int,
+    num_base_relation_noise_instances: Int,
 
     num_pra_relations: Int,
     num_pra_relation_training_instances: Int,
@@ -170,6 +169,15 @@ class DatasetCreator(
         instances += Tuple3(source, name, target)
       }
     }
+    for (rel_index <- 1 to relation_sets.size) {
+      for (i <- 1 to num_base_relation_noise_instances) {
+        val source = r.nextInt(num_entities)
+        val target = r.nextInt(num_entities)
+        val isTraining = if (r.nextDouble > .5) true else false
+        val relation = getConcreteBaseRelation(rel_index, isTraining)
+        instances += Tuple3(source, relation, target)
+      }
+    }
     instances.toSet
   }
 
@@ -248,6 +256,7 @@ object DatasetCreator {
       25,
       5,
       0,
+      500,
       250,
 
       2,
