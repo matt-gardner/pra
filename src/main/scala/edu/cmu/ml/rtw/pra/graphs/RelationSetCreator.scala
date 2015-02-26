@@ -1,41 +1,52 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import java.io.PrintWriter
-
 import scala.collection.mutable
 import scala.util.Random
 
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
-class DatasetCreator(
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
+
+class RelationSetCreator(
     base_dir: String,
-    name: String,
-    num_entities: Int,
+    params: JValue,
+    fileUtil: FileUtil = new FileUtil()) {
 
-    num_base_relations: Int,
-    num_base_relation_training_duplicates: Int,
-    num_base_relation_testing_duplicates: Int,
-    num_base_relation_overlapping_instances: Int,
-    num_base_relation_noise_instances: Int,
+  // Extracting parameters first
+  implicit val formats = DefaultFormats
 
-    num_pra_relations: Int,
-    num_pra_relation_training_instances: Int,
-    num_pra_relation_testing_instances: Int,
-    num_rules: Int,
-    min_rule_length: Int,
-    max_rule_length: Int,
-    rule_prob_mean: Double = .6,
-    rule_prob_stddev: Double = .2,
+  val name = (params \ "name").extract[String]
+  val num_entities = (params \ "num_entities").extract[Int]
 
-    num_noise_relations: Int,
-    num_noise_relation_instances: Int
+  val num_base_relations = (params \ "num_base_relations").extract[Int]
+  val num_base_relation_training_duplicates = (params \ "num_base_relation_training_duplicates").extract[Int]
+  val num_base_relation_testing_duplicates = (params \ "num_base_relation_testing_duplicates").extract[Int]
+  val num_base_relation_overlapping_instances = (params \ "num_base_relation_overlapping_instances").extract[Int]
+  val num_base_relation_noise_instances = (params \ "num_base_relation_noise_instances").extract[Int]
 
-    ) {
+  val num_pra_relations = (params \ "num_pra_relations").extract[Int]
+  val num_pra_relation_training_instances = (params \ "num_pra_relation_training_instances").extract[Int]
+  val num_pra_relation_testing_instances = (params \ "num_pra_relation_testing_instances").extract[Int]
+  val num_rules = (params \ "num_rules").extract[Int]
+  val min_rule_length = (params \ "min_rule_length").extract[Int]
+  val max_rule_length = (params \ "max_rule_length").extract[Int]
+  val rule_prob_mean = (params \ "rule_prob_mean").extract[Double]
+  val rule_prob_stddev = (params \ "rule_prob_stddev").extract[Double]
+
+  val num_noise_relations = (params \ "num_noise_relations").extract[Int]
+  val num_noise_relation_instances = (params \ "num_noise_relation_instances").extract[Int]
 
   val r = new Random
-  val fileUtil = new FileUtil
   val split_dir = s"$base_dir/splits/${name}/"
-  val relation_sets: Array[(Array[String], Array[String])] = {
+  val relation_set_dir = s"$base_dir/relation_sets/${name}/"
+  val in_progress_file = s"${relation_set_dir}in_progress"
+  val param_file = s"${relation_set_dir}params.json"
+  val relation_set_spec_file = s"${relation_set_dir}relation_set.spec"
+  val data_file = s"${relation_set_dir}data.tsv"
+
+  lazy val relation_sets: Array[(Array[String], Array[String])] = {
     val tmp = new mutable.ArrayBuffer[(Array[String], Array[String])]
     for (base <- 1 to num_base_relations) {
       val training_set = new mutable.ArrayBuffer[String]
@@ -59,6 +70,8 @@ class DatasetCreator(
 
   def createRelationSet() {
     fileUtil.mkdirs(split_dir)
+    fileUtil.mkdirs(relation_set_dir)
+    fileUtil.touchFile(in_progress_file)
     val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
     val instances = (new mutable.ArrayBuffer[(Int, String, Int)],
       new mutable.ArrayBuffer[(Int, String, Int)])
@@ -72,6 +85,9 @@ class DatasetCreator(
     outputRelationSet(instances._1)
     outputSplitFiles(instances._1.toSet, instances._2.toSet, pra_relations.map(_._1).seq.toSet)
     outputRules(pra_relations.flatMap(x => x._2.map(y => (x._1, y._1, y._2))).seq)
+    val out = fileUtil.getFileWriter(param_file)
+    out.write(compact(render(params)))
+    fileUtil.deleteFile(in_progress_file)
   }
 
   def generatePraRelations(relation_index: Int) = {
@@ -182,20 +198,14 @@ class DatasetCreator(
   }
 
   def outputRelationSet(all_instances: Seq[(Int, String, Int)]) {
-    val relation_data_filename = s"${base_dir}relation_sets/${name}_data.tsv"
-    var out = new PrintWriter(relation_data_filename)
+    var out = fileUtil.getFileWriter(data_file)
     for (instance <- all_instances) {
-      out.println(s"${instance._1}\t${instance._2}\t${instance._3}\t1")
+      out.write(s"${instance._1}\t${instance._2}\t${instance._3}\t1\n")
     }
     out.close
-    val relation_set_filename = s"${base_dir}relation_sets/${name}.tsv"
-    out = new PrintWriter(relation_set_filename)
-    out.println(s"relation file\t$relation_data_filename")
-    out.println(s"is kb\tfalse")
-    out.close
-    val graph_spec_filename = s"$base_dir/graph_specs/${name}.spec"
-    out = new PrintWriter(graph_spec_filename)
-    out.println(s"relation set\t$relation_set_filename")
+    out = fileUtil.getFileWriter(relation_set_spec_file)
+    out.write(s"relation file\t$data_file\n")
+    out.write(s"is kb\tfalse\n")
     out.close
   }
 
@@ -204,9 +214,10 @@ class DatasetCreator(
       testing_instances: Set[(Int, String, Int)],
       pra_relations: Set[String]) {
     val relations_to_run_filename = s"$split_dir/relations_to_run.tsv"
-    var out = new PrintWriter(relations_to_run_filename)
+    var out = fileUtil.getFileWriter(relations_to_run_filename)
     for (relation <- pra_relations) {
-      out.println(relation)
+      out.write(relation)
+      out.write("\n")
     }
     out.close
     val relation_instances: Map[String, (Set[(Int, Int)], Set[(Int, Int)])] = {
@@ -218,14 +229,14 @@ class DatasetCreator(
     for (relation_instance_set <- relation_instances) {
       val relation_dir = split_dir + relation_instance_set._1 + "/"
       fileUtil.mkdirs(relation_dir)
-      out = new PrintWriter(relation_dir + "training.tsv")
+      out = fileUtil.getFileWriter(relation_dir + "training.tsv")
       for (instance <- relation_instance_set._2._1) {
-        out.println(s"${instance._1}\t${instance._2}")
+        out.write(s"${instance._1}\t${instance._2}\n")
       }
       out.close
-      out = new PrintWriter(relation_dir + "testing.tsv")
+      out = fileUtil.getFileWriter(relation_dir + "testing.tsv")
       for (instance <- relation_instance_set._2._2) {
-        out.println(s"${instance._1}\t${instance._2}")
+        out.write(s"${instance._1}\t${instance._2}\n")
       }
       out.close
     }
@@ -237,39 +248,52 @@ class DatasetCreator(
 
   def outputRules(rules: Seq[(String, Seq[Int], Double)]) {
     val rules_file = s"$split_dir/rules.tsv"
-    val out = new PrintWriter(rules_file)
+    val out = fileUtil.getFileWriter(rules_file)
     for (rule <- rules) {
       val relations = rule._2.mkString("-")
-      out.println(s"${rule._1}\t${relations}\t${rule._3}")
+      out.write(s"${rule._1}\t${relations}\t${rule._3}\n")
     }
     out.close
   }
 }
 
-object DatasetCreator {
+object RelationSetCreator {
   def main(args: Array[String]) {
-    new DatasetCreator(
-      "/home/mg1/pra/",
-      "synthetic_easy",
-      1000,
+    val params =
+      ("name" -> "synthetic_easy") ~
+      ("num_entities" -> 1000) ~
+      ("num_base_relations" -> 25) ~
+      ("num_base_relation_training_duplicates" -> 5) ~
+      ("num_base_relation_testing_duplicates" -> 0) ~
+      ("num_base_relation_overlapping_instances" -> 500) ~
+      ("num_base_relation_noise_instances" -> 250) ~
+      ("num_pra_relations" -> 2) ~
+      ("num_pra_relation_training_instances" -> 500) ~
+      ("num_pra_relation_testing_instances" -> 100) ~
+      ("num_rules" -> 10) ~
+      ("min_rule_length" -> 1) ~
+      ("min_rule_length" -> 5) ~
+      ("rule_prob_mean" -> .6) ~
+      ("rule_prob_stddev" -> .2) ~
+      ("num_noise_relations" -> 20) ~
+      ("num_noise_relation_instances" -> 2500)
+    new DatasetCreator("/home/mg1/pra/", params).createRelationSet()
+  }
+}
 
-      25,
-      5,
-      0,
-      500,
-      250,
+// This bit of ugliness is required for proper testing.  I want to supply a fake instance of
+// RelationSetCreator when testing the GraphCreator class, so I need to have a factory, so I don't
+// have to call new RelationSetCreator...
+trait IRelationSetCreatorFactory {
+  def getRelationSetCreator(base_dir: String, params: JValue): RelationSetCreator = {
+    getRelationSetCreator(base_dir, params, new FileUtil)
+  }
 
-      2,
-      500,
-      100,
-      10,
-      1,
-      5,
-      .6,
-      .2,
+  def getRelationSetCreator(base_dir: String, params: JValue, fileUtil: FileUtil): RelationSetCreator
+}
 
-      20,
-      2500
-      ).createRelationSet()
+class RelationSetCreatorFactory extends IRelationSetCreatorFactory {
+  def getRelationSetCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
+    new RelationSetCreator(base_dir, params, fileUtil)
   }
 }

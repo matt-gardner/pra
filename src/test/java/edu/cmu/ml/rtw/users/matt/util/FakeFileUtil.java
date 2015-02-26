@@ -91,6 +91,28 @@ public class FakeFileUtil extends FileUtil {
     return fileWriters.get(filename);
   }
 
+  @Override
+  public void touchFile(String filename) throws IOException {
+    if (throwIOExceptionOnWrite) throw new IOException("Writing not allowed");
+    if (onlyAllowExpectedFiles) {
+      TestCase.assertNotNull("Unexpected file written: " + filename,
+                             expectedFileContents.get(filename));
+    }
+    existingPaths.add(filename);
+  }
+
+  @Override
+  public void deleteFile(String filename) throws IOException {
+    // TODO(matt): This isn't very complete, but I don't have a test that needs this yet.  This
+    // should probably do something more interesting, but I'll write it when I need it for a test.
+    if (throwIOExceptionOnWrite) throw new IOException("Writing not allowed");
+    existingPaths.remove(filename);
+  }
+
+  @Override
+  public void blockOnFileDeletion(String filename) throws IOException {
+  }
+
   public void addFileToBeRead(String filename, String contents) {
     readerFileContents.put(filename, contents);
   }

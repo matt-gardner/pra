@@ -5,7 +5,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,6 +67,14 @@ public class FileUtil {
       }
     }
     return list;
+  }
+
+  public void touchFile(String filename) throws IOException {
+    new File(filename).createNewFile();
+  }
+
+  public void deleteFile(String filename) throws IOException {
+    new File(filename).delete();
   }
 
   public FileWriter getFileWriter(String filename) throws IOException {
@@ -329,5 +343,19 @@ public class FileUtil {
     while ((line = reader.readLine()) != null) {
       writer.write(line + "\n");
     }
+  }
+
+  public void blockOnFileDeletion(String filename) throws IOException {
+    if (!new File(filename).exists()) return;
+    WatchService watchService = FileSystems.getDefault().newWatchService();
+    Path parent = Paths.get(filename).getParent();
+    WatchKey watchKey = parent.register(watchService, StandardWatchEventKinds.ENTRY_DELETE);
+    try {
+      WatchKey key = watchService.take();
+      for (WatchEvent<?> event : key.pollEvents()) {
+        if (filename.endsWith(event.context().toString())) return;
+      }
+    } catch (InterruptedException e) { }
+    return;
   }
 }
