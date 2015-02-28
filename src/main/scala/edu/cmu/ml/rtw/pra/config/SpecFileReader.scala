@@ -28,15 +28,27 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   }
 
   def readSpecFile(lines: Seq[String]): JValue = {
-    val params = new JObject(Nil)
-    populateParamsFromSpecs(lines, params)
+    val empty_params = new JObject(Nil)
+    val params = populateParamsFromSpecs(lines, empty_params)
+    doNestedLoads(params)
   }
 
+  // This handles load statements at the beginning of a file, however many there are.
   def populateParamsFromSpecs(specs: Seq[String], params: JValue): JValue = {
     if (specs(0).startsWith("load")) {
       return readSpecFile(specs(0).split(" ")(1)) merge populateParamsFromSpecs(specs.drop(1), params)
     } else {
       params merge parse(specs.mkString(" "))
+    }
+  }
+
+  // This handles load statements that are given as values in the json (i.e. "graph": "load file").
+  def doNestedLoads(params: JValue): JValue = {
+    params mapField {
+      case (name, JString(load)) if (load.startsWith("load ")) => {
+        (name, readSpecFile(load.split(" ")(1)))
+      }
+      case other => other
     }
   }
 

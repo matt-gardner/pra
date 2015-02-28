@@ -5,96 +5,99 @@ import java.io.StringReader
 
 import org.scalatest._
 
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
+import edu.cmu.ml.rtw.users.matt.util.TestUtil
+import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
 class GraphCreatorSpec extends FlatSpecLike with Matchers {
-  val embeddings1 = "embeddings1";
-  val embeddings2 = "embeddings2";
+  val embeddings1 = "embeddings1"
+  val embeddings2 = "embeddings2"
 
-  val concept1 = "c1";
-  val concept2 = "c2";
-  val string1 = "s1";
-  val string2 = "s2";
-  val relation = "r";
-  val aliasRelation = "@ALIAS@";
+  val concept1 = "c1"
+  val concept2 = "c2"
+  val string1 = "s1"
+  val string2 = "s2"
+  val relation = "r"
+  val aliasRelation = "@ALIAS@"
 
-  val svoFile = "/svo_file";
+  val svoFile = "/svo_file"
   val svoFileContents =
       string1 + "\t" + relation + "\t" + string2 + "\t1\n" +
-      string1 + "\t" + relation + "\t" + string2 + "\t1\n";
-  val kbFile = "/kb_file";
-  val kbFileContents = concept1 + "\t" + concept2 + "\t" + relation + "\n";
-  val aliasFile = "/alias_file";
+      string1 + "\t" + relation + "\t" + string2 + "\t1\n"
+  val kbFile = "/kb_file"
+  val kbFileContents = concept1 + "\t" + concept2 + "\t" + relation + "\n"
+  val aliasFile = "/alias_file"
   val aliasFileContents =
       concept1 + "\t" + string1 + "\n" +
-      concept2 + "\t" + string2 + "\n";
+      concept2 + "\t" + string2 + "\n"
 
-  val svoRelationSetFile = "/svo_relation_set";
+  val svoRelationSetFile = "/svo_relation_set"
   val svoRelationSetFileContents =
       "relation file\t" + svoFile + "\n" +
-      "is kb\tfalse\n";
+      "is kb\tfalse\n"
 
-  val kbRelationSetFile = "/kb_relation_set";
+  val kbRelationSetFile = "/kb_relation_set"
   val kbRelationSetFileContents =
       "relation file\t" + kbFile + "\n" +
       "is kb\ttrue\n" +
       "alias file\t" + aliasFile + "\n" +
-      "alias file format\tnell\n";
+      "alias file format\tnell\n"
 
-  val nodeDictionaryFile = "/node_dict.tsv";
+  val nodeDictionaryFile = "/node_dict.tsv"
   val expectedNodeDictionaryFileContents =
       "1\t" + string1 + "\n" +
       "2\t" + string2 + "\n" +
       "3\t" + concept1 + "\n" +
-      "4\t" + concept2 + "\n";
+      "4\t" + concept2 + "\n"
 
-  val edgeDictionaryFile = "/edge_dict.tsv";
+  val edgeDictionaryFile = "/edge_dict.tsv"
   val expectedEdgeDictionaryFileContents =
       "1\t" + aliasRelation + "\n" +
-      "2\t" + relation + "\n";
+      "2\t" + relation + "\n"
 
-  val edgesFile = "/graph_chi/edges.tsv";
+  val edgesFile = "/graph_chi/edges.tsv"
   val expectedEdgeFileContents =
       "1\t3\t1\n" +
       "2\t4\t1\n" +
       "1\t2\t2\n" +
       "1\t2\t2\n" +
-      "3\t4\t2\n";
+      "3\t4\t2\n"
   val expectedDedupedEdgeFileContents =
       "1\t3\t1\n" +
       "2\t4\t1\n" +
       "1\t2\t2\n" +
-      "3\t4\t2\n";
+      "3\t4\t2\n"
 
-  val longerEdgesFile = "/graph_chi/edges.tsv";
+  val longerEdgesFile = "/graph_chi/edges.tsv"
   val longerEdgeFileContents =
       "1\t1\t1\n" +
       "2\t2\t2\n" +
       "3\t3\t3\n" +
       "4\t4\t4\n" +
-      "5\t5\t5\n";
+      "5\t5\t5\n"
 
-  val shardsFile = "/num_shards.tsv";
-  val expectedShardsFileContents = "2\n";
+  val shardsFile = "/num_shards.tsv"
+  val expectedShardsFileContents = "2\n"
 
-  val matrixFile1 = "/matrices/1";
+  val matrixFile1 = "/matrices/1"
   val expectedMatrixFile1Contents =
       "Relation 1\n" +
       "1\t3\n" +
-      "2\t4\n";
+      "2\t4\n"
 
-  val matrixFile2 = "/matrices/2";
+  val matrixFile2 = "/matrices/2"
   val expectedMatrixFile2Contents =
       "Relation 2\n" +
       "1\t2\n" +
       "1\t2\n" +
-      "3\t4\n";
+      "3\t4\n"
 
-  val matrixFile12 = "/matrices/1-2";
+  val matrixFile12 = "/matrices/1-2"
   val expectedMatrixFile12Contents =
       "Relation 1\n" +
       "1\t3\n" +
@@ -102,43 +105,49 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       "Relation 2\n" +
       "1\t2\n" +
       "1\t2\n" +
-      "3\t4\n";
+      "3\t4\n"
+
+  val inProgressFile = "/in_progress"
+  val paramFile = "/params.json"
 
   def getFileUtil = {
-    val f = new FakeFileUtil();
-    f.addFileToBeRead(svoFile, svoFileContents);
-    f.addFileToBeRead(kbFile, kbFileContents);
-    f.addFileToBeRead(aliasFile, aliasFileContents);
-    f.addFileToBeRead(svoRelationSetFile, svoRelationSetFileContents);
-    f.addFileToBeRead(kbRelationSetFile, kbRelationSetFileContents);
+    val f = new FakeFileUtil()
+    f.addFileToBeRead(svoFile, svoFileContents)
+    f.addFileToBeRead(kbFile, kbFileContents)
+    f.addFileToBeRead(aliasFile, aliasFileContents)
+    f.addFileToBeRead(svoRelationSetFile, svoRelationSetFileContents)
+    f.addFileToBeRead(kbRelationSetFile, kbRelationSetFileContents)
     f
   }
 
   "createGraphChiRelationGraph" should "make a correct simple graph" in {
-    val fileUtil = getFileUtil
-    fileUtil.onlyAllowExpectedFiles();
-    fileUtil.addExpectedFileWritten(nodeDictionaryFile, expectedNodeDictionaryFileContents);
-    fileUtil.addExpectedFileWritten(edgeDictionaryFile, expectedEdgeDictionaryFileContents);
-    fileUtil.addExpectedFileWritten(edgesFile, expectedEdgeFileContents);
-    fileUtil.addExpectedFileWritten(shardsFile, expectedShardsFileContents);
-
     val params =
       ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
       ("create matrices" -> false)
-    new GraphCreator("/", fileUtil).createGraphChiRelationGraph(params, false)
-    fileUtil.expectFilesWritten();
+
+    val fileUtil = getFileUtil
+    fileUtil.onlyAllowExpectedFiles()
+    fileUtil.addExpectedFileWritten(nodeDictionaryFile, expectedNodeDictionaryFileContents)
+    fileUtil.addExpectedFileWritten(edgeDictionaryFile, expectedEdgeDictionaryFileContents)
+    fileUtil.addExpectedFileWritten(edgesFile, expectedEdgeFileContents)
+    fileUtil.addExpectedFileWritten(shardsFile, expectedShardsFileContents)
+    fileUtil.addExpectedFileWritten(inProgressFile, "")
+    fileUtil.addExpectedFileWritten(paramFile, pretty(render(params)))
+
+    new GraphCreator("/", "/", fileUtil).createGraphChiRelationGraph(params, false)
+    fileUtil.expectFilesWritten()
   }
 
   it should "dedup edges when supposed to" in {
     val fileUtil = getFileUtil
-    fileUtil.addExpectedFileWritten(edgesFile, expectedDedupedEdgeFileContents);
+    fileUtil.addExpectedFileWritten(edgesFile, expectedDedupedEdgeFileContents)
 
     val params =
       ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
       ("deduplicate edges" -> true) ~
       ("create matrices" -> false)
-    new GraphCreator("/", fileUtil).createGraphChiRelationGraph(params, false)
-    fileUtil.expectFilesWritten();
+    new GraphCreator("/", "/", fileUtil).createGraphChiRelationGraph(params, false)
+    fileUtil.expectFilesWritten()
   }
 
   "getSvoPrefixes" should "map relation sets to prefixes" in {
@@ -150,7 +159,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       RelationSet.fromReader(new BufferedReader(new StringReader(
         "embeddings file\t" + embeddings2 + "\n"))))
 
-    val prefixes = new GraphCreator("/").getSvoPrefixes(relationSets);
+    val prefixes = new GraphCreator("/", "/").getSvoPrefixes(relationSets)
     prefixes(relationSets(0)) should be("1-")
     prefixes(relationSets(1)) should be("1-")
     prefixes(relationSets(2)) should be("2-")
@@ -164,7 +173,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
         "embeddings file\t" + embeddings1 + "\n"))))
 
     // If there's no ambiguity about the embeddings, the prefix map should return null.
-    val null_prefixes = new GraphCreator("/").getSvoPrefixes(relationSets);
+    val null_prefixes = new GraphCreator("/", "/").getSvoPrefixes(relationSets)
     null_prefixes(relationSets(0)) should be(null)
     null_prefixes(relationSets(1)) should be(null)
   }
@@ -177,7 +186,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
   // break a test, so that the person changing it will stop and think a bit about whether the
   // change is good.  And then change the test to reflect the better shard numbers.
   "getNumShards" should "return correct shard numbers" in {
-    val creator = new GraphCreator("/")
+    val creator = new GraphCreator("/", "/")
     creator.getNumShards(4999999) should be(2)
     creator.getNumShards(5000000) should be(3)
     creator.getNumShards(9999999) should be(3)
@@ -198,35 +207,116 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   "outputMatrices" should "split files with small matrix file size" in {
     val fileUtil = getFileUtil
-    fileUtil.onlyAllowExpectedFiles();
-    fileUtil.addFileToBeRead(edgesFile, expectedEdgeFileContents);
-    fileUtil.addExpectedFileWritten(matrixFile1, expectedMatrixFile1Contents);
-    fileUtil.addExpectedFileWritten(matrixFile2, expectedMatrixFile2Contents);
+    fileUtil.onlyAllowExpectedFiles()
+    fileUtil.addFileToBeRead(edgesFile, expectedEdgeFileContents)
+    fileUtil.addExpectedFileWritten(matrixFile1, expectedMatrixFile1Contents)
+    fileUtil.addExpectedFileWritten(matrixFile2, expectedMatrixFile2Contents)
 
-    new GraphCreator("/", fileUtil).outputMatrices(edgesFile, 4)
-    fileUtil.expectFilesWritten();
+    new GraphCreator("/", "/", fileUtil).outputMatrices(edgesFile, 4)
+    fileUtil.expectFilesWritten()
   }
 
   it should "split files with lots of relations" in {
     val fileUtil = getFileUtil
-    fileUtil.onlyAllowExpectedFiles();
-    fileUtil.addFileToBeRead(edgesFile, longerEdgeFileContents);
-    fileUtil.addExpectedFileWritten("/matrices/1-2", "Relation 1\n1\t1\nRelation 2\n2\t2\n");
-    fileUtil.addExpectedFileWritten("/matrices/3-4", "Relation 3\n3\t3\nRelation 4\n4\t4\n");
-    fileUtil.addExpectedFileWritten("/matrices/5", "Relation 5\n5\t5\n");
+    fileUtil.onlyAllowExpectedFiles()
+    fileUtil.addFileToBeRead(edgesFile, longerEdgeFileContents)
+    fileUtil.addExpectedFileWritten("/matrices/1-2", "Relation 1\n1\t1\nRelation 2\n2\t2\n")
+    fileUtil.addExpectedFileWritten("/matrices/3-4", "Relation 3\n3\t3\nRelation 4\n4\t4\n")
+    fileUtil.addExpectedFileWritten("/matrices/5", "Relation 5\n5\t5\n")
 
-    new GraphCreator("/", fileUtil).outputMatrices(edgesFile, 2)
-    fileUtil.expectFilesWritten();
+    new GraphCreator("/", "/", fileUtil).outputMatrices(edgesFile, 2)
+    fileUtil.expectFilesWritten()
   }
 
   it should "make one large file with large matrix file size" in {
     val fileUtil = getFileUtil
-    fileUtil.onlyAllowExpectedFiles();
-    fileUtil.addFileToBeRead(edgesFile, expectedEdgeFileContents);
-    fileUtil.addExpectedFileWritten(matrixFile12, expectedMatrixFile12Contents);
+    fileUtil.onlyAllowExpectedFiles()
+    fileUtil.addFileToBeRead(edgesFile, expectedEdgeFileContents)
+    fileUtil.addExpectedFileWritten(matrixFile12, expectedMatrixFile12Contents)
 
-    new GraphCreator("/", fileUtil).outputMatrices(edgesFile, 40)
-    fileUtil.expectFilesWritten();
+    new GraphCreator("/", "/", fileUtil).outputMatrices(edgesFile, 40)
+    fileUtil.expectFilesWritten()
+  }
+
+  val rel_set_params =
+    ("name" -> "generated") ~
+    ("num_entities" -> 1) ~
+    ("num_base_relations" -> 2) ~
+    ("num_base_relation_training_duplicates" -> 3) ~
+    ("num_base_relation_testing_duplicates" -> 4) ~
+    ("num_base_relation_overlapping_instances" -> 5) ~
+    ("num_base_relation_noise_instances" -> 6) ~
+    ("num_pra_relations" -> 7) ~
+    ("num_pra_relation_training_instances" -> 8) ~
+    ("num_pra_relation_testing_instances" -> 9) ~
+    ("num_rules" -> 10) ~
+    ("min_rule_length" -> 11) ~
+    ("max_rule_length" -> 12) ~
+    ("num_noise_relations" -> 13) ~
+    ("num_noise_relation_instances" -> 14) ~
+    ("rule_prob_mean" -> 0.6) ~
+    ("rule_prob_stddev" -> 0.2)
+  val data_file = "/relation_sets/generated/data.tsv"
+  val rel_set_file = "/relation_sets/generated/relation_set.tsv"
+  val rel_set_file_contents = s"relation file\t$data_file\nis kb\tfalse\n"
+
+  "generateSyntheticRelationSet" should "create a dataset when one doesn't exist" in {
+    val instances = Seq((1, "rel", 2))
+    val fileUtil = getFileUtil
+    fileUtil.onlyAllowExpectedFiles()
+    fileUtil.addExpectedFileWritten(data_file, "1\trel\t2\t1\n")
+    fileUtil.addExpectedFileWritten(rel_set_file, rel_set_file_contents)
+    fileUtil.addFileToBeRead(rel_set_file, rel_set_file_contents)
+
+    val creator = new GraphCreator("/", "/", fileUtil)
+    creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(instances)
+    creator.generateSyntheticRelationSet(rel_set_params)
+    fileUtil.expectFilesWritten
+  }
+
+  it should "not create a dataset when one already exists" in {
+    val fileUtil = getFileUtil
+    fileUtil.addExistingFile("/relation_sets/generated/")
+    fileUtil.addFileToBeRead("/relation_sets/generated/params.json", compact(render(rel_set_params)))
+    fileUtil.addFileToBeRead(rel_set_file, rel_set_file_contents)
+    fileUtil.onlyAllowExpectedFiles()
+
+    val creator = new GraphCreator("/", "/", fileUtil)
+    creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(Seq())
+    creator.generateSyntheticRelationSet(rel_set_params)
+    fileUtil.expectFilesWritten
+  }
+
+  it should "throw an exception when parameters don't match" in {
+    val random_param: JValue = ("num_entities" -> 1000)
+    val params = rel_set_params merge random_param
+    val fileUtil = getFileUtil
+    fileUtil.addExistingFile("/relation_sets/generated/")
+    fileUtil.addFileToBeRead("/relation_sets/generated/params.json", compact(render(params)))
+    val creator = new GraphCreator("/", "/", fileUtil)
+    creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(Seq())
+    TestUtil.expectError(classOf[IllegalStateException], "parameters don't match", new Function() {
+      def call() {
+        creator.generateSyntheticRelationSet(rel_set_params)
+      }
+    })
   }
 }
 
+class FakeSyntheticDataCreatorFactory(instances: Seq[(Int, String, Int)]) extends ISyntheticDataCreatorFactory {
+  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
+    new FakeSyntheticDataCreator(base_dir, params, fileUtil, instances)
+  }
+}
+
+class FakeSyntheticDataCreator(
+    base_dir: String,
+    params: JValue,
+    fileUtil: FileUtil,
+    instances: Seq[(Int, String, Int)])
+    extends SyntheticDataCreator(base_dir, params, fileUtil) {
+
+  override def createRelationSet() {
+    outputRelationSet(instances)
+  }
+}

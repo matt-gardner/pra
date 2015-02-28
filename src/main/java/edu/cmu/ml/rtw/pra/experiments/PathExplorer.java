@@ -54,9 +54,9 @@ public class PathExplorer {
     new File(outputBase).mkdirs();
     builder.setOutputBase(outputBase);
     DatasetFactory datasetFactory = new DatasetFactory();
-    new KbPraDriver().parseGraphFiles(graphDirectory, builder);
+    //new KbPraDriver().parseGraphFiles(graphDirectory, builder);
     builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict));
-    new KbPraDriver().parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
+    //new KbPraDriver().parseKbFiles(kbDirectory, relation, builder, outputBase, fileUtil);
     PraConfig config = builder.build();
 
     FeatureGenerator generator = new FeatureGenerator(config);
@@ -65,6 +65,7 @@ public class PathExplorer {
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
+    // TODO(matt): merge this into Driver, as an option with "pra mode", or something
     Options cmdLineOptions = createOptionParser();
     CommandLine cmdLine = null;
     try {

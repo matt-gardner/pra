@@ -112,6 +112,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("name" -> graphDir) ~
     ("relation sets" -> List(JString(relationSetFilename), generatedRelationSetSpec)) ~
     ("deduplicate edges" -> true)
+  val graphSpecFilename = "/pra/graph/spec/file"
+  val graphSpecFile = pretty(render(graphSpec))
 
   val praSpec: JValue =
     ("pra mode" -> "standard") ~
@@ -127,6 +129,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("matrix accept policy" -> "everything") ~
     ("path follower" -> "matrix multiplication") ~
     ("path accept policy" -> "everything")
+  val praSpecFilename = "/pra/params/spec/file"
+  val praSpecFile = pretty(render(praSpec))
 
   val baseParams: JValue =
     ("relation metadata" -> relationMetadataFilename) ~
@@ -172,6 +176,20 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   val nestedParams: JValue =
     ("level 1" -> ("level 2" -> ("level 3" -> ("level 4" -> "finished"))))
 
+  val nestedLoadSpecFilename = "/nested_load/spec/file"
+  val nestedLoadSpecFile = s"""{
+    |  "pra parameters": "load $praSpecFilename",
+    |  "graph": "load $graphSpecFilename",
+    |  "just for good measure": {
+    |    "pra parameters": "load $praSpecFilename"
+    |  }
+    |}""".stripMargin
+
+  val nestedLoadParams: JValue =
+    ("pra parameters" -> praSpec) ~
+    ("graph" -> graphSpec) ~
+    ("just for good measure" -> ("pra parameters" -> praSpec))
+
   val pathTypeFactoryParams: JValue =
     ("pra parameters" -> ("path type factory" ->
       ("name" -> "VectorPathTypeFactory") ~
@@ -190,6 +208,9 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     f.addFileToBeRead(overwrittenSpecFilename, overwrittenSpecFile)
     f.addFileToBeRead(nestedSpecFilename, nestedSpecFile)
     f.addFileToBeRead(relationEmbeddingsFilename, relationEmbeddingsFile)
+    f.addFileToBeRead(praSpecFilename, praSpecFile)
+    f.addFileToBeRead(graphSpecFilename, graphSpecFile)
+    f.addFileToBeRead(nestedLoadSpecFilename, nestedLoadSpecFile)
     f
   }
 
@@ -210,7 +231,10 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "read nested parameters" in {
     new SpecFileReader("", fileUtil).readSpecFile(nestedSpecFilename) should be(nestedParams)
-    println(nestedParams \ "level 5")
+  }
+
+  it should "expand loads found in values in the json" in {
+    new SpecFileReader("", fileUtil).readSpecFile(nestedLoadSpecFilename) should be(nestedLoadParams)
   }
 
   "setPraConfigFromParams" should "initialize simple params" in {

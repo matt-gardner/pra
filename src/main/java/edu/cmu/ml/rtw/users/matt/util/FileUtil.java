@@ -347,6 +347,7 @@ public class FileUtil {
 
   public void blockOnFileDeletion(String filename) throws IOException {
     if (!new File(filename).exists()) return;
+    System.out.println("Waiting for file " + filename + " to be deleted");
     WatchService watchService = FileSystems.getDefault().newWatchService();
     Path parent = Paths.get(filename).getParent();
     WatchKey watchKey = parent.register(watchService, StandardWatchEventKinds.ENTRY_DELETE);

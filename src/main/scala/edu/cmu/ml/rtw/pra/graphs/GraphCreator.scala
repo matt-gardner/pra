@@ -18,14 +18,16 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.json4s._
-import org.json4s.JsonDSL.WithDouble._
-import org.json4s.native.JsonMethods._
+import org.json4s.{DefaultFormats,JValue,JString,JNothing}
+import org.json4s.native.JsonMethods.{pretty,render,parse}
 
-class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new FileUtil) {
+class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
 
   val matrixOutDir = outdir + "matrices/"
+  val inProgressFile = outdir + "in_progress"
+  val paramFile = outdir + "params.json"
+  val relationSetDir = "relation_sets/"
 
   def getRelationSets(params: JValue): Seq[RelationSet] = {
     val value = params \ "relation sets"
@@ -34,12 +36,12 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
         RelationSet.fromFile(path.extract[String], fileUtil)
       }
       case name: JString => {
-        throw new NotImplementedError("TODO")
+        RelationSet.fromFile(s"${baseDir}${relationSetDir}${name.extract[String]}.tsv")
       }
       case jval: JValue => {
         val rel_set_type = (jval \ "type").extract[String]
         if (rel_set_type == "generated") {
-          generateRelationSet(jval \ "generation params")
+          generateSyntheticRelationSet(jval \ "generation params")
         } else {
           throw new NotImplementedError("TODO")
         }
@@ -75,68 +77,75 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
   }
 
   def createGraphChiRelationGraph(params: JValue) {
-    createGraphChiRelationGraph(params, true);
+    createGraphChiRelationGraph(params, true)
   }
 
   def createGraphChiRelationGraph(params: JValue, shouldShardGraph: Boolean) {
-    println("Making directories");
+    val name = (params \ "name").extract[String]
+    println(s"Creating graph $name in $outdir")
+    println("Making directories")
 
     // Some preparatory stuff
-    fileUtil.mkdirOrDie(outdir);
+    fileUtil.mkdirOrDie(outdir)
+    fileUtil.touchFile(inProgressFile)
+    val params_out = fileUtil.getFileWriter(paramFile)
+    params_out.write(pretty(render(params)))
+    params_out.close
 
-    fileUtil.mkdirs(outdir + "graph_chi/");
-    val edgeFilename = outdir + "graph_chi/edges.tsv";
-    val intEdgeFile = fileUtil.getFileWriter(edgeFilename);
+    fileUtil.mkdirs(outdir + "graph_chi/")
+    val edgeFilename = outdir + "graph_chi/edges.tsv"
+    val intEdgeFile = fileUtil.getFileWriter(edgeFilename)
 
     val relationSets = getRelationSets(params)
 
-    println("Loading aliases");
+    println("Loading aliases")
     val aliases = relationSets.filter(_.getIsKb).par.map(relationSet => {
       new Pair(relationSet.getAliasRelation, relationSet.getAliases)
     }).seq
 
-    val nodeDict = new Dictionary();
-    val edgeDict = new Dictionary();
+    val nodeDict = new Dictionary()
+    val edgeDict = new Dictionary()
 
     val seenNps = new mutable.HashSet[String]
-    var seenTriples: java.util.HashSet[IntTriple] = null;
+    var seenTriples: java.util.HashSet[IntTriple] = null
     if (deduplicateEdges(params)) {
       seenTriples = new java.util.HashSet[IntTriple]
     }
-    val prefixes = getSvoPrefixes(relationSets);
-    var numEdges = 0;
+    val prefixes = getSvoPrefixes(relationSets)
+    var numEdges = 0
     for (relationSet <- relationSets) {
-      println("Adding edges to the graph from " + relationSet.getRelationFile());
-      val prefix = prefixes(relationSet);
+      println("Adding edges to the graph from " + relationSet.getRelationFile())
+      val prefix = prefixes(relationSet)
       numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
                                                             seenTriples,
                                                             prefix,
                                                             seenNps,
                                                             aliases,
                                                             nodeDict,
-                                                            edgeDict);
+                                                            edgeDict)
     }
-    intEdgeFile.close();
+    intEdgeFile.close()
 
     // Adding edges is now finished, and the dictionaries aren't getting any more entries, so we
     // can output them.
-    outputDictionariesToDisk(nodeDict, edgeDict);
+    outputDictionariesToDisk(nodeDict, edgeDict)
 
     // Now decide how many shards to do, based on the number of edges that are in the graph.
-    val numShards = getNumShards(numEdges);
-    val writer = fileUtil.getFileWriter(outdir + "num_shards.tsv");
-    writer.write(numShards + "\n");
-    writer.close();
+    val numShards = getNumShards(numEdges)
+    val writer = fileUtil.getFileWriter(outdir + "num_shards.tsv")
+    writer.write(numShards + "\n")
+    writer.close()
     if (shouldShardGraph) {
-      shardGraph(edgeFilename, numShards);
+      shardGraph(edgeFilename, numShards)
     }
 
     // This is for if you want to do the path following step with matrix multiplications instead of
     // with random walks (which I'm expecting to be a lot faster, but haven't finished implementing
     // yet).
     if (createMatrices(params)) {
-      outputMatrices(edgeFilename, maxMatrixFileSize(params));
+      outputMatrices(edgeFilename, maxMatrixFileSize(params))
     }
+    fileUtil.deleteFile(inProgressFile)
   }
 
   /**
@@ -150,9 +159,9 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
           def receiveEdge(from: Int, to: Int, token: String): java.lang.Integer = {
             token.toInt
           }
-        }, null, new IntConverter());
+        }, null, new IntConverter())
     if (!new File(ChiFilenames.getFilenameIntervals(baseFilename, numShards)).exists()) {
-      sharder.shard(new FileInputStream(new File(baseFilename)), "edgelist");
+      sharder.shard(new FileInputStream(new File(baseFilename)), "edgelist")
     }
   }
 
@@ -161,14 +170,14 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
   ////////////////////////////////////////////////////////
 
   def outputDictionariesToDisk(nodeDict: Dictionary, edgeDict: Dictionary) {
-    println("Outputting dictionaries to disk");
-    val nodeDictFile = fileUtil.getFileWriter(outdir + "node_dict.tsv");
-    nodeDict.writeToWriter(nodeDictFile);
-    nodeDictFile.close();
+    println("Outputting dictionaries to disk")
+    val nodeDictFile = fileUtil.getFileWriter(outdir + "node_dict.tsv")
+    nodeDict.writeToWriter(nodeDictFile)
+    nodeDictFile.close()
 
-    val edgeDictFile = fileUtil.getFileWriter(outdir + "edge_dict.tsv");
-    edgeDict.writeToWriter(edgeDictFile);
-    edgeDictFile.close();
+    val edgeDictFile = fileUtil.getFileWriter(outdir + "edge_dict.tsv")
+    edgeDict.writeToWriter(edgeDictFile)
+    edgeDictFile.close()
   }
 
   def getNumShards(numEdges: Int) = {
@@ -194,10 +203,10 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
   }
 
   def outputMatrices(filename: String, maxMatrixFileSize: Int) {
-    println("Creating matrices");
-    fileUtil.mkdirs(outdir + "matrices/");
-    println("Reading edge file");
-    var line: String = null;
+    println("Creating matrices")
+    fileUtil.mkdirs(outdir + "matrices/")
+    println("Reading edge file")
+    var line: String = null
     val lines = fileUtil.readLinesFromFile(filename)
     val matrices = lines.par.map(line => {
       val fields = line.split("\t")
@@ -206,10 +215,10 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
       triple_set.map(triple => (triple._1, triple._2)).seq.toSeq
     }).seq
     val numRelations = matrices.map(_._1).max
-    println("Outputting matrix files");
+    println("Outputting matrix files")
     val edgesToWrite = new mutable.ArrayBuffer[Seq[(Int, Int)]]
-    var startRelation = 1;
-    var edgesSoFar = 0;
+    var startRelation = 1
+    var edgesSoFar = 0
     for (i <- 1 to numRelations) {
       val matrix = matrices.getOrElse(i, Nil)
       if (matrix.size == 0) println("RELATION WITH NO INSTANCES: " + i)
@@ -223,9 +232,9 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
       edgesSoFar += matrix.size
     }
     if (edgesToWrite.size > 0) {
-      writeEdgesSoFar(startRelation, numRelations, edgesToWrite);
+      writeEdgesSoFar(startRelation, numRelations, edgesToWrite)
     }
-    System.out.println("Done creating matrices");
+    System.out.println("Done creating matrices")
   }
 
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[Seq[(Int, Int)]]) {
@@ -270,19 +279,26 @@ class GraphCreator(base_dir: String, outdir: String, fileUtil: FileUtil = new Fi
     }
   }
 
-  val relation_set_creator_factory = new RelationSetCreatorFactory
+  var synthetic_data_creator_factory: ISyntheticDataCreatorFactory = new SyntheticDataCreatorFactory
 
-  def generateRelationSet(params: JValue): RelationSet = {
-    val creator = relation_set_creator_factory.getRelationSetCreator(base_dir, params, fileUtil)
+  def generateSyntheticRelationSet(params: JValue): RelationSet = {
+    val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
       val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).mkString("\n"))
+      if (current_params.equals(JNothing)) {
+        println(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
+          s"${creator.relation_set_dir} exists")
+      }
       if (current_params != params) {
-        throw new IllegalStateException("Relation set parameters don't match!")
+        println(s"Parameters found in ${creator.param_file}: ${pretty(render(current_params))}")
+        println(s"Parameters specified in spec file: ${pretty(render(params))}")
+        println(s"Difference: ${current_params.diff(params)}")
+        throw new IllegalStateException("Synthetic data parameters don't match!")
       }
     } else {
       creator.createRelationSet()
     }
-    RelationSet.fromFile(creator.relation_set_spec_file)
+    RelationSet.fromFile(creator.relation_set_spec_file, fileUtil)
   }
 }

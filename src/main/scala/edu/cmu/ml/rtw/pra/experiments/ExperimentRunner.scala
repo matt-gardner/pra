@@ -15,7 +15,7 @@ object ExperimentRunner {
   val RESULTS_DIR = "/results/"
 
   def main(args: Array[String]) {
-    val pra_base = args(0)
+    val pra_base = new FileUtil().addDirectorySeparatorIfNecessary(args(0))
     val filter = if (args.length > 1) args(1) else ""
     runPra(pra_base, filter)
 
@@ -27,7 +27,7 @@ object ExperimentRunner {
 
   def runPra(pra_base: String, experiment_filter: String) {
     val experiment_spec_dir = s"${pra_base}/experiment_specs/"
-    val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.spec$""".r)
+    val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
     experiment_specs.filter(_.getAbsolutePath().contains(experiment_filter))
       .map(runPraFromSpec(pra_base) _)
   }
@@ -36,24 +36,14 @@ object ExperimentRunner {
     val experiment_spec_dir = pra_base + SPEC_DIR
     val result_base_dir = pra_base + RESULTS_DIR
     println(s"Running PRA from spec file $spec_file")
-    val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".spec", "")
+    val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".json", "")
     val result_dir = result_base_dir + experiment
     if (new File(result_dir).exists) {
       println(s"Result directory $result_dir already exists. Skipping...")
       return
     }
     val spec_lines = new FileUtil().readLinesFromFile(spec_file)
-    if (spec_lines.get(0).startsWith("load") || spec_lines.get(0).startsWith("{")) {
-      val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
-      new Driver(pra_base).runPra(result_dir, params)
-    } else {
-      val settings = spec_lines.map(_.split("\t")).map(x => (x(0), x(1))).toMap
-      new KbPraDriver().runPra(
-        settings("kb files"),
-        settings("graph files"),
-        settings("split"),
-        settings("param file"),
-        result_dir)
-    }
+    val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
+    new Driver(pra_base).runPra(result_dir, params)
   }
 }

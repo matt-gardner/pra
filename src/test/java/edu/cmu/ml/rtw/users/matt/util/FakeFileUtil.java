@@ -99,6 +99,9 @@ public class FakeFileUtil extends FileUtil {
                              expectedFileContents.get(filename));
     }
     existingPaths.add(filename);
+    FakeFileWriter writer = new FakeFileWriter(filename);
+    writer.close();
+    fileWriters.put(filename, writer);
   }
 
   @Override
@@ -123,6 +126,9 @@ public class FakeFileUtil extends FileUtil {
 
   public void expectFilesWritten() {
     for (Map.Entry<String, String> entry : expectedFileContents.entrySet()) {
+      if (fileWriters.get(entry.getKey()) == null) {
+        TestCase.fail("Expected file not written: " + entry.getKey());
+      }
       fileWriters.get(entry.getKey()).expectWritten(entry.getValue());
     }
   }

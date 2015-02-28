@@ -40,6 +40,8 @@ libraryDependencies ++= Seq(
 // nicely while in an sbt console.
 fork in run := true
 
+testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+
 instrumentSettings
 
 jacoco.settings

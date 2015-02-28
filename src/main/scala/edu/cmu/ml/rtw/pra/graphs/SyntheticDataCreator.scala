@@ -9,7 +9,16 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
-class RelationSetCreator(
+/**
+ * Things this doesn't capture very well:
+ * - Recursion (if you want to demonstrate where PRA fails with respect to ProPPR)
+ * - Mutual exclusivity of certain relations (and maybe other kinds of relation metadata), though
+ * PRA doesn't do a great job exploiting this right now, anyway
+ * - Characteristics of actual data.  It'd be nice if you could generate some synthetic data that
+ * was based off of what you see in Freebase, for instance, though I'm not really sure how to do
+ * that.
+ */
+class SyntheticDataCreator(
     base_dir: String,
     params: JValue,
     fileUtil: FileUtil = new FileUtil()) {
@@ -39,11 +48,11 @@ class RelationSetCreator(
   val num_noise_relation_instances = (params \ "num_noise_relation_instances").extract[Int]
 
   val r = new Random
-  val split_dir = s"$base_dir/splits/${name}/"
-  val relation_set_dir = s"$base_dir/relation_sets/${name}/"
+  val split_dir = s"${base_dir}splits/${name}/"
+  val relation_set_dir = s"${base_dir}relation_sets/${name}/"
   val in_progress_file = s"${relation_set_dir}in_progress"
   val param_file = s"${relation_set_dir}params.json"
-  val relation_set_spec_file = s"${relation_set_dir}relation_set.spec"
+  val relation_set_spec_file = s"${relation_set_dir}relation_set.tsv"
   val data_file = s"${relation_set_dir}data.tsv"
 
   lazy val relation_sets: Array[(Array[String], Array[String])] = {
@@ -72,6 +81,7 @@ class RelationSetCreator(
     fileUtil.mkdirs(split_dir)
     fileUtil.mkdirs(relation_set_dir)
     fileUtil.touchFile(in_progress_file)
+    println(s"Creating relation set in $relation_set_dir")
     val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
     val instances = (new mutable.ArrayBuffer[(Int, String, Int)],
       new mutable.ArrayBuffer[(Int, String, Int)])
@@ -86,7 +96,8 @@ class RelationSetCreator(
     outputSplitFiles(instances._1.toSet, instances._2.toSet, pra_relations.map(_._1).seq.toSet)
     outputRules(pra_relations.flatMap(x => x._2.map(y => (x._1, y._1, y._2))).seq)
     val out = fileUtil.getFileWriter(param_file)
-    out.write(compact(render(params)))
+    out.write(pretty(render(params)))
+    out.close
     fileUtil.deleteFile(in_progress_file)
   }
 
@@ -257,7 +268,7 @@ class RelationSetCreator(
   }
 }
 
-object RelationSetCreator {
+object SyntheticDataCreator {
   def main(args: Array[String]) {
     val params =
       ("name" -> "synthetic_easy") ~
@@ -277,23 +288,23 @@ object RelationSetCreator {
       ("rule_prob_stddev" -> .2) ~
       ("num_noise_relations" -> 20) ~
       ("num_noise_relation_instances" -> 2500)
-    new DatasetCreator("/home/mg1/pra/", params).createRelationSet()
+    new SyntheticDataCreator("/home/mg1/pra/", params).createRelationSet()
   }
 }
 
 // This bit of ugliness is required for proper testing.  I want to supply a fake instance of
 // RelationSetCreator when testing the GraphCreator class, so I need to have a factory, so I don't
 // have to call new RelationSetCreator...
-trait IRelationSetCreatorFactory {
-  def getRelationSetCreator(base_dir: String, params: JValue): RelationSetCreator = {
-    getRelationSetCreator(base_dir, params, new FileUtil)
+trait ISyntheticDataCreatorFactory {
+  def getSyntheticDataCreator(base_dir: String, params: JValue): SyntheticDataCreator = {
+    getSyntheticDataCreator(base_dir, params, new FileUtil)
   }
 
-  def getRelationSetCreator(base_dir: String, params: JValue, fileUtil: FileUtil): RelationSetCreator
+  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil): SyntheticDataCreator
 }
 
-class RelationSetCreatorFactory extends IRelationSetCreatorFactory {
-  def getRelationSetCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
-    new RelationSetCreator(base_dir, params, fileUtil)
+class SyntheticDataCreatorFactory extends ISyntheticDataCreatorFactory {
+  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
+    new SyntheticDataCreator(base_dir, params, fileUtil)
   }
 }
