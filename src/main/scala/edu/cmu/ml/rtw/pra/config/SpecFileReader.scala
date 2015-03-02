@@ -36,7 +36,8 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   // This handles load statements at the beginning of a file, however many there are.
   def populateParamsFromSpecs(specs: Seq[String], params: JValue): JValue = {
     if (specs(0).startsWith("load")) {
-      return readSpecFile(specs(0).split(" ")(1)) merge populateParamsFromSpecs(specs.drop(1), params)
+      return readSpecFile(getParamFileFromLoadStatement(specs(0))) merge populateParamsFromSpecs(
+        specs.drop(1), params)
     } else {
       params merge parse(specs.mkString(" "))
     }
@@ -46,10 +47,28 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   def doNestedLoads(params: JValue): JValue = {
     params mapField {
       case (name, JString(load)) if (load.startsWith("load ")) => {
-        (name, readSpecFile(load.split(" ")(1)))
+        (name, readSpecFile(getParamFileFromLoadStatement(load)))
+      }
+      case (name, JArray(list)) => {
+        val new_list = list.map(_ match {
+          case JString(load) if (load.startsWith("load ")) => {
+            readSpecFile(getParamFileFromLoadStatement(load))
+          }
+          case other => other
+        })
+        (name, new_list)
       }
       case other => other
     }
+  }
+
+  def getParamFileFromLoadStatement(load: String) = {
+        val name = load.split(" ")(1)
+        if (name.startsWith("/")) {
+          name
+        } else {
+          s"${baseDir}param_files/${name}.json"
+        }
   }
 
   def setPraConfigFromParams(params: JValue, config: PraConfig.Builder) {

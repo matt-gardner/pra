@@ -112,7 +112,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("name" -> graphDir) ~
     ("relation sets" -> List(JString(relationSetFilename), generatedRelationSetSpec)) ~
     ("deduplicate edges" -> true)
-  val graphSpecFilename = "/pra/graph/spec/file"
+  val graphParamsName = "graph_params"
+  val graphSpecFilename = s"param_files/${graphParamsName}.json"
   val graphSpecFile = pretty(render(graphSpec))
 
   val praSpec: JValue =
@@ -179,16 +180,18 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   val nestedLoadSpecFilename = "/nested_load/spec/file"
   val nestedLoadSpecFile = s"""{
     |  "pra parameters": "load $praSpecFilename",
-    |  "graph": "load $graphSpecFilename",
+    |  "graph": "load $graphParamsName",
     |  "just for good measure": {
     |    "pra parameters": "load $praSpecFilename"
     |  }
+    |  "and a list": ["load $praSpecFilename"]
     |}""".stripMargin
 
   val nestedLoadParams: JValue =
     ("pra parameters" -> praSpec) ~
     ("graph" -> graphSpec) ~
-    ("just for good measure" -> ("pra parameters" -> praSpec))
+    ("just for good measure" -> ("pra parameters" -> praSpec)) ~
+    ("and a list" -> List(praSpec))
 
   val pathTypeFactoryParams: JValue =
     ("pra parameters" -> ("path type factory" ->

@@ -122,6 +122,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   "createGraphChiRelationGraph" should "make a correct simple graph" in {
     val params =
+      ("name" -> "test graph") ~
       ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
       ("create matrices" -> false)
 
@@ -143,6 +144,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.addExpectedFileWritten(edgesFile, expectedDedupedEdgeFileContents)
 
     val params =
+      ("name" -> "test graph") ~
       ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
       ("deduplicate edges" -> true) ~
       ("create matrices" -> false)

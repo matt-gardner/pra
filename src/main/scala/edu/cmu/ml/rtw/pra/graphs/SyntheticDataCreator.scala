@@ -268,30 +268,6 @@ class SyntheticDataCreator(
   }
 }
 
-object SyntheticDataCreator {
-  def main(args: Array[String]) {
-    val params =
-      ("name" -> "synthetic_easy") ~
-      ("num_entities" -> 1000) ~
-      ("num_base_relations" -> 25) ~
-      ("num_base_relation_training_duplicates" -> 5) ~
-      ("num_base_relation_testing_duplicates" -> 0) ~
-      ("num_base_relation_overlapping_instances" -> 500) ~
-      ("num_base_relation_noise_instances" -> 250) ~
-      ("num_pra_relations" -> 2) ~
-      ("num_pra_relation_training_instances" -> 500) ~
-      ("num_pra_relation_testing_instances" -> 100) ~
-      ("num_rules" -> 10) ~
-      ("min_rule_length" -> 1) ~
-      ("min_rule_length" -> 5) ~
-      ("rule_prob_mean" -> .6) ~
-      ("rule_prob_stddev" -> .2) ~
-      ("num_noise_relations" -> 20) ~
-      ("num_noise_relation_instances" -> 2500)
-    new SyntheticDataCreator("/home/mg1/pra/", params).createRelationSet()
-  }
-}
-
 // This bit of ugliness is required for proper testing.  I want to supply a fake instance of
 // RelationSetCreator when testing the GraphCreator class, so I need to have a factory, so I don't
 // have to call new RelationSetCreator...

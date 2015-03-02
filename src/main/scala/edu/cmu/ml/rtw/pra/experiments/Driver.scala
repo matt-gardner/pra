@@ -26,7 +26,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       case default => throw new IllegalStateException("relation metadata parameter must be " +
         "either a string or absent")
     }
-    val splitsDirectory = fileUtil.addDirectorySeparatorIfNecessary((params \ "split").extract[String])
+    val splitsDirectory = (params \ "split").extract[String] match {
+      case path if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
+      case name => s"${praBase}splits/${name}/"
+    }
 
     fileUtil.mkdirOrDie(outputBase)
     createGraphIfNecessary(params \ "graph")
@@ -154,7 +157,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val embeddings = {
       if (directory != null && fileUtil.fileExists(directory + "embeddings.tsv")) {
         fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv").asScala
-          .mapValues(_.asScala.toList).toMap.withDefaultValue(Nil)
+          .mapValues(_.asScala.toList).toMap
       } else {
         null
       }
@@ -204,11 +207,11 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // And if the relation has an embedding (really a set of cluster ids), those should be
     // added to the unallowed edge type list.
     if (embeddings != null) {
-      for (embedded <- embeddings(relation)) {
+      for (embedded <- embeddings.getOrElse(relation, Nil)) {
         unallowedEdges += edgeDict.getIndex(embedded)
       }
       if (inverse != null) {
-        for (embedded <- embeddings(inverse)) {
+        for (embedded <- embeddings.getOrElse(inverse, Nil)) {
           unallowedEdges += edgeDict.getIndex(embedded)
         }
       }

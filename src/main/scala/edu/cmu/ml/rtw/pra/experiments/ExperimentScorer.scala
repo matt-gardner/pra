@@ -4,12 +4,15 @@ import java.io.File
 import java.io.PrintWriter
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
 import scalax.io.Resource
 
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 object ExperimentScorer {
+  val fileUtil = new FileUtil
 
   val DATASET_RELATION = "__DATASET__"
   val DISPLAY_NAME = "__DISPLAY_NAME__"
@@ -80,6 +83,7 @@ object ExperimentScorer {
     for (experiment_dir <- experiment_dirs) {
       val experiment_name = experiment_dir.getAbsolutePath().split(RESULTS_DIR).last
       val experiment_metrics = computeMetrics(
+        pra_base,
         experiment_dir.getAbsolutePath(),
         displayNameSplit,
         savedMetrics.get(experiment_name), metricComputers)
@@ -138,7 +142,17 @@ object ExperimentScorer {
     }
   }
 
+  def readSplitDirFromSettings(pra_base: String, settings_file: String) = {
+    val split = fileUtil.readLinesFromFile(settings_file).asScala
+      .filter(_.contains("\"split\":")).map(_.split(":\"")(1).split("\"")(0)).toList(0)
+    split match {
+      case path if path.startsWith("/") => path
+      case name => s"$pra_base/splits/$name/"
+    }
+  }
+
   def computeMetrics(
+      pra_base: String,
       experiment_dir: String,
       displayNameSplit: String,
       saved_metrics: Option[MutableRelationMetrics],
@@ -148,9 +162,10 @@ object ExperimentScorer {
     // Getting the split dir and relations first.
     val settings_file = s"$experiment_dir/settings.txt"
     if (!(new File(settings_file).exists())) return metrics
-    val split_dir = Resource.fromFile(settings_file).lines()
-      .filter(_.startsWith("Splits used")).map(_.split(": ")(1)).toList(0)
-    val relations = Resource.fromFile(split_dir + "/relations_to_run.tsv").lines().toList
+    val split_dir = readSplitDirFromSettings(pra_base, settings_file)
+    println(s"Found split dir: $split_dir")
+    val relations_to_run = s"${split_dir}relations_to_run.tsv"
+    val relations = fileUtil.readLinesFromFile(relations_to_run).asScala
 
     // Now we loop over the relations and compute metrics, checking the saved metrics and timestamp
     // first to see if we need recompute this.
