@@ -128,7 +128,10 @@ public class FreebaseKbFilesCreator {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  // I changed the name of this so that sbt wouldn't list it as an option every time you want to
+  // run an experiment.  If you actually _do_ want to create relation metadata for Freebase, just
+  // change this name base to main and run it through sbt.
+  public static void NOT_main(String[] args) throws Exception {
     if (args.length != 2) {
       System.out.println("Usage: edu.cmu.ml.rtw.pra.GraphCreator [kb_file] [outdir]");
     }

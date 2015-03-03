@@ -299,6 +299,27 @@ public class Dataset {
     return CollectionsUtil.groupByKey(sources, targets);
   }
 
+  public Dataset merge(Dataset other) {
+    List<Integer> newPositiveSources = Lists.newArrayList();
+    List<Integer> newPositiveTargets = Lists.newArrayList();
+    List<Integer> newNegativeSources = Lists.newArrayList();
+    List<Integer> newNegativeTargets = Lists.newArrayList();
+    newPositiveSources.addAll(positiveSources);
+    newPositiveSources.addAll(other.positiveSources);
+    newPositiveTargets.addAll(positiveTargets);
+    newPositiveTargets.addAll(other.positiveTargets);
+    newNegativeSources.addAll(negativeSources);
+    newNegativeSources.addAll(other.negativeSources);
+    newNegativeTargets.addAll(negativeTargets);
+    newNegativeTargets.addAll(other.negativeTargets);
+    return new Builder()
+        .setPositiveSources(newPositiveSources)
+        .setPositiveTargets(newPositiveTargets)
+        .setNegativeSources(newNegativeSources)
+        .setNegativeTargets(newNegativeTargets)
+        .build();
+  }
+
   private Dataset(Builder builder) {
     positiveSources = builder.positiveSources;
     positiveTargets = builder.positiveTargets;

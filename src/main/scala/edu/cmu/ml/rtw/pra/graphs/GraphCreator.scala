@@ -15,7 +15,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import org.json4s.{DefaultFormats,JValue,JString,JNothing}
@@ -119,8 +119,8 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
       numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
                                                             seenTriples,
                                                             prefix,
-                                                            seenNps,
-                                                            aliases,
+                                                            seenNps.asJava,
+                                                            aliases.asJava,
                                                             nodeDict,
                                                             edgeDict)
     }
@@ -207,7 +207,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     fileUtil.mkdirs(outdir + "matrices/")
     println("Reading edge file")
     var line: String = null
-    val lines = fileUtil.readLinesFromFile(filename)
+    val lines = fileUtil.readLinesFromFile(filename).asScala
     val matrices = lines.par.map(line => {
       val fields = line.split("\t")
       (fields(0).toInt, fields(1).toInt, fields(2).toInt)
@@ -228,7 +228,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
         startRelation = i
         edgesSoFar = 0
       }
-      edgesToWrite.add(matrix)
+      edgesToWrite += matrix
       edgesSoFar += matrix.size
     }
     if (edgesToWrite.size > 0) {
@@ -285,7 +285,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
-      val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).mkString("\n"))
+      val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).asScala.mkString("\n"))
       if (current_params.equals(JNothing)) {
         println(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
           s"${creator.relation_set_dir} exists")

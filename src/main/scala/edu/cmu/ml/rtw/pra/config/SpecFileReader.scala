@@ -10,7 +10,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphConfig
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
@@ -20,11 +20,11 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
   def readSpecFile(file: java.io.File): JValue = {
-    readSpecFile(fileUtil.readLinesFromFile(file))
+    readSpecFile(fileUtil.readLinesFromFile(file).asScala)
   }
 
   def readSpecFile(filename: String): JValue = {
-    readSpecFile(fileUtil.readLinesFromFile(filename))
+    readSpecFile(fileUtil.readLinesFromFile(filename).asScala)
   }
 
   def readSpecFile(lines: Seq[String]): JValue = {
@@ -182,12 +182,27 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
     println(s"RESET WEIGHT SET TO $resetWeight")
-    val embeddingsFiles = (params \ "embeddings").extract[List[String]]
+    val embeddingsFiles = (params \ "embeddings") match {
+      case JNothing => Nil
+      case JString(path) if (path.startsWith("/")) => List(path)
+      case JString(name) => List(s"${baseDir}embeddings/${name}/embeddings.tsv")
+      case JArray(list) => {
+        list.map(_ match {
+          case JString(path) if (path.startsWith("/")) => path
+          case JString(name) => s"${baseDir}embeddings/${name}/embeddings.tsv"
+          case other => throw new IllegalStateException("Error specifying embeddings")
+        })
+      }
+      case jval => {
+        val name = (jval \ "name").extract[String]
+        List(s"${baseDir}embeddings/${name}/embeddings.tsv")
+      }
+    }
     val matrixDir = params \ "matrix dir"
     if (!matrixDir.equals(JNothing)) {
       config.setMatrixDir(matrixDir.extract[String])
     }
-    val embeddings = config.readEmbeddingsVectors(embeddingsFiles)
+    val embeddings = config.readEmbeddingsVectors(embeddingsFiles.asJava)
     config.setPathTypeFactory(
       new VectorPathTypeFactory(config.edgeDict, embeddings, spikiness, resetWeight))
   }

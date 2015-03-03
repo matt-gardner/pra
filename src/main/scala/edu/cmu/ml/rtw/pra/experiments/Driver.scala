@@ -1,24 +1,51 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.graphchi.ChiLogger
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.SpecFileReader
+import edu.cmu.ml.rtw.pra.features.FeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
+import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
+import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
+import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import org.json4s.{DefaultFormats,JValue,JNothing,JString}
+import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
+// TODO(matt): This class has acrued a few too many functions, I think.  It's not focused enough.
+// Maybe I should move the graph creation code somewhere else...
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
-  private val logger = ChiLogger.getLogger("pra-driver")
-
   implicit val formats = DefaultFormats
+
   def runPra(_outputBase: String, params: JValue) {
     val outputBase = fileUtil.addDirectorySeparatorIfNecessary(_outputBase)
+    fileUtil.mkdirOrDie(outputBase)
+
+    // We create the graph first here, because we allow a "no op" PRA mode, which means just create
+    // the graph and quit.  But we have to do this _after_ we create the output directory, or we
+    // could get two threads trying to do the same experiment when one of them has to create a
+    // graph first.  We'll delete the output directory in the case of a no op.
+    createGraphIfNecessary(params \ "graph")
+
+    // And these are all part of "creating the graph", basically, they just deal with augmenting
+    // the graph by doing some factorization.
+    createEmbeddingsIfNecessary(params)
+    createSimilarityMatricesIfNecessary(params)
+    createDenserMatricesIfNecessary(params)
+
+    val mode = (params \ "pra parameters" \ "mode") match {
+      case JNothing => "standard"
+      case JString(m) => m
+      case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
+    }
+    if (mode == "no op") {
+      fileUtil.deleteFile(outputBase)
+      return
+    }
 
     val metadataDirectory: String = (params \ "relation metadata") match {
       case JNothing => null
@@ -30,9 +57,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       case path if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
       case name => s"${praBase}splits/${name}/"
     }
-
-    fileUtil.mkdirOrDie(outputBase)
-    createGraphIfNecessary(params \ "graph")
 
     val start_time = System.currentTimeMillis
 
@@ -59,27 +83,53 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     for (relation <- fileUtil.readLinesFromFile(relationsFile).asScala) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfig.Builder(baseConfig)
-      logger.info("\n\n\n\nRunning PRA for relation " + relation)
+      println("\n\n\n\nRunning PRA for relation " + relation)
       parseRelationMetadata(metadataDirectory, relation, builder, outputBase)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
       builder.setOutputBase(outdir)
 
-      val doCrossValidation = initializeSplit(
-        splitsDirectory,
-        metadataDirectory,
-        relation,
-        builder,
-        new DatasetFactory())
+      if (mode == "standard") {
+        val doCrossValidation = initializeSplit(
+          splitsDirectory,
+          metadataDirectory,
+          relation,
+          builder,
+          new DatasetFactory())
 
-      val config = builder.build()
+        val config = builder.build()
 
-      // Run PRA
-      if (doCrossValidation) {
-        new PraTrainAndTester().crossValidate(config)
-      } else {
-        new PraTrainAndTester().trainAndTest(config)
+        // Run PRA
+        if (doCrossValidation) {
+          new PraTrainAndTester().crossValidate(config)
+        } else {
+          new PraTrainAndTester().trainAndTest(config)
+        }
+      } else if (mode == "exploration") {
+        val dataToUse = (params \ "pra parameters" \ "explore") match {
+          case JNothing => "both"
+          case JString("training") => "training"
+          case JString("testing") => "testing"
+          case JString("both") => "both"
+          case other => throw new IllegalStateException("explore parameter must be a string, " +
+            "either \"training\", \"testing\", or \"both\"")
+        }
+        val datasetFactory = new DatasetFactory()
+        if (dataToUse == "both") {
+          val trainingFile = s"${splitsDirectory}${relation}/training.tsv"
+          val trainingData = datasetFactory.fromFile(trainingFile, builder.nodeDict)
+          val testingFile = s"${splitsDirectory}${relation}/testing.tsv"
+          val testingData = datasetFactory.fromFile(testingFile, builder.nodeDict)
+          builder.setTrainingData(trainingData.merge(testingData))
+        } else {
+          val inputFile = s"${splitsDirectory}${relation}/${dataToUse}.tsv"
+          builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict))
+        }
+        val config = builder.build()
+
+        val generator = new FeatureGenerator(config)
+        generator.findConnectingPaths(config.trainingData)
       }
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
@@ -104,6 +154,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
   def createGraphIfNecessary(params: JValue) {
     var graph_name = ""
+    var params_specified = false
     // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
     // just use the path as is.  Otherwise, we have some processing to do.
     params match {
@@ -117,6 +168,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       }
       case jval: JValue => {
         graph_name = (jval \ "name").extract[String]
+        params_specified = true
       }
     }
     if (graph_name != "") {
@@ -127,13 +179,114 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       if (fileUtil.fileExists(graph_dir)) {
         fileUtil.blockOnFileDeletion(creator.inProgressFile)
         val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
-        if (current_params != params) {
+        if (params_specified == true && !graphParamsMatch(current_params, params)) {
+          println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+          println(s"Parameters specified in spec file: ${pretty(render(params))}")
+          println(s"Difference: ${current_params.diff(params)}")
           throw new IllegalStateException("Graph parameters don't match!")
         }
       } else {
         creator.createGraphChiRelationGraph(params)
       }
     }
+  }
+
+  def graphParamsMatch(params1: JValue, params2: JValue): Boolean = {
+    return params1.removeField(_._1.equals("denser matrices")) ==
+      params2.removeField(_._1.equals("denser matrices"))
+  }
+
+  def createEmbeddingsIfNecessary(params: JValue) {
+    val embeddings = params.filterField(field => field._1.equals("embeddings")).flatMap(_._2 match {
+      case JArray(list) => list
+      case other => List(other)
+    })
+    embeddings.filter(_ match {case JString(name) => false; case other => true })
+      .par.map(embedding_params => {
+        val name = (embedding_params \ "name").extract[String]
+        val embeddingsDir = s"${praBase}embeddings/$name/"
+        val paramFile = embeddingsDir + "params.json"
+        val graph = praBase + "graphs/" + (embedding_params \ "graph").extract[String] + "/"
+        val decomposer = new PcaDecomposer(graph, embeddingsDir)
+        if (!fileUtil.fileExists(embeddingsDir)) {
+          val dims = (embedding_params \ "dims").extract[Int]
+          decomposer.createPcaRelationEmbeddings(dims)
+          val out = fileUtil.getFileWriter(paramFile)
+          out.write(pretty(render(embedding_params)))
+          out.close
+        } else {
+          fileUtil.blockOnFileDeletion(decomposer.in_progress_file)
+          val current_params = parse(fileUtil.readLinesFromFile(paramFile).asScala.mkString("\n"))
+          if (current_params != embedding_params) {
+            println(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
+            println(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
+            println(s"Difference: ${current_params.diff(embedding_params)}")
+            throw new IllegalStateException("Embedding parameters don't match!")
+          }
+        }
+    })
+  }
+
+  def createSimilarityMatricesIfNecessary(params: JValue) {
+    val matrices = params.filterField(field => field._1.equals("similarity matrix")).flatMap(_._2 match {
+      case JArray(list) => list
+      case other => List(other)
+    })
+    matrices.filter(_ match {case JString(name) => false; case other => true })
+      .par.map(matrixParams => {
+        val embeddingsDir = getEmbeddingsDir(matrixParams \ "embeddings")
+        val name = (matrixParams \ "name").extract[String]
+        val creator = new SimilarityMatrixCreator(embeddingsDir, name)
+        if (!fileUtil.fileExists(creator.matrixDir)) {
+          creator.createSimilarityMatrix(matrixParams)
+        } else {
+          fileUtil.blockOnFileDeletion(creator.inProgressFile)
+          val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
+          if (current_params != matrixParams) {
+            println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+            println(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            println(s"Difference: ${current_params.diff(matrixParams)}")
+            throw new IllegalStateException("Similarity matrix parameters don't match!")
+          }
+        }
+    })
+  }
+
+  def getEmbeddingsDir(params: JValue): String = {
+    params match {
+      case JString(path) if (path.startsWith("/")) => path
+      case JString(name) => s"${praBase}embeddings/$name/"
+      case jval => {
+        val name = (jval \ "name").extract[String]
+        s"${praBase}embeddings/$name/"
+      }
+    }
+  }
+
+  def createDenserMatricesIfNecessary(params: JValue) {
+    val matrices = params.filterField(field => field._1.equals("denser matrices")).flatMap(_._2 match {
+      case JArray(list) => list
+      case other => List(other)
+    })
+    matrices.filter(_ match {case JString(name) => false; case other => true })
+      .par.map(matrixParams => {
+        val graphName = (params \ "graph" \ "name").extract[String]
+        val graphDir = s"${praBase}/graphs/${graphName}/"
+        val name = (matrixParams \ "name").extract[String]
+        val densifier = new GraphDensifier(praBase, graphDir, name)
+        if (!fileUtil.fileExists(densifier.matrixDir)) {
+          densifier.densifyGraph(matrixParams)
+        } else {
+          fileUtil.blockOnFileDeletion(densifier.inProgressFile)
+          val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).asScala.mkString("\n"))
+          if (current_params != matrixParams) {
+            println(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
+            println(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            println(s"Difference: ${current_params.diff(matrixParams)}")
+            throw new IllegalStateException("Denser matrix parameters don't match!")
+          }
+        }
+    })
   }
 
   /**

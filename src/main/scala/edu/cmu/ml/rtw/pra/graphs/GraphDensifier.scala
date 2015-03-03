@@ -6,25 +6,41 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import breeze.linalg._
 
 import scala.collection.mutable
-import scalax.io.Resource
+import scala.collection.JavaConverters._
+
+import org.json4s._
+import org.json4s.native.JsonMethods.{pretty,render,parse}
 
 class GraphDensifier(
-    graph_dir: String,
-    matrix_out_dir: String,
-    file_util: FileUtil = new FileUtil) {
+    praBase: String,
+    graphDir: String,
+    name: String,
+    fileUtil: FileUtil = new FileUtil) {
+  implicit val formats = DefaultFormats
+
+  val matrixDir = s"${graphDir}${name}/"
+  val paramFile = s"${matrixDir}params.json"
+  val inProgressFile = s"${matrixDir}in_progress"
+
   val maxMatrixFileSize = 100000
   val edge_dict = new Dictionary
-  edge_dict.setFromFile(graph_dir + "/edge_dict.tsv")
+  edge_dict.setFromFile(graphDir + "/edge_dict.tsv")
 
   val node_dict = new Dictionary
-  node_dict.setFromFile(graph_dir + "/node_dict.tsv")
+  node_dict.setFromFile(graphDir + "/node_dict.tsv")
 
-  def densifyGraph(similarity_matrix_file: String) {
-    file_util.mkdirs(matrix_out_dir)
+  def densifyGraph(params: JValue) {
+    fileUtil.mkdirs(matrixDir)
+    fileUtil.touchFile(inProgressFile)
+    val param_out = fileUtil.getFileWriter(paramFile)
+    param_out.write(pretty(render(params)))
+    param_out.close
+
+    val similarity_matrix_file = getSimilarityMatrixFile(params)
     println("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     println("Reading the graph")
-    val edge_vectors = readGraphEdges(graph_dir + "/graph_chi/edges.tsv")
+    val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv")
     println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
     println(s"Rekey-ing by relation")
@@ -58,6 +74,7 @@ class GraphDensifier(
       writeEdgesSoFar(start_relation, edge_dict.getNextIndex, edges_to_write)
     }
     println("Done creating matrices")
+    fileUtil.deleteFile(inProgressFile)
   }
 
   def emptyMatrixBuilder(): CSCMatrix.Builder[Double] = {
@@ -66,11 +83,11 @@ class GraphDensifier(
 
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[Set[(Int, Int, Double)]]) {
     var start_relation = _start_relation
-    var filename = matrix_out_dir + start_relation
+    var filename = matrixDir + start_relation
     if (end_relation > start_relation) {
       filename += "-" + end_relation
     }
-    val writer = file_util.getFileWriter(filename)
+    val writer = fileUtil.getFileWriter(filename)
     for (matrix <- edges_to_write) {
       writer.write("Relation " + start_relation + "\n")
       for (entry <- matrix) {
@@ -83,7 +100,7 @@ class GraphDensifier(
 
   def readGraphEdges(edge_file: String): Map[(Int, Int), SparseVector[Double]] = {
     val edges = new mutable.HashMap[(Int, Int), Set[Int]]().withDefaultValue(Set())
-    for (line <- Resource.fromFile(edge_file).lines()) {
+    for (line <- fileUtil.readLinesFromFile(edge_file).asScala) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
@@ -103,7 +120,7 @@ class GraphDensifier(
 
   def readSimilarityMatrix(filename: String): CSCMatrix[Double] = {
     val entries = new mutable.ListBuffer[(Int, Int, Double)]
-    for (line <- Resource.fromFile(filename).lines()) {
+    for (line <- fileUtil.readLinesFromFile(filename).asScala) {
       val fields = line.split("\t")
       val relation1 = edge_dict.getIndex(fields(0))
       val relation2 = edge_dict.getIndex(fields(1))
@@ -119,12 +136,15 @@ class GraphDensifier(
     }
     builder.result
   }
-}
 
-object GraphDensifier {
-  def main(args: Array[String]) {
-    new GraphDensifier("/home/mg1/pra/graphs/nell/kb_svo/",
-      "/home/mg1/pra/graphs/nell/kb_svo/vector_matrices_test/").densifyGraph(
-      "/home/mg1/pra/embeddings/pca_svo/similarity_matrix.tsv")
+  def getSimilarityMatrixFile(params: JValue): String = {
+    (params \ "similarity matrix") match {
+      case JString(path) if (path.startsWith("/")) => path
+      case jobj: JObject => {
+        val name = (jobj \ "name").extract[String]
+        val embeddingsName = (jobj \ "embeddings").extract[String]
+        s"${praBase}embeddings/${embeddingsName}/${name}/matrix.tsv"
+      }
+    }
   }
 }

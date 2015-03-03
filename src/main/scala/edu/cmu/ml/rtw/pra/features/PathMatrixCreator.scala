@@ -135,10 +135,13 @@ class PathMatrixCreator(
   }
 
   val path_matrices: Map[PathType, CSCMatrix[Double]] = {
-    println("Creating path matrices")
+    println(s"Creating path matrices from the relation matrices in $matrix_dir")
     val path_types = parent_path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = path_types.flatMap(_.getEdgeTypes).toSet
-    val filenames = fileUtil.listDirectoryContents(matrix_dir).toSet
+    val filenames = fileUtil.listDirectoryContents(matrix_dir).toSet - "params.json"
+    if (filenames.size == 0) {
+      throw new RuntimeException(s"Didn't find any matrix files in ${matrix_dir}...")
+    }
     val relations_by_filename = separateRelationsByFile(relations, filenames)
     val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
         readMatricesFromFile(fileUtil.getBufferedReader(matrix_dir + x._1), x._2)).seq

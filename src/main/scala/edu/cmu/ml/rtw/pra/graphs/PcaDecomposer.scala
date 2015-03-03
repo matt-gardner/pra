@@ -10,11 +10,13 @@ import breeze.linalg._
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
-class PraDecomposer(
+class PcaDecomposer(
     graph_dir: String,
     result_dir: String) {
 
+  val fileUtil = new FileUtil
   val graph_file = graph_dir + "/graph_chi/edges.tsv"
+  val in_progress_file = result_dir + "in_progress"
   val node_dict = {
     val dict = new Dictionary
     dict.setFromFile(graph_dir + "node_dict.tsv")
@@ -26,7 +28,9 @@ class PraDecomposer(
     dict
   }
 
-  def getPcaRelationEmbeddings(dims: Int) {
+  def createPcaRelationEmbeddings(dims: Int) {
+    fileUtil.mkdirs(result_dir)
+    fileUtil.touchFile(in_progress_file)
     val rows = new mutable.HashMap[(Int, Int), mutable.ArrayBuffer[(Int, Double)]]
 
     println("Reading graph from file")
@@ -55,34 +59,24 @@ class PraDecomposer(
 
     println("Performing SVD with $dims dimensions")
     val svd.SVD(u, s, v) = svd(matrix, dims)
+    println(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
+    println(s"Singular values: $s")
+    val weights = breeze.numerics.sqrt(s)
+    println(s"Weights: $weights")
 
     println("Saving results")
-    println(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
-    new FileUtil().mkdirs(result_dir)
-    val out = new PrintWriter(result_dir + "embeddings.tsv")
+    val out = fileUtil.getFileWriter(result_dir + "embeddings.tsv")
     for (i <- 1 until edge_dict.getNextIndex) {
-      out.println(edge_dict.getString(i) + "\t" + v(::, i))
+      val vector = v(::, i) :* weights
+      val normalized = vector / norm(vector)
+      out.write(edge_dict.getString(i))
+      for (j <- normalized.activeValuesIterator) {
+        out.write("\t")
+        out.write(j.toString)
+      }
+      out.write("\n")
     }
     out.close
-
-    val index = edge_dict.getIndex("base_10_training_01")
-    var vector = v(::, index)
-    vector = vector / norm(vector)
-    val similarities = (1 until edge_dict.getNextIndex).map(i => {
-      var vec = v(::, i)
-      vec = vec / norm(vec)
-      val sim = vec dot vector
-      (sim, i)
-    })
-    for ((sim, i) <- similarities.sorted.reverse.take(5)) {
-      println(s"${edge_dict.getString(i)}, ${sim}")
-    }
-  }
-}
-
-object PraDecomposer {
-  def main(args: Array[String]) {
-    new PraDecomposer("/home/mg1/pra/graphs/synthetic_hard/",
-      "/home/mg1/pra/embeddings/synthetic_hard/").getPcaRelationEmbeddings(50)
+    fileUtil.deleteFile(in_progress_file)
   }
 }

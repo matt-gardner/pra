@@ -370,8 +370,12 @@ public class OnlinePraPredictor {
 
   /**
    * A sample (and test) invocation of the methods in this class.
+   *
+   * I changed the name of this from main to NOT_main so that sbt wouldn't list it as an option
+   * every time you want to run something.  This isn't in active use right now.  But, if you want
+   * to use it like this for some reason, just change the name back to main.
    */
-  public static void main(String[] args) throws IOException {
+  public static void NOT_main(String[] args) throws IOException {
     String base = "/home/mg1/pra/kod_models/";
     List<Pair<String, String>> relationsAndDomains = Lists.newArrayList();
     relationsAndDomains.add(new Pair<String, String>("concept:citylocatedinstate", "concept:stateorprovince"));

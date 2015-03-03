@@ -8,23 +8,52 @@ import java.io.PrintWriter
 import java.util.Random
 
 import scala.collection.mutable
-import scalax.io.Resource
+import scala.collection.JavaConverters._
+
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
+
+import org.json4s._
+import org.json4s.native.JsonMethods.{pretty,render,parse}
 
 class SimilarityMatrixCreator(
-    threshold: Double,
-    num_hashes: Int,
-    hash_size: Int) {
+    embeddingsDir: String,
+    name: String,
+    fileUtil: FileUtil = new FileUtil) {
+  implicit val formats = DefaultFormats
+
+  val embeddingsFile = embeddingsDir + "embeddings.tsv"
+  val matrixDir = embeddingsDir + name + "/"
+  val outFile = matrixDir + "matrix.tsv"
+  val paramFile = matrixDir + "params.json"
+  val inProgressFile = matrixDir + "in_progress"
+
   var num_vectors: Int = 0
   var dimension: Int = 0
   val upper_threshold = 0.99999
 
-  def createSimilarityMatrix(embeddingsFile: String, ignoreFile: String, outFile: String) {
-    val to_ignore: Set[String] = if (ignoreFile != null) Resource.fromFile(ignoreFile).lines().toSet else Set()
+  def createSimilarityMatrix(params: JValue) {
+    val threshold = (params \ "threshold").extract[Double]
+    val num_hashes = (params \ "num_hashes").extract[Int]
+    val hash_size = (params \ "hash_size").extract[Int]
+    val to_ignore: Set[String] = {
+      (params \ "to ignore") match {
+        case JNothing => Set()
+        case JString(path) => fileUtil.readLinesFromFile(path).asScala.toSet
+        case other => throw new IllegalStateException("\"to ignore\" must be a string")
+      }
+    }
+
+    fileUtil.mkdirs(matrixDir)
+    fileUtil.touchFile(inProgressFile)
+    val paramOut = fileUtil.getFileWriter(paramFile)
+    paramOut.write(pretty(render(params)))
+    paramOut.close
+
     val dict = new Dictionary
     println("Reading vectors")
     val vectors = {
       val tmp = new mutable.ArrayBuffer[(Int, DenseVector[Double])]
-      for (line <- Resource.fromFile(embeddingsFile).lines()) {
+      for (line <- fileUtil.readLinesFromFile(embeddingsFile).asScala) {
         val fields = line.split("\t")
         val relation = fields(0)
         if (!to_ignore.contains(relation)) {
@@ -40,7 +69,7 @@ class SimilarityMatrixCreator(
     num_vectors = vectors.size
     dimension = vectors(0)._2.size
     println("Creating hash functions")
-    val hash_functions = createHashFunctions(vectors.map(_._2))
+    val hash_functions = createHashFunctions(num_hashes, hash_size, vectors.map(_._2))
     println("Hashing vectors")
     val hashed_vectors = vectors.par.map(x => (x._1, hashVector(x._2, hash_functions), x._2))
     val hash_maps = (0 until num_hashes).map(index => {
@@ -48,14 +77,17 @@ class SimilarityMatrixCreator(
         (k, v) => v.map(_._2).toSeq).withDefaultValue(Nil)
     }).toSeq
     println("Computing similarities")
-    val similarities = hashed_vectors.flatMap(x => computeSimilarities(x, hash_maps))
+    val similarities = hashed_vectors.flatMap(x => computeSimilarities(threshold, num_hashes, x, hash_maps))
     println("Done computing similarities; outputting results")
-    val out = new PrintWriter(outFile)
-    similarities.map(x => out.println(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}"))
+    val out = fileUtil.getFileWriter(outFile)
+    similarities.map(x => out.write(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}\n"))
     out.close()
+    fileUtil.deleteFile(inProgressFile)
   }
 
   def computeSimilarities(
+      threshold: Double,
+      num_hashes: Int,
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
     val start = System.currentTimeMillis
@@ -78,7 +110,10 @@ class SimilarityMatrixCreator(
     similarities.toSeq
   }
 
-  def createHashFunctions(vectors: Traversable[DenseVector[Double]]): Seq[Seq[DenseVector[Double]]] = {
+  def createHashFunctions(
+      num_hashes: Int,
+      hash_size: Int,
+      vectors: Traversable[DenseVector[Double]]): Seq[Seq[DenseVector[Double]]] = {
     val sum = DenseVector.zeros[Double](dimension)
     for (vector <- vectors) {
       sum += vector
@@ -124,14 +159,5 @@ class SimilarityMatrixCreator(
       hashes += hash
     }
     hashes.toSeq
-  }
-}
-
-object SimilarityMatrixCreator {
-  def main(args: Array[String]) {
-    new SimilarityMatrixCreator(.8, 3, 15).createSimilarityMatrix(
-      "/home/mg1/pra/embeddings/pca_svo/embeddings.tsv",
-      "/home/mg1/pra/embeddings/pca_svo/to_ignore.txt",
-      "/home/mg1/pra/embeddings/pca_svo/similarity_matrix.tsv")
   }
 }

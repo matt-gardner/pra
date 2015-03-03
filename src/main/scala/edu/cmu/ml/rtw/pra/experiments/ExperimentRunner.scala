@@ -6,13 +6,13 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import java.io.File
 
-import scala.collection.JavaConversions._
-import scalax.io.Resource
+import org.json4s.{JNothing,JString}
 
 object ExperimentRunner {
 
   val SPEC_DIR = "/experiment_specs/"
   val RESULTS_DIR = "/results/"
+  val EXPLORATION_DIR = "/results_exploration/"
 
   def main(args: Array[String]) {
     val pra_base = new FileUtil().addDirectorySeparatorIfNecessary(args(0))
@@ -33,8 +33,15 @@ object ExperimentRunner {
   }
 
   def runPraFromSpec(pra_base: String)(spec_file: File) {
+    val spec_lines = new FileUtil().readLinesFromFile(spec_file)
+    val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
+    val mode = (params \ "pra parameters" \ "mode") match {
+      case JNothing => "standard"
+      case JString(m) => m
+      case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
+    }
+    val result_base_dir = if (mode == "exploration") pra_base + EXPLORATION_DIR else pra_base + RESULTS_DIR
     val experiment_spec_dir = pra_base + SPEC_DIR
-    val result_base_dir = pra_base + RESULTS_DIR
     println(s"Running PRA from spec file $spec_file")
     val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".json", "")
     val result_dir = result_base_dir + experiment
@@ -42,8 +49,6 @@ object ExperimentRunner {
       println(s"Result directory $result_dir already exists. Skipping...")
       return
     }
-    val spec_lines = new FileUtil().readLinesFromFile(spec_file)
-    val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
     new Driver(pra_base).runPra(result_dir, params)
   }
 }
