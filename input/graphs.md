@@ -20,9 +20,8 @@ These are the parameters that can be specified in the `graph` object:
   the combination of them make up a graph.  Separating them this way allows you to pair different
 relation sets in different graphs, so you can, for example, use a set of Freebase triples in
 conjunction with a set of SVO triples, or use those same SVO triples in some other graph.  See
-below for more information on how to specify relation sets.  Here, each item in the list can be a
-`load` statement, a name, or an object.  If it's a name, the code will look for a json file under
-`relation_sets/`.
+below for more information on how to specify relation sets.  Here, each item in the list must be an
+object (or a `load` statement) specifying the relation set parameters given below.
 
 * `deduplicate edges`: either `true` or `false` (or just not present, which defaults to `false`).
   If `true`, graph creation takes slightly more time and memory, but all duplicate edges are
