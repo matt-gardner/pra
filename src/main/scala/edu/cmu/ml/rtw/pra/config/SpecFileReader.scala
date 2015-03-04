@@ -6,7 +6,6 @@ import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
-import edu.cmu.ml.rtw.pra.graphs.GraphConfig
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 

@@ -49,10 +49,9 @@ class SyntheticDataCreator(
 
   val r = new Random
   val split_dir = s"${base_dir}splits/${name}/"
-  val relation_set_dir = s"${base_dir}relation_sets/${name}/"
+  val relation_set_dir = s"${base_dir}synthetic_relation_sets/${name}/"
   val in_progress_file = s"${relation_set_dir}in_progress"
   val param_file = s"${relation_set_dir}params.json"
-  val relation_set_spec_file = s"${relation_set_dir}relation_set.tsv"
   val data_file = s"${relation_set_dir}data.tsv"
 
   lazy val relation_sets: Array[(Array[String], Array[String])] = {
@@ -213,10 +212,6 @@ class SyntheticDataCreator(
     for (instance <- all_instances) {
       out.write(s"${instance._1}\t${instance._2}\t${instance._3}\t1\n")
     }
-    out.close
-    out = fileUtil.getFileWriter(relation_set_spec_file)
-    out.write(s"relation file\t$data_file\n")
-    out.write(s"is kb\tfalse\n")
     out.close
   }
 
