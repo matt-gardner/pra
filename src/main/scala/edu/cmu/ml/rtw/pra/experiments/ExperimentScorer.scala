@@ -163,7 +163,6 @@ object ExperimentScorer {
     val settings_file = s"$experiment_dir/settings.txt"
     if (!(new File(settings_file).exists())) return metrics
     val split_dir = readSplitDirFromSettings(pra_base, settings_file)
-    println(s"Found split dir: $split_dir")
     val relations_to_run = s"${split_dir}relations_to_run.tsv"
     val relations = fileUtil.readLinesFromFile(relations_to_run).asScala
 
@@ -223,7 +222,7 @@ object ExperimentScorer {
             makeRelationMetricsImmutable(relation_metrics))
         metrics.update(DATASET_RELATION, dataset_metrics ++ metrics(DATASET_RELATION))
       }
-    } else if (saved_metrics != None) {
+    } else if (saved_metrics != None && saved_metrics.get.isDefinedAt(DATASET_RELATION)) {
       metrics.update(DATASET_RELATION, metrics(DATASET_RELATION) ++ saved_metrics.get(DATASET_RELATION))
     }
     metrics
