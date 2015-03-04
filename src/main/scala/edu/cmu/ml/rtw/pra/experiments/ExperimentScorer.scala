@@ -113,14 +113,14 @@ object ExperimentScorer {
     val sortKeyFunction = getSortKey(sortResultsBy) _
     val experiments = metrics.map(_._1).toList.sortBy(x => sortKeyFunction(metrics(x)))
     val experiment_header = "Experiment"
-    print(f"$experiment_header%-35s")
+    print(f"$experiment_header%-45s")
     for (metricHeader <- displayMetrics.map(_._2)) {
       print(f"$metricHeader%15s")
     }
     println()
     for ((experiment, i) <- experiments.zipWithIndex) {
       val displayName = metrics(experiment)(DISPLAY_NAME).keys.toList(0)
-      print(f"(${i+1}%2d) ${displayName}%-31s")
+      print(f"(${i+1}%2d) ${displayName}%-41s")
       for (displayMetric <- displayMetrics) {
         try {
           print(f"${metrics(experiment)(DATASET_RELATION)(displayMetric._1)}%15.4f")
