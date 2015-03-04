@@ -19,21 +19,26 @@ free to file bugs, feature requests, or send pull requests.
 
 This code makes use of a number of other libraries that are distributed under various open source
 licenses (notably the Apache License and the Common Public License).  You can see those
-dependencies listed in the pom.xml file.  The code under the src/ directory is distributed under
+dependencies listed in the build.sbt file.  The code under the src/ directory is distributed under
 the terms of the GNU General Public License, version 3 (or, at your choosing, any later version of
 that license).  You can find the text of that license
 [here](http://www.gnu.org/licenses/gpl-3.0.txt).
 
 # Changelog
 
-Planned for version 1.2:
+Version 2.0 (released on 3/4/2015):
 
-- Better parameter specification. (This is working in the master branch now.)
+- Much better parameter specification.  See [the github.io
+  page](http://matt-gardner.github.io/pra) for information on the new way to specify and run
+experiments.  This totally breaks backwards compatibility with older formats, so you'll need to go
+read the documentation if you want to upgrade to this version.
 
-- Working synthetic data generation.  (This is working in the master branch now.)
+- Working synthetic data generation.  There are a lot of parameters to play with here; see the
+  documentation linked above for some more info.
 
 - A matrix multiplication implementation of the vector space random walks from the EMNLP 2014
-  paper.  (Close to finished.)
+  paper.  This is at least done in theory.  I haven't gotten the performance to be quite as good
+yet, but the mechanism for doing it is in the code.
 
 - Better handling of JVM exit (version 1.1 and earlier tend to spit out InterruptedExceptions at 
   you when it terminates, and most of the time won't give you back the sbt console).  (This is 
@@ -67,13 +72,6 @@ of working synthetic data generation will have to wait until version 1.2.
 
 In rough order of priority.  I will probably do the top two things in the relatively near future.
 The rest are kind of, "this would be nice, but I probably won't get to it any time soon".
-
-- Better parameter specification.  The current method for inputting parameters is something of a
-  mess.  I started out using these TSV parameter files, then I added the .spec files, and they
-really are redundant.  And if you want to use all of the same parameters except one, you need to
-create a whole new file for them - being able to extend a parameter file would be nice.  This
-really could be done better, and I'm sure there exist somewhat standard solutions for inputting
-parameters; I should use one of them.
 
 - Better feature selection.  The first step of PRA is selecting a set of path types that will be
   used as features in the rest of the algorithm.  That is currently done by using random walks to
