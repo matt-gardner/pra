@@ -49,13 +49,15 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val metadataDirectory: String = (params \ "relation metadata") match {
       case JNothing => null
-      case string: JString => fileUtil.addDirectorySeparatorIfNecessary(string.extract[String])
-      case default => throw new IllegalStateException("relation metadata parameter must be " +
-        "either a string or absent")
+      case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
+      case JString(name) => s"${praBase}relation_metadata/${name}/"
+      case other => throw new IllegalStateException("relation metadata parameter must be either "
+        + "a string or absent")
     }
-    val splitsDirectory = (params \ "split").extract[String] match {
-      case path if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
-      case name => s"${praBase}splits/${name}/"
+    val splitsDirectory = (params \ "split") match {
+      case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
+      case JString(name) => s"${praBase}splits/${name}/"
+      case other => throw new IllegalStateException("split must be a string")
     }
 
     val start_time = System.currentTimeMillis

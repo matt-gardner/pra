@@ -36,17 +36,13 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       concept1 + "\t" + string1 + "\n" +
       concept2 + "\t" + string2 + "\n"
 
-  val svoRelationSetFile = "/svo_relation_set"
-  val svoRelationSetFileContents =
-      "relation file\t" + svoFile + "\n" +
-      "is kb\tfalse\n"
+  val svoRelationSetParams = ("relation file" -> svoFile) ~ ("is kb" -> false)
 
-  val kbRelationSetFile = "/kb_relation_set"
-  val kbRelationSetFileContents =
-      "relation file\t" + kbFile + "\n" +
-      "is kb\ttrue\n" +
-      "alias file\t" + aliasFile + "\n" +
-      "alias file format\tnell\n"
+  val kbRelationSetParams =
+    ("relation file" -> kbFile) ~
+    ("is kb" -> true) ~
+    ("alias file" -> aliasFile) ~
+    ("alias file format" -> "nell")
 
   val nodeDictionaryFile = "/node_dict.tsv"
   val expectedNodeDictionaryFileContents =
@@ -110,20 +106,24 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
   val inProgressFile = "/in_progress"
   val paramFile = "/params.json"
 
+  val defaultRelSetParams =
+    ("relation file" -> "test relation file") ~
+    ("is kb" -> false)
+  val embeddingsParams1: JValue = ("embeddings file" -> embeddings1)
+  val embeddingsParams2: JValue = ("embeddings file" -> embeddings2)
+
   def getFileUtil = {
     val f = new FakeFileUtil()
     f.addFileToBeRead(svoFile, svoFileContents)
     f.addFileToBeRead(kbFile, kbFileContents)
     f.addFileToBeRead(aliasFile, aliasFileContents)
-    f.addFileToBeRead(svoRelationSetFile, svoRelationSetFileContents)
-    f.addFileToBeRead(kbRelationSetFile, kbRelationSetFileContents)
     f
   }
 
   "createGraphChiRelationGraph" should "make a correct simple graph" in {
     val params =
       ("name" -> "test graph") ~
-      ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
+      ("relation sets" -> List(svoRelationSetParams, kbRelationSetParams)) ~
       ("create matrices" -> false)
 
     val fileUtil = getFileUtil
@@ -145,7 +145,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
     val params =
       ("name" -> "test graph") ~
-      ("relation sets" -> List(svoRelationSetFile, kbRelationSetFile)) ~
+      ("relation sets" -> List(svoRelationSetParams, kbRelationSetParams)) ~
       ("deduplicate edges" -> true) ~
       ("create matrices" -> false)
     new GraphCreator("/", "/", fileUtil).createGraphChiRelationGraph(params, false)
@@ -154,12 +154,9 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   "getSvoPrefixes" should "map relation sets to prefixes" in {
     val relationSets = Seq(
-      RelationSet.fromReader(new BufferedReader(new StringReader(
-        "embeddings file\t" + embeddings1 + "\n"))),
-      RelationSet.fromReader(new BufferedReader(new StringReader(
-        "embeddings file\t" + embeddings1 + "\n"))),
-      RelationSet.fromReader(new BufferedReader(new StringReader(
-        "embeddings file\t" + embeddings2 + "\n"))))
+      new RelationSet(defaultRelSetParams merge embeddingsParams1),
+      new RelationSet(defaultRelSetParams merge embeddingsParams1),
+      new RelationSet(defaultRelSetParams merge embeddingsParams2))
 
     val prefixes = new GraphCreator("/", "/").getSvoPrefixes(relationSets)
     prefixes(relationSets(0)) should be("1-")
@@ -169,10 +166,8 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "give null prefixes when there is no need for them" in {
     val relationSets = Seq(
-      RelationSet.fromReader(new BufferedReader(new StringReader(
-        "embeddings file\t" + embeddings1 + "\n"))),
-      RelationSet.fromReader(new BufferedReader(new StringReader(
-        "embeddings file\t" + embeddings1 + "\n"))))
+      new RelationSet(defaultRelSetParams merge embeddingsParams1),
+      new RelationSet(defaultRelSetParams merge embeddingsParams1))
 
     // If there's no ambiguity about the embeddings, the prefix map should return null.
     val null_prefixes = new GraphCreator("/", "/").getSvoPrefixes(relationSets)

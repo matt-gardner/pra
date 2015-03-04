@@ -42,6 +42,12 @@ public class FakeFileWriter extends FileWriter {
     return isClosed;
   }
 
+  public List<String> getWritten() {
+    List<String> lines = Lists.newArrayList();
+    lines.addAll(written);
+    return lines;
+  }
+
   public void expectWritten(String expected) {
     TestCase.assertTrue("File " + filename + " not closed", isClosed);
     String concatenated = "";

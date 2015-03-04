@@ -18,8 +18,9 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import org.json4s.{DefaultFormats,JValue,JString,JNothing}
-import org.json4s.native.JsonMethods.{pretty,render,parse}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 
 class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
@@ -31,20 +32,11 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
 
   def getRelationSets(params: JValue): Seq[RelationSet] = {
     val value = params \ "relation sets"
-    value.children.map(_ match {
-      case path: JString if (path.extract[String].startsWith("/")) => {
-        RelationSet.fromFile(path.extract[String], fileUtil)
-      }
-      case name: JString => {
-        RelationSet.fromFile(s"${baseDir}${relationSetDir}${name.extract[String]}.tsv")
-      }
-      case jval: JValue => {
-        val rel_set_type = (jval \ "type").extract[String]
-        if (rel_set_type == "generated") {
-          generateSyntheticRelationSet(jval \ "generation params")
-        } else {
-          throw new NotImplementedError("TODO")
-        }
+    value.children.map(rel_set => {
+      (rel_set \ "type") match {
+        case JNothing => new RelationSet(rel_set, fileUtil)
+        case JString("generated") => generateSyntheticRelationSet(rel_set \ "generation params")
+        case other => throw new IllegalStateException("Bad relation set specification")
       }
     })
   }
@@ -99,28 +91,31 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     val relationSets = getRelationSets(params)
 
     println("Loading aliases")
-    val aliases = relationSets.filter(_.getIsKb).par.map(relationSet => {
-      new Pair(relationSet.getAliasRelation, relationSet.getAliases)
+    val aliases = relationSets.filter(_.isKb).par.map(relationSet => {
+      (relationSet.aliasRelation, relationSet.getAliases)
     }).seq
 
     val nodeDict = new Dictionary()
     val edgeDict = new Dictionary()
 
     val seenNps = new mutable.HashSet[String]
-    var seenTriples: java.util.HashSet[IntTriple] = null
-    if (deduplicateEdges(params)) {
-      seenTriples = new java.util.HashSet[IntTriple]
+    val seenTriples: mutable.HashSet[(Int, Int, Int)] = {
+      if (deduplicateEdges(params)) {
+        new mutable.HashSet[(Int, Int, Int)]
+      } else {
+        null
+      }
     }
     val prefixes = getSvoPrefixes(relationSets)
     var numEdges = 0
     for (relationSet <- relationSets) {
-      println("Adding edges to the graph from " + relationSet.getRelationFile())
+      println("Adding edges to the graph from " + relationSet.relationFile)
       val prefix = prefixes(relationSet)
       numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
                                                             seenTriples,
                                                             prefix,
-                                                            seenNps.asJava,
-                                                            aliases.asJava,
+                                                            seenNps,
+                                                            aliases,
                                                             nodeDict,
                                                             edgeDict)
     }
@@ -266,9 +261,9 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
    */
   def getSvoPrefixes(relationSets: Seq[RelationSet]): Map[RelationSet, String] = {
     val embeddingsToRels = relationSets
-      .filter(!_.getIsKb)
-      .filter(_.getEmbeddingsFile != null).map(relationSet => {
-        (relationSet.getEmbeddingsFile, relationSet)
+      .filter(!_.isKb)
+      .filter(_.embeddingsFile != null).map(relationSet => {
+        (relationSet.embeddingsFile, relationSet)
       }).groupBy(_._1).toMap
     if (embeddingsToRels.size <= 1) {
       Map[RelationSet, String]().withDefaultValue(null)
@@ -299,6 +294,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     } else {
       creator.createRelationSet()
     }
-    RelationSet.fromFile(creator.relation_set_spec_file, fileUtil)
+    val relSetParams = ("relation file" -> creator.data_file) ~ ("is kb" -> false)
+    new RelationSet(relSetParams, fileUtil)
   }
 }

@@ -22,7 +22,6 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
-
 class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   val nodeDictionaryFile = "1\tnode\n2\tnode 2\n"
