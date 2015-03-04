@@ -57,12 +57,10 @@ class PcaDecomposer(
     }
     val matrix = builder.result
 
-    println("Performing SVD with $dims dimensions")
+    println(s"Performing SVD with $dims dimensions")
     val svd.SVD(u, s, v) = svd(matrix, dims)
     println(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
-    println(s"Singular values: $s")
     val weights = breeze.numerics.sqrt(s)
-    println(s"Weights: $weights")
 
     println("Saving results")
     val out = fileUtil.getFileWriter(result_dir + "embeddings.tsv")

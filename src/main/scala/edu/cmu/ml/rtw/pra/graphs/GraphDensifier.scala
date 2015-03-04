@@ -142,9 +142,16 @@ class GraphDensifier(
       case JString(path) if (path.startsWith("/")) => path
       case jobj: JObject => {
         val name = (jobj \ "name").extract[String]
-        val embeddingsName = (jobj \ "embeddings").extract[String]
+        val embeddingsName = getNameFromEmbeddings(jobj \ "embeddings")
         s"${praBase}embeddings/${embeddingsName}/${name}/matrix.tsv"
       }
+    }
+  }
+
+  def getNameFromEmbeddings(params: JValue): String = {
+    params match {
+      case JString(name) => name
+      case jval => (params \ "name").extract[String]
     }
   }
 }
