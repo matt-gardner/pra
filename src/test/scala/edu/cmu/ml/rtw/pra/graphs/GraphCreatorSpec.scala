@@ -253,17 +253,13 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     ("num_noise_relation_instances" -> 14) ~
     ("rule_prob_mean" -> 0.6) ~
     ("rule_prob_stddev" -> 0.2)
-  val data_file = "/relation_sets/generated/data.tsv"
-  val rel_set_file = "/relation_sets/generated/relation_set.tsv"
-  val rel_set_file_contents = s"relation file\t$data_file\nis kb\tfalse\n"
+  val data_file = "/synthetic_relation_sets/generated/data.tsv"
 
   "generateSyntheticRelationSet" should "create a dataset when one doesn't exist" in {
     val instances = Seq((1, "rel", 2))
     val fileUtil = getFileUtil
     fileUtil.onlyAllowExpectedFiles()
     fileUtil.addExpectedFileWritten(data_file, "1\trel\t2\t1\n")
-    fileUtil.addExpectedFileWritten(rel_set_file, rel_set_file_contents)
-    fileUtil.addFileToBeRead(rel_set_file, rel_set_file_contents)
 
     val creator = new GraphCreator("/", "/", fileUtil)
     creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(instances)
@@ -273,9 +269,8 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "not create a dataset when one already exists" in {
     val fileUtil = getFileUtil
-    fileUtil.addExistingFile("/relation_sets/generated/")
-    fileUtil.addFileToBeRead("/relation_sets/generated/params.json", compact(render(rel_set_params)))
-    fileUtil.addFileToBeRead(rel_set_file, rel_set_file_contents)
+    fileUtil.addExistingFile("/synthetic_relation_sets/generated/")
+    fileUtil.addFileToBeRead("/synthetic_relation_sets/generated/params.json", compact(render(rel_set_params)))
     fileUtil.onlyAllowExpectedFiles()
 
     val creator = new GraphCreator("/", "/", fileUtil)
@@ -288,8 +283,8 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     val random_param: JValue = ("num_entities" -> 1000)
     val params = rel_set_params merge random_param
     val fileUtil = getFileUtil
-    fileUtil.addExistingFile("/relation_sets/generated/")
-    fileUtil.addFileToBeRead("/relation_sets/generated/params.json", compact(render(params)))
+    fileUtil.addExistingFile("/synthetic_relation_sets/generated/")
+    fileUtil.addFileToBeRead("/synthetic_relation_sets/generated/params.json", compact(render(params)))
     val creator = new GraphCreator("/", "/", fileUtil)
     creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(Seq())
     TestUtil.expectError(classOf[IllegalStateException], "parameters don't match", new Function() {
