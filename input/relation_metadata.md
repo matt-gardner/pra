@@ -1,15 +1,18 @@
 ---
 layout: page
-title: Experiment Spec
+title: Relation Metadata
 ---
-# KB Files Format
+# Relation Metadata
 
-This is a directory that contains information about a KB.  It generally has the following entries:
+This is a directory that contains metadata about the relations in your graph.  None of this is
+required for the PRA code to function, but if you want to restrict predictions based on relation
+ranges, or keep the code from cheating by using known inverses, you should specify the directory
+containing these files in the experiment specification.  The directory generally has the following
+entries:
 
 * `category_instances/`: A directory containing all of the instances of each category, one category
-  per file (format is just one instance per line).  This is necessary for restricting the
-predictions that PRA makes - the `category_instances/` file has all acceptable target nodes for
-each relation.
+  per file (format is just one instance per line).  This, in conjunction with a `ranges.tsv` file,
+is necessary for restricting the predictions that PRA makes.
 
 * `domains.tsv`: A mapping from relations to the category corresponding to the relation's domain.
   Currently unused.  Format is `[relation] \t [domain]`, where `domain` must have a corresponding
@@ -25,6 +28,9 @@ edges that correspond to the training data, so you don't learn things that won't
 edges that correspond to the testing data, so you're not cheating.  If there are known inverses in
 the graph, we need to remove both the original edge and its inverse, when applicable.
 
+Not really metadata, but these are produced by my code that generates these directories for NELL
+and Freebase, and they might be handy in some other parts of the code:
+
 * `labeled_edges.tsv`: Contains all relation instances in the KB, each of which will correspond to
   a single edge in a PRA graph.  This file is generally referenced in a relation set, when creating
 graphs, as described below.
@@ -35,14 +41,9 @@ set isn't specified in a split directory (see below).
 
 If you are using Freebase, you shouldn't have to create these directories manually.  There is a
 class in the PRA code base, `graphs.FreebaseKbFilesCreator`, that does this for you.  You could
-also download the data files from my EMNLP 2014 paper, as it contains KB files for NELL and
-Freebase.  (I didn't include the NellKbFilesCreator in this repository, because it has too many
+also download the data files from my EMNLP 2014 paper, as it contains relation metadata for NELL
+and Freebase, though they are under the `kb_files/` directory, instead of the `relation_metadata/`
+directory.  I didn't include the NellKbFilesCreator in this repository, because it has too many
 dependencies on the NELL codebase - I would have had to copy too many files over.  If you really
-want to create new KB files for a newer version of NELL than you can get from the data files in the
-EMNLP 2014 paper, talk to me.)
-
-If you are using PRA with a set of relations that has none of this metadata, such as learning
-models for open-domain relations, I'm pretty sure this directory can be left empty (though you'll
-want to change a few of the settings in your
-[parameter specification file]({{ site.baseurl }}/input/param_file.html)).  If you run into issues
-with this, let me know.
+want to create new relation metadata for a newer version of NELL than you can get from the data
+files in the EMNLP 2014 paper, talk to me.

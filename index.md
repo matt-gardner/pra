@@ -21,7 +21,7 @@ repository, so all you have to do is include it as a managed dependency.  If you
 include the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "edu.cmu.ml.rtw" %% "pra" % "1.1"
+libraryDependencies += "edu.cmu.ml.rtw" %% "pra" % "2.0"
 ```
 
 If you are using maven, you can include the PRA code by putting the following under
@@ -31,16 +31,20 @@ If you are using maven, you can include the PRA code by putting the following un
 <dependency>
   <groupId>edu.cmu.ml.rtw</groupdId>
   <artifactId>pra_2.11</artifactId>
-  <version>1.1</version>
+  <version>2.0</version>
 </dependency>
 ```
 
-Available PRA versions (see the [changelog](https://github.com/matt-gardner/pra) in the code's
-README for more info on what's new in each version):
+Available PRA versions:
+
+- 2.0
 
 - 1.1
 
 - 1.0
+
+See the [changelog](https://github.com/matt-gardner/pra) in the code's README for more info on
+what's new in each version.
 
 ## License
 
