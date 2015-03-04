@@ -1,0 +1,6 @@
+load default_pra_parameters
+{
+  "graph": "nell/kb",
+  "relation metadata": "nell",
+  "split": "nell"
+}

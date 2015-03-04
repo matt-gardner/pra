@@ -1,0 +1,13 @@
+{
+  "pra parameters": {
+    "pra mode": "standard",
+    "l1 weight": 0.005,
+    "l2 weight": 1,
+    "walks per source": 100,
+    "walks per path": 50,
+    "path finding iterations": 3,
+    "number of paths to keep": 1000,
+    "matrix accept policy": "all-targets",
+    "path accept policy": "paired-only"
+  }
+}

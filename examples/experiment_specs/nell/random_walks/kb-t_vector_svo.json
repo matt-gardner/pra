@@ -1,0 +1,10 @@
+load base_nell_pra_parameters
+load vector_space_walks
+{
+  "graph": "load graphs/nell/kb-t_svo"
+  "pra parameters": {
+    "path type factory": {
+      "embeddings": "pca_svo"
+    }
+  }
+}

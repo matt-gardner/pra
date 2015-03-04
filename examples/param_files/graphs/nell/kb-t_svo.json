@@ -1,0 +1,7 @@
+{
+  "name": "nell/kb-t_svo",
+  "relation sets": [
+    "load relation_sets/nell/kb_no_types",
+    "load relation_sets/nell/svo"
+  ]
+}

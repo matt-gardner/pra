@@ -1,0 +1,10 @@
+{
+  "pra parameters": {
+    "path type factory": {
+      "name": "VectorPathTypeFactory",
+      "spikiness": 3,
+      "reset weight": 0.25,
+      "embeddings": "you'll need to override this"
+    }
+  }
+}

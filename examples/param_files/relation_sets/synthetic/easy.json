@@ -1,0 +1,22 @@
+{
+  "type": "generated",
+  "generation params": {
+    "name": "synthetic/easy",
+    "num_entities": 1000,
+    "num_base_relations": 25,
+    "num_base_relation_training_duplicates": 5,
+    "num_base_relation_testing_duplicates": 0,
+    "num_base_relation_overlapping_instances": 500,
+    "num_base_relation_noise_instances": 250,
+    "num_pra_relations": 4,
+    "num_pra_relation_training_instances": 500,
+    "num_pra_relation_testing_instances": 100,
+    "num_rules": 10,
+    "min_rule_length": 1,
+    "max_rule_length": 5,
+    "rule_prob_mean": 0.6,
+    "rule_prob_stddev": 0.2,
+    "num_noise_relations": 20,
+    "num_noise_relation_instances": 2500
+  }
+}

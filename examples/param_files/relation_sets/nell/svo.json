@@ -1,0 +1,4 @@
+{
+  "relation file": "/path/to/nell/targeted/svo.tsv",
+  "is kb": false
+}

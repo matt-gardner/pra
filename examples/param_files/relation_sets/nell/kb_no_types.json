@@ -1,0 +1,6 @@
+{
+  "relation file": "/path/to/nell/relation/file/without/generalizations.tsv",
+  "is kb": true,
+  "alias file": "/path/to/nell/alias/file.tsv",
+  "alias file format": "nell"
+}

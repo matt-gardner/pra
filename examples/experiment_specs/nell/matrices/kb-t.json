@@ -1,0 +1,5 @@
+load base_nell_pra_parameters
+load matrix_multiplication
+{
+  "graph": "load graphs/nell/kb-t"
+}

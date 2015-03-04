@@ -1,0 +1,28 @@
+load default_pra_parameters
+load matrix_multiplication
+load vector_space_walks
+{
+  "graph": {
+    "name": "synthetic/hard",
+    "relation sets": ["load relation_sets/synthetic/hard"],
+    "denser matrices": [
+      {
+        "name": "high_threshold_denser_matrix",
+        "similarity matrix": {
+          "name": "similarity_matrix_0.9_2_1",
+          "embeddings": "synthetic/hard",
+          "threshold": 0.9,
+          "num_hashes": 2,
+          "hash_size": 1
+        }
+      }
+    ]
+  },
+  "split": "synthetic/hard",
+  "pra parameters": {
+    "path type factory": {
+      "matrix dir": "high_threshold_denser_matrix",
+      "embeddings": []
+    }
+  }
+}

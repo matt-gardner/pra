@@ -1,0 +1,6 @@
+{
+  "name": "nell/kb",
+  "relation sets": [
+    "load relation_sets/nell/kb"
+  ]
+}
