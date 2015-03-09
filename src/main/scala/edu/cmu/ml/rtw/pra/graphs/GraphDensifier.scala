@@ -39,8 +39,13 @@ class GraphDensifier(
     val similarity_matrix_file = getSimilarityMatrixFile(params)
     println("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
+    val test_edges: Set[(Int, Int, Int)] = (params \ "split") match {
+      case JString(name) => getTestEdges(graphDir, name)
+      case JNothing => Set()
+      case other => throw new IllegalStateException("split not specified correctly")
+    }
     println("Reading the graph")
-    val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv")
+    val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv", test_edges)
     println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
     println(s"Rekey-ing by relation")
@@ -98,14 +103,37 @@ class GraphDensifier(
     writer.close()
   }
 
-  def readGraphEdges(edge_file: String): Map[(Int, Int), SparseVector[Double]] = {
+  def getTestEdges(graph_dir: String, split_name: String): Set[(Int, Int, Int)] = {
+    val node_dict = new Dictionary
+    node_dict.setFromFile(graph_dir + "/node_dict.tsv")
+    val edge_dict = new Dictionary
+    edge_dict.setFromFile(graph_dir + "/edge_dict.tsv")
+    // TODO(matt): don't I have some common code for reading a split?
+    val split_dir = s"${praBase}splits/${split_name}/"
+    val relations = fileUtil.readLinesFromFile(s"${split_dir}relations_to_run.tsv").asScala
+    relations.flatMap(relation => {
+      val rel_index = edge_dict.getIndex(relation)
+      val test_file = s"${split_dir}${relation}/testing.tsv"
+      val instances = fileUtil.readLinesFromFile(test_file).asScala
+      instances.map(instance => {
+        val fields = instance.split("\t")
+        val source_index = node_dict.getIndex(fields(0))
+        val target_index = node_dict.getIndex(fields(1))
+        (source_index, target_index, rel_index)
+      })
+    }).toSet
+  }
+
+  def readGraphEdges(edge_file: String, test_edges: Set[(Int, Int, Int)]): Map[(Int, Int), SparseVector[Double]] = {
     val edges = new mutable.HashMap[(Int, Int), Set[Int]]().withDefaultValue(Set())
     for (line <- fileUtil.readLinesFromFile(edge_file).asScala) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
       val relation = fields(2).toInt
-      edges.update((source, target), edges(source, target) + relation)
+      if (!test_edges.contains((source, target, relation))) {
+        edges.update((source, target), edges(source, target) + relation)
+      }
     }
     edges.map(x => (x._1, createSparseVector(x._2))).toMap
   }
