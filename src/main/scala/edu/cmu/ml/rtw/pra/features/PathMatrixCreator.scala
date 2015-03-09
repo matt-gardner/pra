@@ -10,7 +10,7 @@ import java.util.{List => JList}
 import java.util.{Map => JMap}
 import java.util.{Set => JSet}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.parallel.mutable.{ParSeq => MParSeq}
 import scalax.io.Resource
@@ -22,7 +22,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class PathMatrixCreator(
     numNodes: Int,
-    parent_path_types: JList[PathType],
+    java_path_types: JList[PathType],
     source_nodes: JSet[Integer],
     matrix_dir: String,
     edge_dict: Dictionary,
@@ -31,25 +31,22 @@ class PathMatrixCreator(
     normalizeWalkProbabilities: Boolean,
     fileUtil: FileUtil = new FileUtil) {
 
+  val path_types = java_path_types.asScala
   val sources_matrix = {
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
-    for (source <- source_nodes) {
+    for (source <- source_nodes.asScala) {
       builder.add(source, source, 1)
     }
     builder.result
   }
 
-  val edges_to_remove = edgesToExclude
+  val edges_to_remove = edgesToExclude.asScala
     .map(x => (x.getRight.asInstanceOf[Int],
       (x.getLeft.getLeft.asInstanceOf[Int], x.getLeft.getRight.asInstanceOf[Int])))
     .groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
 
-  // Unfortunately, it seems like the best way to move forward for the moment is to keep the main
-  // code path going through java, and just integrate with new scala code this way.  For the java
-  // code to compile right, though, it looks like I need to use java collections and integers here
-  // in the method signatures, so this is uglier than it could be.  Oh well.  I tried to localize
-  // all of the JList/JSet stuff to just the constructor and the first two methods, which just
-  // translate the java objects into scala objects, used by the real implementations below.
+  // These first two methods (and the constructor) get called from java code, so they need to take
+  // java collections as inputs.  The rest of the code should use scala collections.
 
   /**
    * If you know which (source, target) pairs you want to compute features for, this is a faster
@@ -59,7 +56,7 @@ class PathMatrixCreator(
    * That's what the next method is for.
    */
   def getFeatureMatrix(pairs: JList[Pair[Integer, Integer]]): FeatureMatrix = {
-    getFeatureMatrix(pairs.map(x => (x.getLeft.asInstanceOf[Int], x.getRight.asInstanceOf[Int])))
+    getFeatureMatrix(pairs.asScala.map(x => (x.getLeft.asInstanceOf[Int], x.getRight.asInstanceOf[Int])))
   }
 
   /**
@@ -69,57 +66,36 @@ class PathMatrixCreator(
    */
   def getFeatureMatrix(sources: JSet[Integer], allowed_targets: JSet[Integer]): FeatureMatrix = {
     if (allowed_targets != null) {
-      getFeatureMatrix(sources.map(_.asInstanceOf[Int]).toSet,
-        allowed_targets.map(_.asInstanceOf[Int]).toSet)
+      getFeatureMatrix(sources.asScala.map(_.asInstanceOf[Int]).toSet,
+        allowed_targets.asScala.map(_.asInstanceOf[Int]).toSet)
     } else {
-      getFeatureMatrix(sources.map(_.asInstanceOf[Int]).toSet, null)
+      getFeatureMatrix(sources.asScala.map(_.asInstanceOf[Int]).toSet, null)
     }
   }
 
-  // NO JAVA INTERFACING CODE BELOW HERE!
-
   def getFeatureMatrix(pairs: Seq[(Int, Int)]): FeatureMatrix = {
     val matrix_rows = pairs.par.map(x => getFeatureMatrixRow(x._1, x._2)).seq.toSeq
-    new FeatureMatrix(matrix_rows)
+    new FeatureMatrix(matrix_rows.asJava)
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
     println("Getting feature matrix for input sources");
-    val matrix_rows = sources.par.flatMap(
-      x => getFeatureMatrixRowsForSource(x, allowed_targets)).seq.toSeq
-    new FeatureMatrix(matrix_rows)
-  }
-
-  def getFeatureMatrixRowsForSource(source: Int, allowed_targets: Set[Int]): Seq[MatrixRow] = {
-    val source_vector = {
-      val builder = new VectorBuilder[Double](numNodes, 1)
-      builder.add(source, 1)
-      builder.toSparseVector
-    }
-    val target_feature_map = parent_path_types.zipWithIndex.par.flatMap(path_type_with_index => {
-      // Breeze can't handle multiplication by transposes of sparse vectors.  But we can transpose
-      // the sparse matrix, and multiply on the other side.
-      val targets = path_matrices(path_type_with_index._1).t * source_vector
-      val seen_features = new mutable.ListBuffer[(Int, Int, Double)]
-      var offset = 0
-      while(offset < targets.activeSize) {
-        val target = targets.indexAt(offset)
-        val value = targets.valueAt(offset)
-        if (allowed_targets == null || allowed_targets.contains(target)) {
-          seen_features += Tuple3(target, path_type_with_index._2, value)
-        }
-        offset += 1
-      }
-      seen_features.toList
+    val entries = path_types.zipWithIndex.par.flatMap(path_type_with_index => {
+      for (instance <- path_matrices(path_type_with_index._1).activeIterator
+           if sources.contains(instance._1._1);
+           if allowed_targets == null || allowed_targets.contains(instance._1._2))
+        yield (instance._1, path_type_with_index._2, instance._2)
     })
-    target_feature_map.groupBy(_._1).map(target_with_features => {
-      val feature_list = target_with_features._2.map(y => (y._2, y._3)).toList.sorted
-      createMatrixRow(source, target_with_features._1, feature_list)
+    val matrix_rows = entries.groupBy(_._1).map(entity_pair_with_features => {
+      val feature_list = entity_pair_with_features._2.map(y => (y._2, y._3)).toList.sorted
+      createMatrixRow(entity_pair_with_features._1._1, entity_pair_with_features._1._2, feature_list)
     }).seq.toSeq
+
+    new FeatureMatrix(matrix_rows.asJava)
   }
 
   def getFeatureMatrixRow(source: Int, target: Int): MatrixRow = {
-    val feature_list = parent_path_types.zipWithIndex.par.map(
+    val feature_list = path_types.zipWithIndex.par.map(
       x => (x._2, path_matrices(x._1)(source, target))).seq.toList.sorted
     createMatrixRow(source, target, feature_list)
   }
@@ -136,9 +112,9 @@ class PathMatrixCreator(
 
   val path_matrices: Map[PathType, CSCMatrix[Double]] = {
     println(s"Creating path matrices from the relation matrices in $matrix_dir")
-    val path_types = parent_path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
-    val relations = path_types.flatMap(_.getEdgeTypes).toSet
-    val filenames = fileUtil.listDirectoryContents(matrix_dir).toSet - "params.json"
+    val _path_types = path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
+    val relations = _path_types.flatMap(_.getEdgeTypes).toSet
+    val filenames = fileUtil.listDirectoryContents(matrix_dir).asScala.toSet - "params.json"
     if (filenames.size == 0) {
       throw new RuntimeException(s"Didn't find any matrix files in ${matrix_dir}...")
     }
@@ -146,7 +122,7 @@ class PathMatrixCreator(
     val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
         readMatricesFromFile(fileUtil.getBufferedReader(matrix_dir + x._1), x._2)).seq
 
-    path_types.par.map(x => (x, createPathMatrix(x, connectivity_matrices))).seq.toMap
+    _path_types.par.map(x => (x, createPathMatrix(x, connectivity_matrices))).seq.toMap
   }
 
   def createPathMatrix(
