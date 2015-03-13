@@ -15,6 +15,10 @@ object ExperimentRunner {
   val EXPLORATION_DIR = "/results_exploration/"
 
   def main(args: Array[String]) {
+    if (args.length < 1) {
+      println("Must supply a base directory as the first argument to ExperimentRunner")
+      return
+    }
     val pra_base = new FileUtil().addDirectorySeparatorIfNecessary(args(0))
     val filter = if (args.length > 1) args(1) else ""
     runPra(pra_base, filter)

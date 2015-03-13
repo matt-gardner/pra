@@ -36,6 +36,10 @@ object ExperimentScorer {
   val relationMetrics_ = List("AP")
 
   def main(args: Array[String]) {
+    if (args.length < 1) {
+      println("Must supply a base directory as the first argument to ExperimentScorer")
+      return
+    }
     val pra_base = args(0)
     val filter = if (args.length > 1) args(1) else ""
     scoreExperiments(

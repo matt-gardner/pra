@@ -39,7 +39,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
     // the relation itself, even if there are embeddings.  Sometimes we use both the original
     // edge and the embedding as edges in the graph.  If the original edge is still there, this
     // will stop it, and if it's not there, having it in this list won't hurt anything.
-    val unallowedEdges = driver.createUnallowedEdges(relation, inverses, embeddings, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, edgeDict)
     unallowedEdges.size should be(6)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 2)
@@ -49,7 +49,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no inverses" in {
-    val unallowedEdges = driver.createUnallowedEdges(relation, Map(), embeddings, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, Map(), embeddings, edgeDict)
     unallowedEdges.size should be(3)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -57,21 +57,21 @@ class DriverSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no embeddings" in {
-    val unallowedEdges = driver.createUnallowedEdges(relation, inverses, null, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, null, edgeDict)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
   }
 
   it should "work when the relation has no inverse" in {
-    val unallowedEdges = driver.createUnallowedEdges(relation2, inverses, null, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation2, inverses, null, edgeDict)
     unallowedEdges.size should be(1)
     expectCount(unallowedEdges, edgeDict.getIndex(relation2), 1)
   }
 
   it should "work when the inverse has no embeddings" in {
     // This test is due to a bug.
-    val unallowedEdges = driver.createUnallowedEdges(relation, inverses, embeddings - inverse, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings - inverse, edgeDict)
     unallowedEdges.size should be(4)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -81,7 +81,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
 
   it should "work when the relation has no embeddings" in {
     // This test is also due to a bug.
-    val unallowedEdges = driver.createUnallowedEdges(relation, inverses, Map(), edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, Map(), edgeDict)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
@@ -89,11 +89,13 @@ class DriverSpec extends FlatSpecLike with Matchers {
 
   "initializeSplit" should "not do cross validation when there's a fixed split" in {
     fileUtil.addExistingFile(splitsDirectory + fixedSplitRelation.replace("/", "_"))
-    driver.initializeSplit(splitsDirectory, kbDirectory, fixedSplitRelation, builder, factory) should be(false)
+    Driver.initializeSplit(splitsDirectory, kbDirectory, fixedSplitRelation, builder, factory,
+      fileUtil) should be(false)
   }
 
   it should "do cross validation when there's no fixed split" in {
     fileUtil.setDoubleList(List(java.lang.Double.valueOf(0.0)).asJava)
-    driver.initializeSplit(splitsDirectory, kbDirectory, crossValidatedRelation, builder, factory) should be(true)
+    Driver.initializeSplit(splitsDirectory, kbDirectory, crossValidatedRelation, builder, factory,
+      fileUtil) should be(true)
   }
 }

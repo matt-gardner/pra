@@ -31,6 +31,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   val relationEmbeddingsFile = "edge\t0.1\t0.2\n"
 
   val graphDir = "nell graph files"
+  val matrixDir = "some other matrix dir"
   val relationMetadataFilename = "nell relation metadata"
   val splitName = "nell split"
   val relationSetFilename = "relation set filename"
@@ -83,6 +84,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     |    "normalize walk probabilities": false,
     |    "binarize features": true,
     |    "path follower": "matrix multiplication",
+    |    "matrix dir": "$matrixDir",
     |  }
     |}""".stripMargin
 
@@ -128,7 +130,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     ("binarize features" -> true) ~
     ("matrix accept policy" -> "everything") ~
     ("path follower" -> "matrix multiplication") ~
-    ("path accept policy" -> "everything")
+    ("path accept policy" -> "everything") ~
+    ("matrix dir" -> matrixDir)
   val praSpecFilename = "/pra/params/spec/file"
   val praSpecFile = pretty(render(praSpec))
 
@@ -197,7 +200,6 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
       ("name" -> "VectorPathTypeFactory") ~
       ("spikiness" -> .2) ~
       ("reset weight" -> .8) ~
-      ("matrix dir" -> "matrix dir") ~
       ("embeddings" -> List(relationEmbeddingsFilename))))
 
   val fileUtil: FakeFileUtil = {
@@ -256,8 +258,9 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.l1Weight should be(9.05)
     config.binarizeFeatures should be(true)
     config.pathFollowerFactory.getClass should be(classOf[MatrixPathFollowerFactory])
-    config.nodeDict.getIndex("node 2") should be(2);
-    config.edgeDict.getIndex("edge 2") should be(2);
+    config.nodeDict.getIndex("node 2") should be(2)
+    config.edgeDict.getIndex("edge 2") should be(2)
+    config.matrixDir should be(matrixDir)
   }
 
   it should "give default values with empty params" in {
@@ -288,7 +291,6 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     new SpecFileReader("", fileUtil).setPraConfigFromParams(
       pathTypeFactoryParams merge justGraphSpec, builder)
     val config = builder.build()
-    config.matrixDir should be("matrix dir")
     val factory = config.pathTypeFactory.asInstanceOf[VectorPathTypeFactory]
     factory.getResetWeight should be(Math.exp(0.2 * 0.8))
     factory.getSpikiness should be(0.2)
@@ -306,10 +308,10 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "disallow bad combinations of path types / path followers" in {
     val builder = new PraConfig.Builder
     builder.setFileUtil(fileUtil)
-    val params = (pathTypeFactoryParams removeField { _ == JField("matrix dir", JString("matrix dir")) }
-      merge baseParams)
+    val params = pathTypeFactoryParams merge
+      (baseParams removeField { _ == JField("matrix dir", JString(matrixDir)) })
     new SpecFileReader("", fileUtil).setPraConfigFromParams(params, builder)
-    builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null));
+    builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null))
     TestUtil.expectError(classOf[IllegalStateException], "must specify matrixDir", new Function() {
       def call() {
         builder.build()

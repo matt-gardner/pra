@@ -21,6 +21,9 @@ class SimilarityMatrixCreator(
     fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
 
+  // If we see more hash collisions than this, recommend increasing the hash size.
+  val WARNING_SIZE = 10000
+
   val embeddingsFile = embeddingsDir + "embeddings.tsv"
   val matrixDir = embeddingsDir + name + "/"
   val outFile = matrixDir + "matrix.tsv"
@@ -77,7 +80,7 @@ class SimilarityMatrixCreator(
         (k, v) => v.map(_._2).toSeq).withDefaultValue(Nil)
     }).toSeq
     println("Computing similarities")
-    val similarities = hashed_vectors.flatMap(x => computeSimilarities(threshold, num_hashes, x, hash_maps))
+    val similarities = hashed_vectors.flatMap(x => computeSimilarities(threshold, x, hash_maps))
     println("Done computing similarities; outputting results")
     val out = fileUtil.getFileWriter(outFile)
     similarities.map(x => out.write(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}\n"))
@@ -87,25 +90,23 @@ class SimilarityMatrixCreator(
 
   def computeSimilarities(
       threshold: Double,
-      num_hashes: Int,
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
     val start = System.currentTimeMillis
-    val close_vectors = new mutable.HashSet[(Int, DenseVector[Double])]
-    for (index <- 0 until num_hashes) {
-      for (vec2 <- hash_maps(index)(vec._2(index))) {
-        if (vec2._1 != vec._1) {
-          close_vectors += vec2
-        }
-      }
+    val close_vectors =
+      for ((hash_map, index) <- hash_maps.zipWithIndex; vec2 <- hash_map(vec._2(index))
+           if vec2._1 != vec._1)
+             yield vec2
+    val close_vector_set = close_vectors.toSet
+    if (close_vector_set.size > 1000) {
+      println(s"Saw ${close_vector_set.size} hash collisions for relation ${vec._1}.  Consider " +
+        "increasing your hash size")
     }
-    val similarities = new mutable.ArrayBuffer[(Int, Int, Double)]
-    for (vec2 <- close_vectors) {
-      val similarity = vec._3 dot vec2._2
-      if (similarity > threshold && similarity < upper_threshold) {
-        similarities += Tuple3(vec._1, vec2._1, similarity)
-      }
-    }
+    val similarities =
+      for (vec2 <- close_vector_set;
+           similarity = vec._3 dot vec2._2
+           if similarity > threshold && similarity < upper_threshold)
+             yield (vec._1, vec2._1, similarity)
     var seconds = ((System.currentTimeMillis - start) / 1000.0)
     similarities.toSeq
   }

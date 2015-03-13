@@ -1,5 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import edu.cmu.ml.rtw.pra.experiments.Driver
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -40,10 +42,15 @@ class GraphDensifier(
     println("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     val test_edges: Set[(Int, Int, Int)] = (params \ "split") match {
-      case JString(name) => getTestEdges(graphDir, name)
+      case JString(name) => {
+        val metadata_dir =
+          JsonHelper.getPathOrNameOrNull(params, "relation metadata", praBase, "relation_metadata")
+        getTestEdges(graphDir, name, metadata_dir)
+      }
       case JNothing => Set()
       case other => throw new IllegalStateException("split not specified correctly")
     }
+    println(s"Found ${test_edges.size} test edges")
     println("Reading the graph")
     val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv", test_edges)
     println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
@@ -103,29 +110,40 @@ class GraphDensifier(
     writer.close()
   }
 
-  def getTestEdges(graph_dir: String, split_name: String): Set[(Int, Int, Int)] = {
+  def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
     val node_dict = new Dictionary
     node_dict.setFromFile(graph_dir + "/node_dict.tsv")
     val edge_dict = new Dictionary
     edge_dict.setFromFile(graph_dir + "/edge_dict.tsv")
+    println(s"Metadata directory: $metadata")
+    val inverses = Driver.createInverses(metadata, edge_dict, fileUtil)
+    println(s"Inverses size: ${inverses.size}")
     // TODO(matt): don't I have some common code for reading a split?
     val split_dir = s"${praBase}splits/${split_name}/"
     val relations = fileUtil.readLinesFromFile(s"${split_dir}relations_to_run.tsv").asScala
     relations.flatMap(relation => {
       val rel_index = edge_dict.getIndex(relation)
+      val has_inverse = inverses.contains(rel_index)
+      val inverse_index = if (has_inverse) inverses(rel_index) else -1
       val test_file = s"${split_dir}${relation}/testing.tsv"
       val instances = fileUtil.readLinesFromFile(test_file).asScala
-      instances.map(instance => {
+      instances.flatMap(instance => {
         val fields = instance.split("\t")
         val source_index = node_dict.getIndex(fields(0))
         val target_index = node_dict.getIndex(fields(1))
-        (source_index, target_index, rel_index)
+        if (has_inverse) {
+          List(Tuple3(source_index, target_index, rel_index),
+               Tuple3(target_index, source_index, inverse_index))
+        } else {
+          List(Tuple3(source_index, target_index, rel_index))
+        }
       })
     }).toSet
   }
 
   def readGraphEdges(edge_file: String, test_edges: Set[(Int, Int, Int)]): Map[(Int, Int), SparseVector[Double]] = {
     val edges = new mutable.HashMap[(Int, Int), Set[Int]]().withDefaultValue(Set())
+    var seen_test_edges = 0
     for (line <- fileUtil.readLinesFromFile(edge_file).asScala) {
       val fields = line.split("\t")
       val source = fields(0).toInt
@@ -133,8 +151,11 @@ class GraphDensifier(
       val relation = fields(2).toInt
       if (!test_edges.contains((source, target, relation))) {
         edges.update((source, target), edges(source, target) + relation)
+      } else {
+        seen_test_edges += 1
       }
     }
+    println(s"Saw $seen_test_edges test edges")
     edges.map(x => (x._1, createSparseVector(x._2))).toMap
   }
 

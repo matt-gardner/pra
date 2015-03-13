@@ -122,6 +122,10 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
     if (!value.equals(JNothing)) {
       config.setMaxMatrixFeatureFanOut(value.extract[Int])
     }
+    value = pra_params \ "matrix dir"
+    if (!value.equals(JNothing)) {
+      config.setMatrixDir(value.extract[String])
+    }
     value = pra_params \ "path type factory"
     if (!value.equals(JNothing)) {
       initializePathTypeFactory(value, config);
@@ -197,10 +201,6 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
         List(s"${baseDir}embeddings/${name}/embeddings.tsv")
       }
     }
-    val matrixDir = params \ "matrix dir"
-    if (!matrixDir.equals(JNothing)) {
-      config.setMatrixDir(matrixDir.extract[String])
-    }
     val embeddings = config.readEmbeddingsVectors(embeddingsFiles.asJava)
     config.setPathTypeFactory(
       new VectorPathTypeFactory(config.edgeDict, embeddings, spikiness, resetWeight))
@@ -231,6 +231,26 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
       config.setPathFollowerFactory(new MatrixPathFollowerFactory());
     } else {
       throw new RuntimeException("Unrecognized path follower")
+    }
+  }
+}
+
+object JsonHelper {
+  def getPathOrNameOrNull(params: JValue, key: String, baseDir: String, nameDir: String): String = {
+    (params \ key) match {
+      case JNothing => null
+      case JString(path) if (path.startsWith("/")) => path
+      case JString(name) => s"${baseDir}${nameDir}/${name}/"
+      case other => throw new IllegalStateException(s"$key is not a string field")
+    }
+  }
+
+  def getPathOrName(params: JValue, key: String, baseDir: String, nameDir: String): Option[String] = {
+    (params \ key) match {
+      case JNothing => None
+      case JString(path) if (path.startsWith("/")) => Some(path)
+      case JString(name) => Some(s"${baseDir}${nameDir}/${name}/")
+      case other => throw new IllegalStateException(s"$key is not a string field")
     }
   }
 }

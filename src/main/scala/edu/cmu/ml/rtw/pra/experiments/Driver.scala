@@ -93,12 +93,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       builder.setOutputBase(outdir)
 
       if (mode == "standard") {
-        val doCrossValidation = initializeSplit(
+        val doCrossValidation = Driver.initializeSplit(
           splitsDirectory,
           metadataDirectory,
           relation,
           builder,
-          new DatasetFactory())
+          new DatasetFactory(),
+          fileUtil)
 
         val config = builder.build()
 
@@ -306,7 +307,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       relation: String,
       builder: PraConfig.Builder,
       outputBase: String) {
-    val inverses = createInverses(directory, builder.edgeDict)
+    val inverses = Driver.createInverses(directory, builder.edgeDict, fileUtil)
     builder.setRelationInverses(inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava)
 
     val embeddings = {
@@ -317,7 +318,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         null
       }
     }
-    val unallowedEdges = createUnallowedEdges(relation, inverses, embeddings, builder.edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder.edgeDict)
     builder.setUnallowedEdges(unallowedEdges.map(x => Integer.valueOf(x)).asJava)
 
     if (directory != null && fileUtil.fileExists(directory + "ranges.tsv")) {
@@ -339,6 +340,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       writer.close()
     }
   }
+}
+
+object Driver {
 
   def createUnallowedEdges(
       relation: String,
@@ -378,7 +382,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
    * Reads a file containing a mapping between relations and their inverses, and returns the
    * result as a map.
    */
-  def createInverses(directory: String, dict: Dictionary): Map[Int, Int] = {
+  def createInverses(
+      directory: String,
+      dict: Dictionary,
+      fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {
       inverses.toMap
@@ -405,7 +412,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       relationMetadataDirectory: String,
       relation: String,
       builder: PraConfig.Builder,
-      datasetFactory: DatasetFactory) = {
+      datasetFactory: DatasetFactory,
+      fileUtil: FileUtil = new FileUtil) = {
     val fixed = relation.replace("/", "_")
     // We look in the splits directory for a fixed split if we don't find one, we do cross
     // validation.
