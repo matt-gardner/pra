@@ -29,7 +29,6 @@ public class RescalMatrixPathFollowerFactory implements PathFollowerFactory {
                                         data,
                                         config.nodeDict,
                                         config.edgeDict,
-                                        config.allowedTargets,
-                                        edgesToExclude);
+                                        config.allowedTargets);
   }
 }

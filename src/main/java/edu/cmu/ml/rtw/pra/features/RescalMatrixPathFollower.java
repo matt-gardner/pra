@@ -24,7 +24,6 @@ public class RescalMatrixPathFollower implements PathFollower {
   private final Dictionary nodeDict;
   private final Dictionary edgeDict;
   private final Set<Integer> allowedTargets;
-  private final List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude;
 
   public RescalMatrixPathFollower(int numNodes,
                             List<PathType> pathTypes,
@@ -32,9 +31,8 @@ public class RescalMatrixPathFollower implements PathFollower {
                             Dataset data,
                             Dictionary nodeDict,
                             Dictionary edgeDict,
-                            Set<Integer> allowedTargets,
-                            List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
-    this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, edgesToExclude, new FileUtil());
+                            Set<Integer> allowedTargets) {
+    this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, new FileUtil());
   }
 
   @VisibleForTesting
@@ -45,7 +43,6 @@ public class RescalMatrixPathFollower implements PathFollower {
                                      Dictionary nodeDict,
                                      Dictionary edgeDict,
                                      Set<Integer> allowedTargets,
-                                     List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
                                      FileUtil fileUtil) {
     this.numNodes = numNodes;
     this.pathTypes = pathTypes;
@@ -54,7 +51,6 @@ public class RescalMatrixPathFollower implements PathFollower {
     this.nodeDict = nodeDict;
     this.edgeDict = edgeDict;
     this.allowedTargets = allowedTargets;
-    this.edgesToExclude = edgesToExclude;
     this.fileUtil = fileUtil;
   }
 
@@ -74,7 +70,6 @@ public class RescalMatrixPathFollower implements PathFollower {
                                     rescalDir,
                                     nodeDict,
                                     edgeDict,
-                                    edgesToExclude,
                                     fileUtil);
     return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets);
   }

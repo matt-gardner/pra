@@ -3,17 +3,12 @@ package edu.cmu.ml.rtw.pra.features
 import breeze.linalg.DenseMatrix
 import breeze.linalg.DenseVector
 
-import java.io.BufferedReader
 import java.lang.Integer
 import java.util.{List => JList}
-import java.util.{Map => JMap}
 import java.util.{Set => JSet}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.parallel.mutable.{ParSeq => MParSeq}
-import scalax.io.Resource
-import scala.util.control.Breaks._
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -26,22 +21,17 @@ class RescalPathMatrixCreator(
     rescal_dir: String,
     node_dict: Dictionary,
     edge_dict: Dictionary,
-    java_edges_to_remove: JList[Pair[Pair[Integer, Integer], Integer]],
     fileUtil: FileUtil = new FileUtil) {
 
   // First we convert the java inputs that we got into scala objects.
   val path_types = java_path_types.asScala
   val source_nodes = java_source_nodes.asScala.map(_.toInt)
-  val edges_to_remove = java_edges_to_remove.asScala
-    .map(x => (x.getRight.asInstanceOf[Int],
-      (x.getLeft.getLeft.asInstanceOf[Int], x.getLeft.getRight.asInstanceOf[Int])))
-    .groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
 
   // Now we build up a few data structures that we'll need.  First are the node vectors.
   val node_vectors = fileUtil.readLinesFromFile(rescal_dir + "/a_matrix.tsv").asScala.map(line => {
     val fields = line.split("\t")
     val node_index = node_dict.getIndex(fields(0))
-    val vector_entries = fields.drop(0).map(_.toDouble)
+    val vector_entries = fields.drop(1).map(_.toDouble)
     (node_index -> new DenseVector(vector_entries))
   }).toMap
   val rank = node_vectors(1).length
@@ -75,18 +65,18 @@ class RescalPathMatrixCreator(
     }
   }
 
-  val path_matrices: Map[PathType, DenseMatrix[Double]] = {
+  lazy val rescal_matrices: Map[Int, DenseMatrix[Double]] = {
+    val filename = rescal_dir + "/r_matrix.tsv"
+    val lines = fileUtil.readLinesFromFile(filename).asScala
+    val matrices_with_lines = splitMatrixLines(lines)
+    matrices_with_lines.par.map(matrix_lines => {
+      (edge_dict.getIndex(matrix_lines._1), createDenseMatrixFromLines(matrix_lines._2))
+    }).seq.toMap
+  }
+
+  lazy val path_matrices: Map[PathType, DenseMatrix[Double]] = {
     println(s"Creating path matrices from the relation matrices in $rescal_dir")
     val _path_types = path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
-    val relations = _path_types.flatMap(_.getEdgeTypes).toSet
-    val filename = rescal_dir + "/r_matrix.tsv"
-    val rescal_matrices: Map[Int, DenseMatrix[Double]] = {
-      val lines = fileUtil.readLinesFromFile(filename).asScala
-      val matrices_with_lines = splitMatrixLines(lines)
-      matrices_with_lines.par.map(matrix_lines => {
-        (edge_dict.getIndex(matrix_lines._1), createDenseMatrixFromLines(matrix_lines._2))
-      }).seq.toMap
-    }
 
     _path_types.par.map(x => (x, createPathMatrix(x, rescal_matrices))).seq.toMap
   }
@@ -99,15 +89,14 @@ class RescalPathMatrixCreator(
       if (current_relation == null) {
         current_relation = line
         matrix_lines = new mutable.ListBuffer[String]
-      }
-      if (line.isEmpty) {
+      } else if (line.isEmpty) {
         matrices += Tuple2(current_relation, matrix_lines.toSeq)
         current_relation = null
-      }
-      else {
+      } else {
         matrix_lines += line
       }
     }
+    matrices += Tuple2(current_relation, matrix_lines.toSeq)
     matrices.toSeq
   }
 
