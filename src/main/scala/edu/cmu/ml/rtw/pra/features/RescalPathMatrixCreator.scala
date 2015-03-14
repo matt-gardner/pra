@@ -65,7 +65,7 @@ class RescalPathMatrixCreator(
     }
   }
 
-  lazy val rescal_matrices: Map[Int, DenseMatrix[Double]] = {
+  val rescal_matrices: Map[Int, DenseMatrix[Double]] = {
     val filename = rescal_dir + "/r_matrix.tsv"
     val lines = fileUtil.readLinesFromFile(filename).asScala
     val matrices_with_lines = splitMatrixLines(lines)
@@ -74,7 +74,7 @@ class RescalPathMatrixCreator(
     }).seq.toMap
   }
 
-  lazy val path_matrices: Map[PathType, DenseMatrix[Double]] = {
+  val path_matrices: Map[PathType, DenseMatrix[Double]] = {
     println(s"Creating path matrices from the relation matrices in $rescal_dir")
     val _path_types = path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
 
