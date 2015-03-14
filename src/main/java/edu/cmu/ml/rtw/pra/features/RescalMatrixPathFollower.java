@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
@@ -26,12 +27,12 @@ public class RescalMatrixPathFollower implements PathFollower {
   private final Set<Integer> allowedTargets;
 
   public RescalMatrixPathFollower(int numNodes,
-                            List<PathType> pathTypes,
-                            String rescalDir,
-                            Dataset data,
-                            Dictionary nodeDict,
-                            Dictionary edgeDict,
-                            Set<Integer> allowedTargets) {
+                                  List<PathType> pathTypes,
+                                  String rescalDir,
+                                  Dataset data,
+                                  Dictionary nodeDict,
+                                  Dictionary edgeDict,
+                                  Set<Integer> allowedTargets) {
     this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, new FileUtil());
   }
 
@@ -50,7 +51,16 @@ public class RescalMatrixPathFollower implements PathFollower {
     this.data = data;
     this.nodeDict = nodeDict;
     this.edgeDict = edgeDict;
-    this.allowedTargets = allowedTargets;
+    if (allowedTargets == null) {
+      // TOOD(matt): this isn't really the best thing to do, but it will work for now.
+      Set<Integer> allTargets = Sets.newHashSet();
+      for (int i = 1; i < nodeDict.getNextIndex(); i++) {
+        allTargets.add(i);
+      }
+      this.allowedTargets = allTargets;
+    } else {
+      this.allowedTargets = allowedTargets;
+    }
     this.fileUtil = fileUtil;
   }
 
