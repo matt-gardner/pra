@@ -8,6 +8,7 @@ import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy
 import edu.cmu.ml.rtw.pra.features.MostFrequentPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
+import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluderFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
@@ -71,7 +72,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     |  "relation metadata": "$relationMetadataFilename",
     |  "split": "$splitName",
     |  "pra parameters": {
-    |    "pra mode": "standard",
+    |    "mode": "standard",
     |    "l1 weight": 9.05,
     |    "l2 weight": 9,
     |    "walks per source": 900,
@@ -80,11 +81,13 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     |    "number of paths to keep": 9000,
     |    "matrix accept policy": "everything",
     |    "path accept policy": "everything",
-    |    "max matrix feature fan out": 90,
     |    "normalize walk probabilities": false,
     |    "binarize features": true,
-    |    "path follower": "matrix multiplication",
-    |    "matrix dir": "$matrixDir",
+    |    "path follower": {
+    |      "name": "matrix multiplication",
+    |      "matrix dir": "$matrixDir",
+    |      "max fan out": 90,
+    |    }
     |  }
     |}""".stripMargin
 
@@ -118,20 +121,21 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   val graphSpecFile = pretty(render(graphSpec))
 
   val praSpec: JValue =
-    ("pra mode" -> "standard") ~
+    ("mode" -> "standard") ~
     ("l1 weight" -> 9.05) ~
     ("l2 weight" -> 9) ~
     ("walks per source" -> 900) ~
     ("walks per path" -> 90) ~
     ("path finding iterations" -> 9) ~
     ("number of paths to keep" -> 9000) ~
-    ("max matrix feature fan out" -> 90) ~
     ("normalize walk probabilities" -> false) ~
     ("binarize features" -> true) ~
     ("matrix accept policy" -> "everything") ~
-    ("path follower" -> "matrix multiplication") ~
-    ("path accept policy" -> "everything") ~
-    ("matrix dir" -> matrixDir)
+    ("path follower" ->
+      ("name" -> "matrix multiplication") ~
+      ("matrix dir" -> matrixDir) ~
+      ("max fan out" -> 90)) ~
+    ("path accept policy" -> "everything")
   val praSpecFilename = "/pra/params/spec/file"
   val praSpecFile = pretty(render(praSpec))
 
@@ -250,7 +254,6 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.walksPerSource should be(900)
     config.numPaths should be(9000)
     config.pathTypePolicy should be(PathTypePolicy.EVERYTHING)
-    config.maxMatrixFeatureFanOut should be(90)
     config.walksPerPath should be(90)
     config.acceptPolicy should be(MatrixRowPolicy.EVERYTHING)
     config.normalizeWalkProbabilities should be(false)
@@ -260,7 +263,8 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.pathFollowerFactory.getClass should be(classOf[MatrixPathFollowerFactory])
     config.nodeDict.getIndex("node 2") should be(2)
     config.edgeDict.getIndex("edge 2") should be(2)
-    config.matrixDir should be(matrixDir)
+    config.pathFollowerFactory.asInstanceOf[MatrixPathFollowerFactory].maxFanOut should be(90)
+    config.pathFollowerFactory.asInstanceOf[MatrixPathFollowerFactory].matrixDir should be(matrixDir + "/")
   }
 
   it should "give default values with empty params" in {
@@ -272,7 +276,6 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.walksPerSource should be(200)
     config.numPaths should be(500)
     config.pathTypePolicy should be(PathTypePolicy.PAIRED_ONLY)
-    config.maxMatrixFeatureFanOut should be(100)
     config.walksPerPath should be(50)
     config.acceptPolicy should be(MatrixRowPolicy.ALL_TARGETS)
     config.normalizeWalkProbabilities should be(true)
@@ -308,25 +311,43 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
   it should "disallow bad combinations of path types / path followers" in {
     val builder = new PraConfig.Builder
     builder.setFileUtil(fileUtil)
-    val params = pathTypeFactoryParams merge
-      (baseParams removeField { _ == JField("matrix dir", JString(matrixDir)) })
+    val params = pathTypeFactoryParams merge baseParams
     new SpecFileReader("", fileUtil).setPraConfigFromParams(params, builder)
     builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null))
-    TestUtil.expectError(classOf[IllegalStateException], "must specify matrixDir", new Function() {
+    val message = "incompatible; generate a dense matrix instead"
+    TestUtil.expectError(classOf[IllegalStateException], message, new Function() {
       def call() {
         builder.build()
       }
     })
   }
 
-  it should "handle path follower factories" in {
+  it should "handle random walk path follower factories" in {
     val builder = new PraConfig.Builder
     builder.noChecks()
-    var params: JValue = ("pra parameters" -> ("path follower" -> "random walks"))
+    var params: JValue = ("pra parameters" -> ("path follower" -> ("name" -> "random walks")))
     new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)
     val config = builder.build()
     config.pathFollowerFactory.getClass should be(classOf[RandomWalkPathFollowerFactory])
-    params = ("pra parameters" -> ("path follower" -> "bad"))
+  }
+
+  it should "handle RESCAL matrix path follower factories" in {
+    val rescalDir = "/rescal/dir"
+    val builder = new PraConfig.Builder
+    builder.noChecks()
+    var params: JValue = ("pra parameters" -> ("path follower" ->
+      ("name" -> "rescal matrix multiplication") ~ ("rescal dir" -> rescalDir)))
+    new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)
+    val config = builder.build()
+    config.pathFollowerFactory.getClass should be(classOf[RescalMatrixPathFollowerFactory])
+    config.pathFollowerFactory.asInstanceOf[RescalMatrixPathFollowerFactory].rescalDir should be(
+      rescalDir + "/")
+  }
+
+  it should "disallow bad path follower factories" in {
+    val builder = new PraConfig.Builder
+    builder.noChecks()
+    val params: JValue = ("pra parameters" -> ("path follower" -> ("name" -> "bad")))
     TestUtil.expectError(classOf[RuntimeException], "Unrecognized path follower", new Function() {
       def call() {
         new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)

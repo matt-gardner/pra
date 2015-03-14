@@ -4,6 +4,7 @@ import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy
 import edu.cmu.ml.rtw.pra.features.MatrixPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
+import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -118,14 +119,6 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
     if (!value.equals(JNothing)) {
       config.setPathTypePolicy(PathTypePolicy.parseFromString(value.extract[String]))
     }
-    value = pra_params \ "max matrix feature fan out"
-    if (!value.equals(JNothing)) {
-      config.setMaxMatrixFeatureFanOut(value.extract[Int])
-    }
-    value = pra_params \ "matrix dir"
-    if (!value.equals(JNothing)) {
-      config.setMatrixDir(value.extract[String])
-    }
     value = pra_params \ "path type factory"
     if (!value.equals(JNothing)) {
       initializePathTypeFactory(value, config);
@@ -224,11 +217,22 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   }
 
   def initializePathFollowerFactory(params: JValue, config: PraConfig.Builder) {
-    val name = params.extract[String]
+    val name = (params \ "name").extract[String]
     if (name.equals("random walks")) {
       config.setPathFollowerFactory(new RandomWalkPathFollowerFactory());
     } else if (name.equals("matrix multiplication")) {
-      config.setPathFollowerFactory(new MatrixPathFollowerFactory());
+      val max_fan_out = (params \ "max fan out") match {
+        case JNothing => 100
+        case value => value.extract[Int]
+      }
+      val matrix_dir = (params \ "matrix dir") match {
+        case JNothing => "matrices"
+        case value => value.extract[String]
+      }
+      config.setPathFollowerFactory(new MatrixPathFollowerFactory(matrix_dir, max_fan_out));
+    } else if (name.equals("rescal matrix multiplication")) {
+      val dir = (params \ "rescal dir").extract[String]
+      config.setPathFollowerFactory(new RescalMatrixPathFollowerFactory(dir));
     } else {
       throw new RuntimeException("Unrecognized path follower")
     }

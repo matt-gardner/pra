@@ -8,26 +8,32 @@ import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class MatrixPathFollowerFactory implements PathFollowerFactory {
+  public final String matrixDir;
+  public final int maxFanOut;
+
+  public MatrixPathFollowerFactory(String matrixDir, int maxFanOut) {
+    if (matrixDir.endsWith("/")) {
+      this.matrixDir = matrixDir;
+    } else {
+      this.matrixDir = matrixDir + "/";
+    }
+    this.maxFanOut = maxFanOut;
+  }
+
   @Override
   public PathFollower create(List<PathType> pathTypes,
                              PraConfig config,
                              Dataset data,
                              List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
     String graphDir = new File(config.graph).getParentFile().getParent() + "/";
-    String matrixDir = graphDir;
-    if (config.matrixDir != null) {
-      matrixDir += config.matrixDir + "/";
-    } else {
-      matrixDir += "matrices/";
-    }
     return new MatrixPathFollower(config.nodeDict.getNextIndex(),
                                   pathTypes,
-                                  matrixDir,
+                                  graphDir + matrixDir,
                                   data,
                                   config.edgeDict,
                                   config.allowedTargets,
                                   edgesToExclude,
-                                  config.maxMatrixFeatureFanOut,
+                                  maxFanOut,
                                   config.normalizeWalkProbabilities);
   }
 }

@@ -30,6 +30,12 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
 
+/**
+ * The initial way that I used to send parameters to the PRA code.  I like the json4s way of
+ * passing parameters a lot better these days, but it's really hard to use json4s with java code.
+ * So, as I migrate PRA code from java to scala, I will gradually decrease the number of parameters
+ * that are kept in PraConfig, and switch to just passing a JValue of parameters around.
+ */
 public class PraConfig {
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // GraphChi parameters
@@ -40,10 +46,6 @@ public class PraConfig {
 
   // Path to the graph file to use for the random walks.
   public final String graph;
-
-  // Location to find matrices (when using the matrix path follower), if not in the default
-  // location (which is graph + 'matrices/')
-  public final String matrixDir;
 
   // The number of shards that the graph is (or should be) sharded into.
   public final int numShards;
@@ -153,12 +155,6 @@ public class PraConfig {
   // one you want to use.
   public final PathFollowerFactory pathFollowerFactory;
 
-  // This looks at the average number of targets per feature, and if it is greater than this
-  // number, the feature is discarded.  This is only used in the matrix path follower (as it can't
-  // be efficiently computed by the random walk path follower), and it helps to limit the size of
-  // the feature matrices produced, particularly from large, not-really-useful features.
-  public final int maxMatrixFeatureFanOut;
-
   // The number of walks to start for each (source node, path) combination, in the feature
   // computation step.
   public final int walksPerPath;
@@ -230,7 +226,6 @@ public class PraConfig {
 
   private PraConfig(Builder builder) {
     graph = builder.graph;
-    matrixDir = builder.matrixDir;
     numShards = builder.numShards;
     numIters = builder.numIters;
     walksPerSource = builder.walksPerSource;
@@ -239,7 +234,6 @@ public class PraConfig {
     pathTypeFactory = builder.pathTypeFactory;
     pathTypeSelector = builder.pathTypeSelector;
     pathFollowerFactory = builder.pathFollowerFactory;
-    maxMatrixFeatureFanOut = builder.maxMatrixFeatureFanOut;
     walksPerPath = builder.walksPerPath;
     acceptPolicy = builder.acceptPolicy;
     l2Weight = builder.l2Weight;
@@ -262,7 +256,6 @@ public class PraConfig {
 
   public static class Builder {
     private String graph;
-    private String matrixDir;
     private int numShards = -1;
     private int numIters = 3;
     private int walksPerSource = 200;
@@ -271,7 +264,6 @@ public class PraConfig {
     public PathTypeFactory pathTypeFactory = new BasicPathTypeFactory();
     private PathTypeSelector pathTypeSelector = new MostFrequentPathTypeSelector();
     private PathFollowerFactory pathFollowerFactory = new RandomWalkPathFollowerFactory();
-    private int maxMatrixFeatureFanOut = 100;
     private int walksPerPath = 50;
     private MatrixRowPolicy acceptPolicy = MatrixRowPolicy.ALL_TARGETS;
     private double l2Weight = 1;
@@ -297,11 +289,9 @@ public class PraConfig {
 
     public Builder() { fileUtil = new FileUtil(); }
     public Builder setGraph(String graph) {this.graph = graph;return this;}
-    public Builder setMatrixDir(String m) {this.matrixDir = m;return this;}
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
     public Builder setPathFollowerFactory(PathFollowerFactory f) {this.pathFollowerFactory = f;return this;}
-    public Builder setMaxMatrixFeatureFanOut(int m) {this.maxMatrixFeatureFanOut = m;return this;}
     public Builder setWalksPerSource(int w) {this.walksPerSource = w;return this;}
     public Builder setNumPaths(int numPaths) {this.numPaths = numPaths;return this;}
     public Builder setPathTypePolicy(PathTypePolicy p) {this.pathTypePolicy = p;return this;}
@@ -344,10 +334,8 @@ public class PraConfig {
           "Must specify either allData or trainingData");
       if (pathTypeFactory instanceof VectorPathTypeFactory
           && pathFollowerFactory instanceof MatrixPathFollowerFactory) {
-        if (matrixDir == null) {
-          throw new IllegalStateException(
-              "Currently must specify matrixDir when using matrix implementation of vector space walks");
-        }
+        throw new IllegalStateException("VectorPathTypeFactory and matrix multiplication are " +
+                                        "incompatible; generate a dense matrix instead");
       }
       return new PraConfig(this);
     }
@@ -356,7 +344,6 @@ public class PraConfig {
     // things, and pass it to another method (PraDriver.trainAndTest, in this case).
     public Builder(PraConfig config) {
       setGraph(config.graph);
-      setMatrixDir(config.matrixDir);
       setNumShards(config.numShards);
       setNumIters(config.numIters);
       setWalksPerSource(config.walksPerSource);
@@ -365,7 +352,6 @@ public class PraConfig {
       setPathTypeFactory(config.pathTypeFactory);
       setPathTypeSelector(config.pathTypeSelector);
       setPathFollowerFactory(config.pathFollowerFactory);
-      setMaxMatrixFeatureFanOut(config.maxMatrixFeatureFanOut);
       setWalksPerPath(config.walksPerPath);
       setAcceptPolicy(config.acceptPolicy);
       setL2Weight(config.l2Weight);
@@ -384,59 +370,6 @@ public class PraConfig {
       setNodeDictionary(config.nodeDict);
       setEdgeDictionary(config.edgeDict);
       setOutputter(config.outputter);
-    }
-
-    public void setFromParamFile(BufferedReader reader) throws IOException {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        String[] fields = line.split("\t");
-        String parameter = fields[0];
-        String value = fields[1];
-        if (parameter.equalsIgnoreCase("L1 weight")) {
-          setL1Weight(Double.parseDouble(value));
-        } else if (parameter.equalsIgnoreCase("L2 weight")) {
-          setL2Weight(Double.parseDouble(value));
-        } else if (parameter.equalsIgnoreCase("walks per source")) {
-          setWalksPerSource(Integer.parseInt(value));
-        } else if (parameter.equalsIgnoreCase("walks per path")) {
-          setWalksPerPath(Integer.parseInt(value));
-        } else if (parameter.equalsIgnoreCase("path finding iterations")) {
-          setNumIters(Integer.parseInt(value));
-        } else if (parameter.equalsIgnoreCase("number of paths to keep")) {
-          setNumPaths(Integer.parseInt(value));
-        } else if (parameter.equalsIgnoreCase("binarize features")) {
-          setBinarizeFeatures(Boolean.parseBoolean(value));
-        } else if (parameter.equalsIgnoreCase("normalize walk probabilities")) {
-          setNormalizeWalkProbabilities(Boolean.parseBoolean(value));
-        } else if (parameter.equalsIgnoreCase("matrix accept policy")) {
-          setAcceptPolicy(MatrixRowPolicy.parseFromString(value));
-        } else if (parameter.equalsIgnoreCase("path accept policy")) {
-          setPathTypePolicy(PathTypePolicy.parseFromString(value));
-        } else if (parameter.equalsIgnoreCase("path type embeddings")) {
-          initializeVectorPathTypeFactory(value);
-        } else if (parameter.equalsIgnoreCase("path type selector")) {
-          initializePathTypeSelector(value);
-        } else if (parameter.equalsIgnoreCase("path follower")) {
-          initializePathFollowerFactory(value);
-        } else if (parameter.equalsIgnoreCase("max matrix feature fan out")) {
-          setMaxMatrixFeatureFanOut(Integer.parseInt(value));
-        } else {
-          throw new RuntimeException("Unrecognized parameter specification: " + line);
-        }
-      }
-    }
-
-    public void initializeVectorPathTypeFactory(String paramString) throws IOException {
-      System.out.println("Initializing vector path type factory");
-      String[] params = paramString.split(",");
-      double spikiness = Double.parseDouble(params[0]);
-      double resetWeight = Double.parseDouble(params[1]);
-      List<String> embeddingsFiles = Lists.newArrayList();
-      for (int embeddingsIndex = 2; embeddingsIndex < params.length; embeddingsIndex++) {
-        embeddingsFiles.add(params[embeddingsIndex]);
-      }
-      Map<Integer, Vector> embeddings = readEmbeddingsVectors(embeddingsFiles);
-      setPathTypeFactory(new VectorPathTypeFactory(edgeDict, embeddings, spikiness, resetWeight));
     }
 
     protected Map<Integer, Vector> readEmbeddingsVectors(List<String> embeddingsFiles) throws IOException {
@@ -464,31 +397,6 @@ public class PraConfig {
         embeddings.put(relationIndex, new Vector(vector));
       }
       reader.close();
-    }
-
-    public void initializePathTypeSelector(String paramString) {
-      if (paramString.startsWith("VectorClusteringPathTypeSelector")) {
-        System.out.println("Using VectorClusteringPathTypeSelector");
-        String[] params = paramString.split(",");
-        double similarityThreshold = Double.parseDouble(params[1]);
-        PathTypeSelector selector = new VectorClusteringPathTypeSelector(
-            (VectorPathTypeFactory) pathTypeFactory,
-            similarityThreshold);
-        setPathTypeSelector(selector);
-      } else {
-        throw new RuntimeException("Unrecognized path type selector parameter!");
-      }
-    }
-
-    public void initializePathFollowerFactory(String paramString) {
-      // TODO(matt): this really should validate that none of the other parameters are in conflict
-      // with this one.  For instance, matrix multiplication doesn't currently work with vector
-      // space random walks.
-      if (paramString.equalsIgnoreCase("random walks")) {
-        setPathFollowerFactory(new RandomWalkPathFollowerFactory());
-      } else if (paramString.equalsIgnoreCase("matrix multiplication")) {
-        setPathFollowerFactory(new MatrixPathFollowerFactory());
-      }
     }
 
     /**

@@ -112,11 +112,8 @@ public class OnlinePraPredictor {
         .setAcceptPolicy(MatrixRowPolicy.EVERYTHING)
         .setOutputBase(outputBase);
     if (pathTypeFactoryString != null) {
-      try {
-        builder.initializeVectorPathTypeFactory(pathTypeFactoryString);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      //builder.initializeVectorPathTypeFactory(pathTypeFactoryString);
+      throw new RuntimeException("This needs to be fixed before it's usable");
     }
     this.config = builder.build();
     models = new ArrayList<List<Pair<PathType, Double>>>();

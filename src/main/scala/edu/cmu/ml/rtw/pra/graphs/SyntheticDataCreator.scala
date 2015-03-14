@@ -161,7 +161,6 @@ class SyntheticDataCreator(
 
   def getConcreteBaseRelation(index: Int, isTraining: Boolean) = {
     val base_relation = relation_sets(index-1)
-    //println(index + " " + base_relation._1.size + " " + base_relation._2.size)
     if (isTraining) {
       base_relation._1(r.nextInt(base_relation._1.size))
     } else {
