@@ -96,7 +96,6 @@ class RescalPathMatrixCreator(
         matrix_lines += line
       }
     }
-    matrices += Tuple2(current_relation, matrix_lines.toSeq)
     matrices.toSeq
   }
 

@@ -33,7 +33,8 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     "2.0\t2.0\n" +
     "\nRelation 2\n" +
     "3.0\t3.0\n" +
-    "4.0\t4.0\n"
+    "4.0\t4.0\n" +
+    "\n"
   }
 
   val relation1Matrix = {
