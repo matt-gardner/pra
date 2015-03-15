@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import breeze.linalg.DenseMatrix
 import breeze.linalg.DenseVector
+import breeze.linalg.argmax
 
 import java.lang.Integer
 import java.util.{List => JList}
@@ -9,6 +10,7 @@ import java.util.{Set => JSet}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.collection.parallel.mutable.ParSeq
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -21,6 +23,7 @@ class RescalPathMatrixCreator(
     rescal_dir: String,
     node_dict: Dictionary,
     edge_dict: Dictionary,
+    negatives_per_source: Int,
     fileUtil: FileUtil = new FileUtil) {
 
   // First we convert the java inputs that we got into scala objects.
@@ -149,10 +152,17 @@ class RescalPathMatrixCreator(
     val targets = pairs.map(_._2).toSet.toList.sorted
     val source_indices = pairs.map(_._1).toSet.map((id: Int) => (id, sources.indexOf(id))).toMap
     val target_indices = pairs.map(_._2).toSet.map((id: Int) => (id, targets.indexOf(id))).toMap
-    val source_matrix = createNodeMatrix(sources, false)
-    val target_matrix = createNodeMatrix(targets, true)
-    getFeatureMatrixFromSourceAndTargetMatrices(pairs, source_matrix, target_matrix,
-      source_indices, target_indices)
+    val source_path_target_matrices = multiplyPathMatrices(sources, targets)
+    val matrix_row_entries = source_path_target_matrices.flatMap(matrix_with_index => {
+      pairs.map(pair => {
+        val s = source_indices(pair._1)
+        val t = target_indices(pair._2)
+        val value = matrix_with_index._2(s, t)
+        (pair, (matrix_with_index._1, value))
+      }).filter(_._2._2 > 0)
+    })
+    val matrix_rows = createMatrixRowsFromEntries(matrix_row_entries)
+    new FeatureMatrix(matrix_rows.asJava)
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
@@ -161,11 +171,31 @@ class RescalPathMatrixCreator(
     val targets_list = allowed_targets.toList.sorted
     val source_indices = sources.map(id  => (id, sources_list.indexOf(id))).toMap
     val target_indices = allowed_targets.map(id => (id, targets_list.indexOf(id))).toMap
-    val source_matrix = createNodeMatrix(sources_list, false)
-    val target_matrix = createNodeMatrix(targets_list, true)
-    val pairs = (for (source <- sources; target <- allowed_targets) yield (source, target)).toSeq
-    getFeatureMatrixFromSourceAndTargetMatrices(pairs, source_matrix, target_matrix,
-      source_indices, target_indices)
+    val source_path_target_matrices = multiplyPathMatrices(sources_list, targets_list)
+    val matrix_row_entries = source_path_target_matrices.flatMap(matrix_with_index => {
+      sources.par.flatMap(source => {
+        val s = source_indices(source)
+        val all_target_values = matrix_with_index._2(s, ::).t
+        val kept_targets = new mutable.ArrayBuffer[((Int, Int), (Int, Double))]
+        for (i <- 1 to negatives_per_source) {
+          val best_t = argmax(all_target_values)
+          val target = targets_list(best_t)
+          val value = all_target_values(best_t)
+          kept_targets += Tuple2((source, target), (matrix_with_index._1, value))
+          all_target_values(best_t) = 0
+        }
+        kept_targets.toSeq
+      })
+    })
+    val matrix_rows = createMatrixRowsFromEntries(matrix_row_entries)
+    new FeatureMatrix(matrix_rows.asJava)
+  }
+
+  def multiplyPathMatrices(sources: Seq[Int], targets: Seq[Int]) = {
+    val source_matrix = createNodeMatrix(sources, false)
+    val target_matrix = createNodeMatrix(targets, true)
+    path_types.zipWithIndex.par.map(path_type =>
+        (path_type._2, source_matrix * path_matrices(path_type._1) * target_matrix))
   }
 
   def getFeatureMatrixFromSourceAndTargetMatrices(
@@ -185,6 +215,11 @@ class RescalPathMatrixCreator(
     }).groupBy(_._1).toMap.mapValues(_.map(_._2).seq)
       .map(e => createMatrixRow(e._1._1, e._1._2, e._2)).seq.toList
     new FeatureMatrix(matrix_rows.asJava)
+  }
+
+  def createMatrixRowsFromEntries(entries: ParSeq[((Int, Int), (Int, Double))]) = {
+    entries.groupBy(_._1).toMap.mapValues(_.map(_._2).seq)
+      .map(e => createMatrixRow(e._1._1, e._1._2, e._2)).seq.toList
   }
 
   def createMatrixRow(source: Int, target: Int, feature_list: Seq[(Int, Double)]): MatrixRow = {

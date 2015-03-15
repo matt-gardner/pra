@@ -85,13 +85,14 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   lazy val creator = {
-    val edgeDict = new Dictionary();
-    edgeDict.getIndex("Relation 1");
-    edgeDict.getIndex("Relation 2");
-    val nodeDict = new Dictionary();
-    nodeDict.getIndex("node 1");
-    nodeDict.getIndex("node 2");
-    nodeDict.getIndex("node 3");
+    val edgeDict = new Dictionary()
+    edgeDict.getIndex("Relation 1")
+    edgeDict.getIndex("Relation 2")
+    val nodeDict = new Dictionary()
+    nodeDict.getIndex("node 1")
+    nodeDict.getIndex("node 2")
+    nodeDict.getIndex("node 3")
+    val negativesPerSource = 20
     new RescalPathMatrixCreator(
       numNodes,
       path_types.asJava,
@@ -99,6 +100,7 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       "",
       nodeDict,
       edgeDict,
+      negativesPerSource,
       fileUtil)
   }
 

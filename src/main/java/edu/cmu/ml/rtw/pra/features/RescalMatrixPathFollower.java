@@ -25,6 +25,7 @@ public class RescalMatrixPathFollower implements PathFollower {
   private final Dictionary nodeDict;
   private final Dictionary edgeDict;
   private final Set<Integer> allowedTargets;
+  private final int negativesPerSource;
 
   public RescalMatrixPathFollower(int numNodes,
                                   List<PathType> pathTypes,
@@ -32,8 +33,9 @@ public class RescalMatrixPathFollower implements PathFollower {
                                   Dataset data,
                                   Dictionary nodeDict,
                                   Dictionary edgeDict,
-                                  Set<Integer> allowedTargets) {
-    this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, new FileUtil());
+                                  Set<Integer> allowedTargets,
+                                  int negativesPerSource) {
+    this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, negativesPerSource, new FileUtil());
   }
 
   @VisibleForTesting
@@ -44,6 +46,7 @@ public class RescalMatrixPathFollower implements PathFollower {
                                      Dictionary nodeDict,
                                      Dictionary edgeDict,
                                      Set<Integer> allowedTargets,
+                                     int negativesPerSource,
                                      FileUtil fileUtil) {
     this.numNodes = numNodes;
     this.pathTypes = pathTypes;
@@ -52,7 +55,6 @@ public class RescalMatrixPathFollower implements PathFollower {
     this.nodeDict = nodeDict;
     this.edgeDict = edgeDict;
     if (allowedTargets == null) {
-      // TOOD(matt): this isn't really the best thing to do, but it will work for now.
       Set<Integer> allTargets = Sets.newHashSet();
       for (int i = 1; i < nodeDict.getNextIndex(); i++) {
         allTargets.add(i);
@@ -61,6 +63,7 @@ public class RescalMatrixPathFollower implements PathFollower {
     } else {
       this.allowedTargets = allowedTargets;
     }
+    this.negativesPerSource = negativesPerSource;
     this.fileUtil = fileUtil;
   }
 
@@ -80,6 +83,7 @@ public class RescalMatrixPathFollower implements PathFollower {
                                     rescalDir,
                                     nodeDict,
                                     edgeDict,
+                                    negativesPerSource,
                                     fileUtil);
     return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets);
   }

@@ -336,12 +336,15 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     val builder = new PraConfig.Builder
     builder.noChecks()
     var params: JValue = ("pra parameters" -> ("path follower" ->
-      ("name" -> "rescal matrix multiplication") ~ ("rescal dir" -> rescalDir)))
+      ("name" -> "rescal matrix multiplication") ~
+      ("rescal dir" -> rescalDir) ~
+      ("negatives per source", 20)))
     new SpecFileReader("", fileUtil).setPraConfigFromParams(params merge justGraphSpec, builder)
     val config = builder.build()
     config.pathFollowerFactory.getClass should be(classOf[RescalMatrixPathFollowerFactory])
     config.pathFollowerFactory.asInstanceOf[RescalMatrixPathFollowerFactory].rescalDir should be(
       rescalDir + "/")
+    config.pathFollowerFactory.asInstanceOf[RescalMatrixPathFollowerFactory].negativesPerSource should be(20)
   }
 
   it should "disallow bad path follower factories" in {

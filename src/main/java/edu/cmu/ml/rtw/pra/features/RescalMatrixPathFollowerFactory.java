@@ -9,13 +9,15 @@ import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class RescalMatrixPathFollowerFactory implements PathFollowerFactory {
   public final String rescalDir;
+  public final int negativesPerSource;
 
-  public RescalMatrixPathFollowerFactory(String rescalDir) {
+  public RescalMatrixPathFollowerFactory(String rescalDir, int negativesPerSource) {
     if (rescalDir.endsWith("/")) {
       this.rescalDir = rescalDir;
     } else {
       this.rescalDir = rescalDir + "/";
     }
+    this.negativesPerSource = negativesPerSource;
   }
 
   @Override
@@ -29,6 +31,7 @@ public class RescalMatrixPathFollowerFactory implements PathFollowerFactory {
                                         data,
                                         config.nodeDict,
                                         config.edgeDict,
-                                        config.allowedTargets);
+                                        config.allowedTargets,
+                                        negativesPerSource);
   }
 }

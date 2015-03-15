@@ -232,7 +232,11 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
       config.setPathFollowerFactory(new MatrixPathFollowerFactory(matrix_dir, max_fan_out));
     } else if (name.equals("rescal matrix multiplication")) {
       val dir = (params \ "rescal dir").extract[String]
-      config.setPathFollowerFactory(new RescalMatrixPathFollowerFactory(dir));
+      val negativesPerSource = (params \ "negatives per source") match {
+        case JNothing => 15
+        case value => value.extract[Int]
+      }
+      config.setPathFollowerFactory(new RescalMatrixPathFollowerFactory(dir, negativesPerSource));
     } else {
       throw new RuntimeException("Unrecognized path follower")
     }
