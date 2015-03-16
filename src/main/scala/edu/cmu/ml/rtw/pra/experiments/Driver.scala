@@ -85,6 +85,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     for (relation <- fileUtil.readLinesFromFile(relationsFile).asScala) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfig.Builder(baseConfig)
+      builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
       parseRelationMetadata(metadataDirectory, relation, builder, outputBase)
 

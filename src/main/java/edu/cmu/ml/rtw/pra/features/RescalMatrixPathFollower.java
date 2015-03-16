@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.ChiLogger;
+import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -17,7 +18,6 @@ public class RescalMatrixPathFollower implements PathFollower {
 
   private static final Logger logger = ChiLogger.getLogger("matrix-path-follower");
 
-  private final int numNodes;
   private final List<PathType> pathTypes;
   private final String rescalDir;
   private final FileUtil fileUtil;
@@ -27,34 +27,28 @@ public class RescalMatrixPathFollower implements PathFollower {
   private final Set<Integer> allowedTargets;
   private final int negativesPerSource;
 
-  public RescalMatrixPathFollower(int numNodes,
+  public RescalMatrixPathFollower(PraConfig config,
                                   List<PathType> pathTypes,
                                   String rescalDir,
                                   Dataset data,
-                                  Dictionary nodeDict,
-                                  Dictionary edgeDict,
-                                  Set<Integer> allowedTargets,
                                   int negativesPerSource) {
-    this(numNodes, pathTypes, rescalDir, data, nodeDict, edgeDict, allowedTargets, negativesPerSource, new FileUtil());
+    this(config, pathTypes, rescalDir, data, negativesPerSource, new FileUtil());
   }
 
   @VisibleForTesting
-  protected RescalMatrixPathFollower(int numNodes,
+  protected RescalMatrixPathFollower(PraConfig config,
                                      List<PathType> pathTypes,
                                      String rescalDir,
                                      Dataset data,
-                                     Dictionary nodeDict,
-                                     Dictionary edgeDict,
-                                     Set<Integer> allowedTargets,
                                      int negativesPerSource,
                                      FileUtil fileUtil) {
-    this.numNodes = numNodes;
+    this.relation = config.relation;
     this.pathTypes = pathTypes;
     this.rescalDir = rescalDir;
     this.data = data;
-    this.nodeDict = nodeDict;
-    this.edgeDict = edgeDict;
-    if (allowedTargets == null) {
+    this.nodeDict = config.nodeDict;
+    this.edgeDict = config.edgeDict;
+    if (config.allowedTargets == null) {
       /*
       Set<Integer> allTargets = Sets.newHashSet();
       for (int i = 1; i < nodeDict.getNextIndex(); i++) {
@@ -65,7 +59,7 @@ public class RescalMatrixPathFollower implements PathFollower {
       this.allowedTargets = Sets.newHashSet();
       this.allowedTargets.addAll(data.getAllTargets());
     } else {
-      this.allowedTargets = allowedTargets;
+      this.allowedTargets = config.allowedTargets;
     }
     this.negativesPerSource = negativesPerSource;
     this.fileUtil = fileUtil;
@@ -81,8 +75,7 @@ public class RescalMatrixPathFollower implements PathFollower {
   public FeatureMatrix getFeatureMatrix() {
     logger.info("Creating feature matrix with matrix multiplication");
     RescalPathMatrixCreator matrixCreator =
-        new RescalPathMatrixCreator(numNodes,
-                                    pathTypes,
+        new RescalPathMatrixCreator(pathTypes,
                                     data.getCombinedSourceMap().keySet(),
                                     rescalDir,
                                     nodeDict,

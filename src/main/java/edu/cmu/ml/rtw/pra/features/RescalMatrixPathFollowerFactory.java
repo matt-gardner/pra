@@ -25,13 +25,6 @@ public class RescalMatrixPathFollowerFactory implements PathFollowerFactory {
                              PraConfig config,
                              Dataset data,
                              List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
-    return new RescalMatrixPathFollower(config.nodeDict.getNextIndex(),
-                                        pathTypes,
-                                        rescalDir,
-                                        data,
-                                        config.nodeDict,
-                                        config.edgeDict,
-                                        config.allowedTargets,
-                                        negativesPerSource);
+    return new RescalMatrixPathFollower(config, pathTypes, rescalDir, data, negativesPerSource);
   }
 }

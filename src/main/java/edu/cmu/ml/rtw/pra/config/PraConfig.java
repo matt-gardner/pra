@@ -44,6 +44,9 @@ public class PraConfig {
   // other random parameters in here, like an output directory.
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // The relation that PRA is learning a model for.
+  public final String relation;
+
   // Path to the graph file to use for the random walks.
   public final String graph;
 
@@ -225,6 +228,7 @@ public class PraConfig {
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
   private PraConfig(Builder builder) {
+    relation = builder.relation;
     graph = builder.graph;
     numShards = builder.numShards;
     numIters = builder.numIters;
@@ -255,6 +259,7 @@ public class PraConfig {
   }
 
   public static class Builder {
+    private String relation;
     private String graph;
     private int numShards = -1;
     private int numIters = 3;
@@ -288,6 +293,7 @@ public class PraConfig {
     private FileUtil fileUtil;
 
     public Builder() { fileUtil = new FileUtil(); }
+    public Builder setRelation(String relation) {this.relation = relation;return this;}
     public Builder setGraph(String graph) {this.graph = graph;return this;}
     public Builder setNumShards(int numShards) {this.numShards = numShards;return this;}
     public Builder setNumIters(int numIters) {this.numIters = numIters;return this;}
@@ -324,6 +330,7 @@ public class PraConfig {
 
       // Check that we have a consistent state, with everything specified that is necessary for
       // running PRA.
+      if (relation == null) throw new IllegalStateException("relation must be set");
       if (graph == null) throw new IllegalStateException("graph must be set");
       if (numShards == -1) throw new IllegalStateException("numShards must be set");
       if (allData != null && percentTraining == -1.0) throw new IllegalStateException(
@@ -343,6 +350,7 @@ public class PraConfig {
     // This is for methods like PraDriver.crossValidate, which take a PraConfig, modify a few
     // things, and pass it to another method (PraDriver.trainAndTest, in this case).
     public Builder(PraConfig config) {
+      setRelation(config.relation);
       setGraph(config.graph);
       setNumShards(config.numShards);
       setNumIters(config.numIters);

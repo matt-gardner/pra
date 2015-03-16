@@ -66,6 +66,11 @@ public class FeatureGenerator {
     pathCounts = collapseInverses(pathCounts, config.relationInverses);
     config.outputter.outputPathCounts(config.outputBase, "found_path_counts.tsv", pathCounts);
     List<PathType> pathTypes = config.pathTypeSelector.selectPathTypes(pathCounts, config.numPaths);
+    // THIS IS UGLY!!!  I'm experimenting a bit here.  TODO(matt): This should change before
+    // anything becomes final.
+    if (config.pathFollowerFactory instanceof RescalMatrixPathFollowerFactory) {
+      pathTypes.add(0, config.pathTypeFactory.fromString("-" + config.relation + "-"));
+    }
     config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes);
     return pathTypes;
   }

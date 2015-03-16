@@ -17,7 +17,6 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class RescalPathMatrixCreator(
-    numNodes: Int,
     java_path_types: JList[PathType],
     java_source_nodes: JSet[Integer],
     rescal_dir: String,
