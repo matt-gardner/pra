@@ -55,11 +55,15 @@ public class RescalMatrixPathFollower implements PathFollower {
     this.nodeDict = nodeDict;
     this.edgeDict = edgeDict;
     if (allowedTargets == null) {
+      /*
       Set<Integer> allTargets = Sets.newHashSet();
       for (int i = 1; i < nodeDict.getNextIndex(); i++) {
         allTargets.add(i);
       }
       this.allowedTargets = allTargets;
+      */
+      this.allowedTargets = Sets.newHashSet();
+      allowedTargets.addAll(data.getAllTargets());
     } else {
       this.allowedTargets = allowedTargets;
     }
@@ -85,7 +89,7 @@ public class RescalMatrixPathFollower implements PathFollower {
                                     edgeDict,
                                     negativesPerSource,
                                     fileUtil);
-    return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets);
+    return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets, true);
   }
 
   @Override

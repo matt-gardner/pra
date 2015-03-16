@@ -58,10 +58,10 @@ class RescalPathMatrixCreator(
    * given source nodes.  Then we do a vector-matrix multiplication for each source, and keep all
    * targets in the resultant vector that are also in allowed_targets.
    */
-  def getFeatureMatrix(sources: JSet[Integer], allowed_targets: JSet[Integer]): FeatureMatrix = {
+  def getFeatureMatrix(sources: JSet[Integer], allowed_targets: JSet[Integer], keep_all: Boolean): FeatureMatrix = {
     if (allowed_targets != null) {
       getFeatureMatrix(sources.asScala.map(_.asInstanceOf[Int]).toSet,
-        allowed_targets.asScala.map(_.asInstanceOf[Int]).toSet)
+        allowed_targets.asScala.map(_.asInstanceOf[Int]).toSet, keep_all)
     } else {
       throw new IllegalStateException("RescalPathMatrixCreator currently requires a set of " +
         "allowed targets for this method")
@@ -165,7 +165,7 @@ class RescalPathMatrixCreator(
     new FeatureMatrix(matrix_rows.asJava)
   }
 
-  def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
+  def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int], keep_all: Boolean): FeatureMatrix = {
     println("Getting feature matrix for input sources");
     val sources_list = sources.toList.sorted
     val targets_list = allowed_targets.toList.sorted
@@ -176,15 +176,21 @@ class RescalPathMatrixCreator(
       sources.par.flatMap(source => {
         val s = source_indices(source)
         val all_target_values = matrix_with_index._2(s, ::).t
-        val kept_targets = new mutable.ArrayBuffer[((Int, Int), (Int, Double))]
-        for (i <- 1 to negatives_per_source) {
-          val best_t = argmax(all_target_values)
-          val target = targets_list(best_t)
-          val value = all_target_values(best_t)
-          kept_targets += Tuple2((source, target), (matrix_with_index._1, value))
-          all_target_values(best_t) = 0
+        if (keep_all) {
+          all_target_values.activeIterator.map(entry => {
+            ((source, targets_list(entry._1)), (matrix_with_index._1, entry._2))
+          })
+        } else {
+          val kept_targets = new mutable.ArrayBuffer[((Int, Int), (Int, Double))]
+          for (i <- 1 to negatives_per_source) {
+            val best_t = argmax(all_target_values)
+            val target = targets_list(best_t)
+            val value = all_target_values(best_t)
+            kept_targets += Tuple2((source, target), (matrix_with_index._1, value))
+            all_target_values(best_t) = 0
+          }
+          kept_targets.toSeq
         }
-        kept_targets.toSeq
       })
     })
     val matrix_rows = createMatrixRowsFromEntries(matrix_row_entries)
