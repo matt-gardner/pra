@@ -204,6 +204,7 @@ class RescalPathMatrixCreator(
       target_matrix: DenseMatrix[Double],
       source_indices: Map[Int, Int],
       target_indices: Map[Int, Int]) = {
+    println("Doing (sources * path_type * targets) multiplications")
     val matrix_rows = path_types.zipWithIndex.par.flatMap(path_type => {
       val feature_matrix = source_matrix * path_matrices(path_type._1) * target_matrix
       pairs.map(pair => {
