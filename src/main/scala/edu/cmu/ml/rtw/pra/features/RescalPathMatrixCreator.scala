@@ -175,7 +175,8 @@ class RescalPathMatrixCreator(
     val matrix_row_entries = source_path_target_matrices.flatMap(matrix_with_index => {
       sources.par.flatMap(source => {
         val s = source_indices(source)
-        val all_target_values = matrix_with_index._2(s, ::).t
+        // We have to copy this, or the argmax() call below doesn't work.
+        val all_target_values = matrix_with_index._2(s, ::).t.copy
         if (keep_all) {
           all_target_values.activeIterator.map(entry => {
             ((source, targets_list(entry._1)), (matrix_with_index._1, entry._2))

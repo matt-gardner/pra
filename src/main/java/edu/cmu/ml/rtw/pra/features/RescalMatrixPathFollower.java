@@ -63,7 +63,7 @@ public class RescalMatrixPathFollower implements PathFollower {
       this.allowedTargets = allTargets;
       */
       this.allowedTargets = Sets.newHashSet();
-      allowedTargets.addAll(data.getAllTargets());
+      this.allowedTargets.addAll(data.getAllTargets());
     } else {
       this.allowedTargets = allowedTargets;
     }
@@ -89,7 +89,7 @@ public class RescalMatrixPathFollower implements PathFollower {
                                     edgeDict,
                                     negativesPerSource,
                                     fileUtil);
-    return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets, true);
+    return matrixCreator.getFeatureMatrix(data.getCombinedSourceMap().keySet(), allowedTargets, false);
   }
 
   @Override
