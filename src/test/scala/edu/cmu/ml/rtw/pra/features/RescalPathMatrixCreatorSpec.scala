@@ -94,7 +94,6 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     nodeDict.getIndex("node 3")
     val negativesPerSource = 20
     new RescalPathMatrixCreator(
-      numNodes,
       path_types.asJava,
       Set(1, 2, 3).map(_.asInstanceOf[java.lang.Integer]).toSet.asJava,
       "",
