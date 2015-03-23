@@ -313,7 +313,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     builder.setFileUtil(fileUtil)
     val params = pathTypeFactoryParams merge baseParams
     new SpecFileReader("", fileUtil).setPraConfigFromParams(params, builder)
-    builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null))
+    builder.setTrainingData(new FakeDatasetFactory().fromReader(null, null)).setRelation("fake")
     val message = "incompatible; generate a dense matrix instead"
     TestUtil.expectError(classOf[IllegalStateException], message, new Function() {
       def call() {
