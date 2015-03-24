@@ -10,5 +10,5 @@ public interface PathFollowerFactory {
   public PathFollower create(List<PathType> pathTypes,
                              PraConfig config,
                              Dataset data,
-                             List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude);
+                             EdgeExcluder edgeExcluder);
 }

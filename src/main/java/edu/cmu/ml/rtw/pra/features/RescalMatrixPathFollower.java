@@ -42,7 +42,6 @@ public class RescalMatrixPathFollower implements PathFollower {
                                      Dataset data,
                                      int negativesPerSource,
                                      FileUtil fileUtil) {
-    this.relation = config.relation;
     this.pathTypes = pathTypes;
     this.rescalDir = rescalDir;
     this.data = data;

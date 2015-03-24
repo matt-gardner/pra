@@ -26,7 +26,7 @@ class PathMatrixCreator(
     source_nodes: JSet[Integer],
     matrix_dir: String,
     edge_dict: Dictionary,
-    edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]],
+    edgeExcluder: EdgeExcluder,
     maxFanOut: Int,
     normalizeWalkProbabilities: Boolean,
     fileUtil: FileUtil = new FileUtil) {
@@ -40,10 +40,8 @@ class PathMatrixCreator(
     builder.result
   }
 
-  val edges_to_remove = edgesToExclude.asScala
-    .map(x => (x.getRight.asInstanceOf[Int],
-      (x.getLeft.getLeft.asInstanceOf[Int], x.getLeft.getRight.asInstanceOf[Int])))
-    .groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
+  val edges_to_remove = edgeExcluder.asInstanceOf[SingleEdgeExcluder].edgesToExclude
+    .map(x => (x._2, (x._1))).groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
 
   // These first two methods (and the constructor) get called from java code, so they need to take
   // java collections as inputs.  The rest of the code should use scala collections.

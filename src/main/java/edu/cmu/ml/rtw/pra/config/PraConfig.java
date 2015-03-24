@@ -14,7 +14,6 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory;
-import edu.cmu.ml.rtw.pra.features.EdgeExcluderFactory;
 import edu.cmu.ml.rtw.pra.features.MatrixPathFollowerFactory;
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy;
 import edu.cmu.ml.rtw.pra.features.MostFrequentPathTypeSelector;
@@ -23,7 +22,6 @@ import edu.cmu.ml.rtw.pra.features.PathTypeFactory;
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy;
 import edu.cmu.ml.rtw.pra.features.PathTypeSelector;
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory;
-import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluderFactory;
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
@@ -128,7 +126,6 @@ public class PraConfig {
   // Also note that even though this is in the "path finding parameters" section, it's also used
   // during feature computation.
   public final List<Integer> unallowedEdges;
-  public final EdgeExcluderFactory edgeExcluderFactory;
 
   // The number of paths to keep (or, the number of columns to compute in the feature matrix).
   public final int numPaths;
@@ -250,7 +247,6 @@ public class PraConfig {
     allowedTargets = builder.allowedTargets;
     normalizeWalkProbabilities = builder.normalizeWalkProbabilities;
     unallowedEdges = builder.unallowedEdges;
-    edgeExcluderFactory = builder.edgeExcluderFactory;
     relationInverses = builder.relationInverses;
     outputBase = builder.outputBase;
     nodeDict = builder.nodeDict;
@@ -281,7 +277,6 @@ public class PraConfig {
     private Set<Integer> allowedTargets;
     private boolean normalizeWalkProbabilities = true;
     private List<Integer> unallowedEdges;
-    private EdgeExcluderFactory edgeExcluderFactory = new SingleEdgeExcluderFactory();
     private Map<Integer, Integer> relationInverses;
     private String outputBase;
     // These three are public because that makes things easier in KbPraDriver.
@@ -315,7 +310,6 @@ public class PraConfig {
     public Builder setAllowedTargets(Set<Integer> a) {this.allowedTargets = a;return this;}
     public Builder setNormalizeWalkProbabilities(boolean b) {this.normalizeWalkProbabilities = b;return this;}
     public Builder setUnallowedEdges(List<Integer> e) {this.unallowedEdges = e;return this;}
-    public Builder setEdgeExcluderFactory(EdgeExcluderFactory f) {edgeExcluderFactory = f; return this;}
     public Builder setRelationInverses(Map<Integer, Integer> i) {relationInverses = i;return this;}
     public Builder setOutputBase(String outputBase) {this.outputBase = outputBase;return this;}
     public Builder setNodeDictionary(Dictionary d) {this.nodeDict = d;return this;}
@@ -372,7 +366,6 @@ public class PraConfig {
       setAllowedTargets(config.allowedTargets);
       setNormalizeWalkProbabilities(config.normalizeWalkProbabilities);
       setUnallowedEdges(config.unallowedEdges);
-      setEdgeExcluderFactory(config.edgeExcluderFactory);
       setRelationInverses(config.relationInverses);
       setOutputBase(config.outputBase);
       setNodeDictionary(config.nodeDict);

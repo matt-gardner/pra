@@ -120,14 +120,12 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     val fileUtil = new FakeFileUtil()
     val matrixFile = relation1File + relation2File + relation3File + relation4File
     fileUtil.addFileToBeRead("/matrices/1-4", matrixFile)
-    val edgesToExclude: JList[Pair[Pair[Integer, Integer], Integer]] = Lists.newArrayList();
+    val edgesToExclude = Seq[((Int, Int), Int)](((4, 2), 4), ((1, 4), 4))
     val edgeDict = new Dictionary();
     edgeDict.getIndex("1");
     edgeDict.getIndex("2");
     edgeDict.getIndex("3");
     edgeDict.getIndex("4");
-    edgesToExclude.add(Pair.makePair(Pair.makePair(4, 2), 4))
-    edgesToExclude.add(Pair.makePair(Pair.makePair(1, 4), 4))
     val path_types = seqAsJavaList(Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
@@ -139,7 +137,7 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
       Sets.newHashSet(1, 2, 3),
       "/matrices/",
       edgeDict,
-      edgesToExclude,
+      new SingleEdgeExcluder(edgesToExclude),
       3,
       false,
       fileUtil)

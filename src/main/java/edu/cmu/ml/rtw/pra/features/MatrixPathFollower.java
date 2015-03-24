@@ -23,7 +23,7 @@ public class MatrixPathFollower implements PathFollower {
   private final Dataset data;
   private final Dictionary edgeDict;
   private final Set<Integer> allowedTargets;
-  private final List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude;
+  private final EdgeExcluder edgeExcluder;
   private final int maxFanOut;
   private final boolean normalizeWalkProbabilities;
 
@@ -33,10 +33,10 @@ public class MatrixPathFollower implements PathFollower {
                             Dataset data,
                             Dictionary edgeDict,
                             Set<Integer> allowedTargets,
-                            List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
+                            EdgeExcluder edgeExcluder,
                             int maxFanOut,
                             boolean normalizeWalkProbabilities) {
-    this(numNodes, pathTypes, matrixDir, data, edgeDict, allowedTargets, edgesToExclude, maxFanOut, normalizeWalkProbabilities, new FileUtil());
+    this(numNodes, pathTypes, matrixDir, data, edgeDict, allowedTargets, edgeExcluder, maxFanOut, normalizeWalkProbabilities, new FileUtil());
   }
 
   @VisibleForTesting
@@ -46,7 +46,7 @@ public class MatrixPathFollower implements PathFollower {
                                Dataset data,
                                Dictionary edgeDict,
                                Set<Integer> allowedTargets,
-                               List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude,
+                               EdgeExcluder edgeExcluder,
                                int maxFanOut,
                                boolean normalizeWalkProbabilities,
                                FileUtil fileUtil) {
@@ -56,7 +56,7 @@ public class MatrixPathFollower implements PathFollower {
     this.data = data;
     this.edgeDict = edgeDict;
     this.allowedTargets = allowedTargets;
-    this.edgesToExclude = edgesToExclude;
+    this.edgeExcluder = edgeExcluder;
     this.maxFanOut = maxFanOut;
     this.normalizeWalkProbabilities = normalizeWalkProbabilities;
     this.fileUtil = fileUtil;
@@ -77,7 +77,7 @@ public class MatrixPathFollower implements PathFollower {
                               data.getCombinedSourceMap().keySet(),
                               matrixDir,
                               edgeDict,
-                              edgesToExclude,
+                              edgeExcluder,
                               maxFanOut,
                               normalizeWalkProbabilities,
                               new FileUtil());

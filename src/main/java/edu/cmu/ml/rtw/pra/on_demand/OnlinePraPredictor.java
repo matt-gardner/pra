@@ -28,6 +28,8 @@ import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.PairComparator;
 
+import scala.collection.JavaConverters;
+
 /**
  * An object for loading and querying a trained PRA model.
  *
@@ -242,9 +244,14 @@ public class OnlinePraPredictor {
       mergedPathTypes.add(pathDict.getKey(i));
     }
     FeatureGenerator generator = new FeatureGenerator(config);
+    FeatureMatrix featureMatrix = null;
+    /* TODO(matt): THIS IS BROKEN!  I moved the FeatureGenerator to scala, and it's turning out to
+     * be tricky to create a scala data structure the right way here.  So I'm just ignoring it,
+     * because this code is not used.
     FeatureMatrix featureMatrix = generator.computeFeatureValues(mergedPathTypes,
                                                                  dataset,
                                                                  matrixOutput);
+                                                                 */
     for (int m : modelNums) {
       for (MatrixRow row : featureMatrix.getRows()) {
         if (!allowedTargets.get(m).contains(row.targetNode)) {
