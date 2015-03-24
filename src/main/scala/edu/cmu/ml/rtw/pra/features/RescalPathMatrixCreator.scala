@@ -174,9 +174,13 @@ class RescalPathMatrixCreator(
     val matrix_row_entries = source_path_target_matrices.flatMap(matrix_with_index => {
       sources.par.flatMap(source => {
         val s = source_indices(source)
-        // We have to copy this, or the argmax() call below doesn't work.
+        // We have to copy this, or the argmax() call below doesn't work.  This looks like it's
+        // issue #318 in the breeze issue tracker.  When that's fixed, we might be able to just use
+        // matrix broadcasting here (do a columnwise argmax), instead of doing a flatmap over
+        // sources.
         val all_target_values = matrix_with_index._2(s, ::).t.copy
-        if (keep_all) {
+        // TODO(matt): TOTAL HACK!
+        if (keep_all || all_target_values.size <= 100) {
           all_target_values.activeIterator.map(entry => {
             ((source, targets_list(entry._1)), (matrix_with_index._1, entry._2))
           })
