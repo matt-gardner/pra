@@ -9,7 +9,6 @@ import edu.cmu.ml.rtw.pra.features.MostFrequentPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
 import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollowerFactory
-import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluderFactory
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -285,7 +284,6 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     config.pathFollowerFactory.getClass should be(classOf[RandomWalkPathFollowerFactory])
     config.pathTypeFactory.getClass should be(classOf[BasicPathTypeFactory])
     config.pathTypeSelector.getClass should be(classOf[MostFrequentPathTypeSelector])
-    config.edgeExcluderFactory.getClass should be(classOf[SingleEdgeExcluderFactory])
   }
 
   it should "handle path type factories" in {

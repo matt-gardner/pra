@@ -24,7 +24,7 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
   public PathFollower create(List<PathType> pathTypes,
                              PraConfig config,
                              Dataset data,
-                             List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
+                             EdgeExcluder edgeExcluder) {
     String graphDir = new File(config.graph).getParentFile().getParent() + "/";
     return new MatrixPathFollower(config.nodeDict.getNextIndex(),
                                   pathTypes,
@@ -32,7 +32,7 @@ public class MatrixPathFollowerFactory implements PathFollowerFactory {
                                   data,
                                   config.edgeDict,
                                   config.allowedTargets,
-                                  edgesToExclude,
+                                  edgeExcluder,
                                   maxFanOut,
                                   config.normalizeWalkProbabilities);
   }

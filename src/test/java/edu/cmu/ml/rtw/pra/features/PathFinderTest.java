@@ -28,7 +28,7 @@ public class PathFinderTest extends TestCase {
                             1,
                             Arrays.asList(1),
                             Arrays.asList(2),
-                            new SingleEdgeExcluder(edgesToExclude),
+                            SingleEdgeExcluder.fromJava(edgesToExclude),
                             10,
                             PathTypePolicy.EVERYTHING,
                             factory);
@@ -248,7 +248,7 @@ public class PathFinderTest extends TestCase {
                             1,
                             Arrays.asList(10000),
                             Arrays.asList(20000),
-                            new SingleEdgeExcluder(edgesToExclude),
+                            SingleEdgeExcluder.fromJava(edgesToExclude),
                             10,
                             PathTypePolicy.EVERYTHING,
                             factory);

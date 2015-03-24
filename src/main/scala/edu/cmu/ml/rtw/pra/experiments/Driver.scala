@@ -9,6 +9,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
+import edu.cmu.ml.rtw.pra.models.PraModel
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -104,12 +105,36 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
         val config = builder.build()
 
-        // Run PRA
+        // Split the data if we're doing cross validation instead of a fixed split.
         if (doCrossValidation) {
-          new PraTrainAndTester().crossValidate(config)
-        } else {
-          new PraTrainAndTester().trainAndTest(config)
+          val splitData = config.allData.splitData(config.percentTraining)
+          val trainingData = splitData.getLeft()
+          val testingData = splitData.getRight()
+          config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
+          val builder = new PraConfig.Builder(config)
+          builder.setAllData(null)
+          builder.setPercentTraining(0)
+          builder.setTrainingData(trainingData)
+          builder.setTestingData(testingData)
         }
+
+        // Now we actually run PRA.
+
+        // First we train the model.
+        val generator = new FeatureGenerator(config)
+        val pathTypes = generator.selectPathFeatures(config.trainingData)
+        val trainingMatrix = generator.computeFeatureValues(pathTypes, config.trainingData, null)
+        val praModel = new PraModel(config)
+        val weights = praModel.learnFeatureWeights(trainingMatrix, config.trainingData, pathTypes.asJava)
+        val finalModel = pathTypes.zip(weights.asScala).filter(_._2 != 0.0)
+        val finalPathTypes = finalModel.map(_._1)
+        val finalWeights = finalModel.map(_._2).asJava
+
+        // Then we test it.
+        val output = if (config.outputBase == null) null else config.outputBase + "test_matrix.tsv"
+        val testMatrix = generator.computeFeatureValues(finalPathTypes, config.testingData, output)
+        val scores = praModel.classifyInstances(testMatrix, finalWeights)
+        config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
       } else if (mode == "exploration") {
         val dataToUse = (params \ "pra parameters" \ "explore") match {
           case JNothing => "both"

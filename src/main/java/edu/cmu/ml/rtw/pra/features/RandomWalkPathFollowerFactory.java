@@ -11,12 +11,12 @@ public class RandomWalkPathFollowerFactory implements PathFollowerFactory {
   public PathFollower create(List<PathType> pathTypes,
                              PraConfig config,
                              Dataset data,
-                             List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude) {
+                             EdgeExcluder edgeExcluder) {
     return new RandomWalkPathFollower(config.graph,
                                       config.numShards,
                                       data.getCombinedSourceMap(),
                                       config.allowedTargets,
-                                      config.edgeExcluderFactory.create(edgesToExclude),
+                                      edgeExcluder,
                                       pathTypes,
                                       config.walksPerPath,
                                       config.acceptPolicy,
