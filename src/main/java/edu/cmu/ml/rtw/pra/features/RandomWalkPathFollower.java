@@ -140,6 +140,16 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
     return true;
   }
 
+  @VisibleForTesting
+  protected int getWalksPerPath() {
+    return numWalksPerPath;
+  }
+
+  @VisibleForTesting
+  protected RandomWalkPathFollowerCompanion getCompanion() {
+    return companion;
+  }
+
   /**
    * WalkUpdateFunction interface implementations
    */

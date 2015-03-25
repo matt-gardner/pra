@@ -2,12 +2,9 @@ package edu.cmu.ml.rtw.pra.models;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,14 +16,14 @@ import cc.mallet.types.Alphabet;
 import cc.mallet.types.FeatureVector;
 import cc.mallet.types.Instance;
 import cc.mallet.types.InstanceList;
+
 import edu.cmu.ml.rtw.pra.config.PraConfig;
 import edu.cmu.ml.rtw.pra.experiments.Dataset;
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix;
 import edu.cmu.ml.rtw.pra.features.MatrixRow;
 import edu.cmu.ml.rtw.pra.features.PathType;
-import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
+import edu.cmu.ml.rtw.pra.features.PathTypeFactory;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
-import edu.cmu.ml.rtw.users.matt.util.PairComparator;
 
 /**
  * Handles learning and classification for a simple logistic regression model that uses PRA
@@ -43,10 +40,16 @@ import edu.cmu.ml.rtw.users.matt.util.PairComparator;
  */
 public class PraModel {
 
-  private PraConfig config;
+  private final PraConfig config;
+  private final double l1Weight;
+  private final double l2Weight;
+  private final boolean binarizeFeatures;
   private static Logger logger = Logger.getLogger("pra-model");
 
-  public PraModel(PraConfig config) {
+  public PraModel(double l1Weight, double l2Weight, boolean binarizeFeatures, PraConfig config) {
+    this.l1Weight = l1Weight;
+    this.l2Weight = l2Weight;
+    this.binarizeFeatures = binarizeFeatures;
     this.config = config;
   }
 
@@ -117,16 +120,15 @@ public class PraModel {
                         negativeMatrix,
                         unseenMatrix,
                         data,
-                        alphabet,
-                        config);
+                        alphabet);
     MalletLogisticRegression lr = new MalletLogisticRegression(alphabet);
-    if (config.l2Weight != 0.0) {
-      logger.info("Setting L2 weight to " + config.l2Weight);
-      lr.setL2wt(config.l2Weight);
+    if (l2Weight != 0.0) {
+      logger.info("Setting L2 weight to " + l2Weight);
+      lr.setL2wt(l2Weight);
     }
-    if (config.l1Weight != 0.0) {
-      logger.info("Setting L1 weight to " + config.l1Weight);
-      lr.setL1wt(config.l1Weight);
+    if (l1Weight != 0.0) {
+      logger.info("Setting L1 weight to " + l1Weight);
+      lr.setL1wt(l1Weight);
     }
     // Finally, we train.  All that prep and everything that follows is really just to get
     // ready for and pass on the output of this one line.
@@ -162,25 +164,22 @@ public class PraModel {
                                   FeatureMatrix negativeMatrix,
                                   FeatureMatrix unseenMatrix,
                                   InstanceList data,
-                                  Alphabet alphabet,
-                                  PraConfig config) {
+                                  Alphabet alphabet) {
     /*
        sampleUnseenExamples(numPositiveExamples,
        negativeMatrix,
        unseenMatrix,
        data,
-       alphabet,
-       config);
+       alphabet)
        */
-    weightUnseenExamples(numPositiveFeatures, negativeMatrix, unseenMatrix, data, alphabet, config);
+    weightUnseenExamples(numPositiveFeatures, negativeMatrix, unseenMatrix, data, alphabet);
   }
 
   private void sampleUnseenExamples(int numPositiveExamples,
                                     FeatureMatrix negativeMatrix,
                                     FeatureMatrix unseenMatrix,
                                     InstanceList data,
-                                    Alphabet alphabet,
-                                    PraConfig config) {
+                                    Alphabet alphabet) {
     unseenMatrix.shuffle();
     for (int i = 0; i < numPositiveExamples; i++) {
       data.addThruPipe(matrixRowToInstance(unseenMatrix.getRow(i), alphabet, false));
@@ -191,8 +190,7 @@ public class PraModel {
                                     FeatureMatrix negativeMatrix,
                                     FeatureMatrix unseenMatrix,
                                     InstanceList data,
-                                    Alphabet alphabet,
-                                    PraConfig config) {
+                                    Alphabet alphabet) {
     int numNegativeFeatures = 0;
     for (MatrixRow negativeExample : negativeMatrix.getRows()) {
       numNegativeFeatures += negativeExample.columns;
@@ -253,21 +251,20 @@ public class PraModel {
    * File must be in the format "%s\t%f\n", where the string is a path description.  If the model
    * is output by outputWeights, you should be fine.
    */
-  public List<Pair<PathType, Double>> readWeightsFromFile(String filename)
-      throws IOException {
-        List<Pair<PathType, Double>> weights = new ArrayList<Pair<PathType, Double>>();
-        BufferedReader reader = new BufferedReader(new FileReader(filename));
-        String line;
-        while ((line = reader.readLine()) != null) {
-          String[] parts = line.split("\t");
-          String description = parts[0];
-          double weight = Double.parseDouble(parts[1]);
-          weights.add(new Pair<PathType, Double>(config.pathTypeFactory.fromString(description),
-                                                 weight));
-        }
-        reader.close();
-        return weights;
-      }
+  public List<Pair<PathType, Double>> readWeightsFromFile(
+      String filename, PathTypeFactory pathTypeFactory) throws IOException {
+    List<Pair<PathType, Double>> weights = new ArrayList<Pair<PathType, Double>>();
+    BufferedReader reader = new BufferedReader(new FileReader(filename));
+    String line;
+    while ((line = reader.readLine()) != null) {
+      String[] parts = line.split("\t");
+      String description = parts[0];
+      double weight = Double.parseDouble(parts[1]);
+      weights.add(new Pair<PathType, Double>(pathTypeFactory.fromString(description), weight));
+    }
+    reader.close();
+    return weights;
+  }
 
   public double classifyMatrixRow(MatrixRow row, List<Double> weights) {
     double score = 0.0;
@@ -280,7 +277,7 @@ public class PraModel {
   public Instance matrixRowToInstance(MatrixRow row, Alphabet alphabet, boolean positive) {
     double value = positive ? 1.0 : 0.0;
     double[] values = row.values.clone();
-    if (config.binarizeFeatures) {
+    if (binarizeFeatures) {
       for (int i = 0; i < values.length; i++) {
         if (values[i] > 0) values[i] = 1;
       }

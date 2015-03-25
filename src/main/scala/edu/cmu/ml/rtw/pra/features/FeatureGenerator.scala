@@ -1,14 +1,28 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
+import edu.cmu.ml.rtw.users.matt.util.Vector
 
-import java.lang.Integer
+import java.io.File
 
 import scala.collection.JavaConverters._
 
-class FeatureGenerator(config: PraConfig) {
+import org.json4s._
+import org.json4s.native.JsonMethods._
+
+class FeatureGenerator(
+    params: JValue,
+    praBase: String,
+    config: PraConfig,
+    fileUtil: FileUtil = new FileUtil()) {
+  implicit val formats = DefaultFormats
+  val featureParamKeys = Seq("path finder", "path selector", "path follower")
+  JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
   /**
    * Do feature selection for a PRA model, which amounts to finding common paths between sources
@@ -26,35 +40,46 @@ class FeatureGenerator(config: PraConfig) {
    */
   def selectPathFeatures(data: Dataset): Seq[PathType] = {
     println("Selecting path features with " + data.getAllSources().size() + " training instances")
+
+    // First we get necessary path finding parameters from the params object (we do this here
+    // because the params object is hard to work with in java; otherwise we'd just pass part of the
+    // object to the path finder).
+    val finderParams = params \ "path finder"
+    val finderParamKeys = Seq("walks per source", "path accept policy", "path type factory",
+      "path type selector", "path finding iterations")
+    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
+    val walksPerSource = JsonHelper.extractWithDefault(finderParams, "walks per source", 100)
+    val pathAcceptPolicy = JsonHelper.extractWithDefault(finderParams, "path accept policy", "paired-only")
+    val pathTypeFactory = createPathTypeFactory(finderParams \ "path type factory")
+    val numIters = JsonHelper.extractWithDefault(finderParams, "path finding iterations", 3)
+
+    // Now we create and run the path finder.
     val edgesToExclude = createEdgesToExclude(data)
     val finder = new PathFinder(config.graph,
       config.numShards,
       data.getAllSources(),
       data.getAllTargets(),
       new SingleEdgeExcluder(edgesToExclude),
-      config.walksPerSource,
-      config.pathTypePolicy,
-      config.pathTypeFactory)
-    finder.execute(config.numIters)
+      walksPerSource,
+      PathTypePolicy.parseFromString(pathAcceptPolicy),
+      pathTypeFactory)
+    finder.execute(numIters)
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
     // reason I don't understand.
     Thread.sleep(500)
 
+    // Next we get the resultant path counts.
     val finderPathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
     val inverses = config.relationInverses.asScala.map(x => (x._1.toInt, x._2.toInt)).toMap
-    val pathCounts = collapseInverses(finderPathCounts, inverses)
+    val pathCounts = collapseInverses(finderPathCounts, inverses, pathTypeFactory)
     finder.shutDown()
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     config.outputter.outputPathCounts(config.outputBase, "found_path_counts.tsv", javaPathCounts)
-    val pathTypes = config.pathTypeSelector.selectPathTypes(javaPathCounts, config.numPaths)
-    // THIS IS UGLY!!!  I'm experimenting a bit here.  TODO(matt): This should change before
-    // anything becomes final.
-    config.pathFollowerFactory match {
-      case f: RescalMatrixPathFollowerFactory => {
-        pathTypes.add(0, config.pathTypeFactory.fromString("-" + config.relation + "-"))
-      }
-      case other => {}
-    }
+
+    // And finally, we select and output path types.
+    val pathTypeSelector = createPathTypeSelector(params \ "path selector", pathTypeFactory)
+    val numPaths = JsonHelper.extractWithDefault(params, "number of paths to keep", 1000)
+    val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths)
     config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes)
     pathTypes.asScala
   }
@@ -74,15 +99,25 @@ class FeatureGenerator(config: PraConfig) {
   def findConnectingPaths(data: Dataset) = {
     println("Finding connecting paths")
     val edgesToExclude = createEdgesToExclude(data)
+
+    val finderParams = params \ "path finder"
+    val finderParamKeys = Seq("walks per source", "path accept policy", "path type factory",
+      "path finding iterations")
+    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
+    val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 100)
+    val pathAcceptPolicy = JsonHelper.extractWithDefault(params, "path accept policy", "paired-only")
+    val pathTypeFactory = createPathTypeFactory(params)
+    val numIters = JsonHelper.extractWithDefault(params, "path finding iterations", 3)
+
     val finder = new PathFinder(config.graph,
       config.numShards,
       data.getAllSources(),
       data.getAllTargets(),
       new SingleEdgeExcluder(edgesToExclude),
-      config.walksPerSource,
-      config.pathTypePolicy,
-      config.pathTypeFactory)
-    finder.execute(config.numIters)
+      walksPerSource,
+      PathTypePolicy.parseFromString(pathAcceptPolicy),
+      pathTypeFactory)
+    finder.execute(numIters)
 
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
     // reason I don't understand.
@@ -94,7 +129,8 @@ class FeatureGenerator(config: PraConfig) {
       (key, value)
     }).toMap
     val inverses = config.relationInverses.asScala.map(x => (x._1.toInt, x._2.toInt)).toMap
-    val pathCountMap = collapseInversesInCountMap(finderPathCountMap, inverses)
+
+    val pathCountMap = collapseInversesInCountMap(finderPathCountMap, inverses, pathTypeFactory)
     finder.shutDown()
     val javaMap = pathCountMap.map(entry => {
       val key = new Pair[Integer, Integer](entry._1._1, entry._1._2)
@@ -142,8 +178,7 @@ class FeatureGenerator(config: PraConfig) {
   def computeFeatureValues(pathTypes: Seq[PathType], data: Dataset, outputFile: String) = {
     println("Computing feature values")
     val edgesToExclude = createEdgesToExclude(data)
-    val follower = config.pathFollowerFactory.create(
-      pathTypes.asJava, config, data, new SingleEdgeExcluder(edgesToExclude))
+    val follower = createPathFollower(params \ "path follower", pathTypes, data)
     follower.execute()
     if (follower.usesGraphChi()) {
       // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
@@ -158,17 +193,21 @@ class FeatureGenerator(config: PraConfig) {
     featureMatrix
   }
 
-  def collapseInverses(pathCounts: Map[PathType, Int], inverses: Map[Int, Int]) = {
+  def collapseInverses(
+      pathCounts: Map[PathType, Int],
+      inverses: Map[Int, Int],
+      pathTypeFactory: PathTypeFactory) = {
     val javaInverses = inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava
     pathCounts.toSeq.map(pathCount => {
-      (config.pathTypeFactory.collapseEdgeInverses(pathCount._1, javaInverses), pathCount._2)
+      (pathTypeFactory.collapseEdgeInverses(pathCount._1, javaInverses), pathCount._2)
     }).groupBy(_._1).mapValues(_.map(_._2.toInt).sum).toMap
   }
 
   def collapseInversesInCountMap(
       pathCountMap: Map[(Int, Int), Map[PathType, Int]],
-      inverses: Map[Int, Int]) = {
-    pathCountMap.mapValues(m => collapseInverses(m, inverses))
+      inverses: Map[Int, Int],
+      pathTypeFactory: PathTypeFactory) = {
+    pathCountMap.mapValues(m => collapseInverses(m, inverses, pathTypeFactory))
   }
 
   def createEdgesToExclude(data: Dataset): Seq[((Int, Int), Int)] = {
@@ -188,5 +227,127 @@ class FeatureGenerator(config: PraConfig) {
         (sourceTarget, edge.toInt)
       })
     })
+  }
+
+  def createPathTypeFactory(params: JValue): PathTypeFactory = {
+    (params \ "name") match {
+      case JNothing => new BasicPathTypeFactory()
+      case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params)
+      case other => throw new IllegalStateException("Unregonized path type factory")
+    }
+  }
+
+  def createVectorPathTypeFactory(params: JValue) = {
+    println("Initializing vector path type factory")
+    val spikiness = (params \ "spikiness").extract[Double]
+    val resetWeight = (params \ "reset weight").extract[Double]
+    println(s"RESET WEIGHT SET TO $resetWeight")
+    val embeddingsFiles = (params \ "embeddings") match {
+      case JNothing => Nil
+      case JString(path) if (path.startsWith("/")) => List(path)
+      case JString(name) => List(s"${praBase}embeddings/${name}/embeddings.tsv")
+      case JArray(list) => {
+        list.map(_ match {
+          case JString(path) if (path.startsWith("/")) => path
+          case JString(name) => s"${praBase}embeddings/${name}/embeddings.tsv"
+          case other => throw new IllegalStateException("Error specifying embeddings")
+        })
+      }
+      case jval => {
+        val name = (jval \ "name").extract[String]
+        List(s"${praBase}embeddings/${name}/embeddings.tsv")
+      }
+    }
+    val embeddings = readEmbeddingsVectors(embeddingsFiles)
+    val javaEmbeddings = embeddings.map(entry => (Integer.valueOf(entry._1), entry._2)).asJava
+    new VectorPathTypeFactory(config.edgeDict, javaEmbeddings, spikiness, resetWeight)
+  }
+
+  def readEmbeddingsVectors(embeddingsFiles: Seq[String]) = {
+    embeddingsFiles.flatMap(file => {
+      println(s"Embeddings file: $file")
+      readVectorsFromFile(file)
+    }).toMap
+  }
+
+  def readVectorsFromFile(embeddingsFile: String) = {
+    // Embeddings files are formated as tsv, where the first column is the relation name
+    // and the rest of the columns make up the vector.
+    fileUtil.readLinesFromFile(embeddingsFile).asScala.map(line => {
+      val fields = line.split("\t");
+      val relationIndex = config.edgeDict.getIndex(fields(0));
+      val vector = fields.drop(1).map(_.toDouble)
+      (relationIndex, new Vector(vector))
+    }).toMap
+  }
+
+  def createPathFollower(
+      followerParams: JValue,
+      pathTypes: Seq[PathType],
+      data: Dataset): PathFollower = {
+    val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
+    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data))
+    if (name.equals("random walks")) {
+      val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
+        "normalize walk probabilities")
+      JsonHelper.ensureNoExtras(
+        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+      val walksPerPath = JsonHelper.extractWithDefault(followerParams, "walks per path", 100)
+      val acceptPolicy = JsonHelper.extractWithDefault(followerParams, "matrix accept policy", "all-targets")
+      val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
+      new RandomWalkPathFollower(
+        config.graph,
+        config.numShards,
+        data.getCombinedSourceMap,
+        config.allowedTargets,
+        edgeExcluder,
+        pathTypes.asJava,
+        walksPerPath,
+        MatrixRowPolicy.parseFromString(acceptPolicy),
+        normalize)
+    } else if (name.equals("matrix multiplication")) {
+      val followerParamKeys = Seq("name", "max fan out", "matrix dir", "normalize walk probabilities")
+      JsonHelper.ensureNoExtras(
+        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+      val max_fan_out = JsonHelper.extractWithDefault(followerParams, "max fan out", 100)
+      val matrix_base = JsonHelper.extractWithDefault(followerParams, "matrix dir", "matrices")
+      val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
+      val graph_base = new File(config.graph).getParent + "/"
+      val matrix_dir = if (matrix_base.endsWith("/")) graph_base + matrix_base else graph_base +
+        matrix_base + "/"
+      new MatrixPathFollower(
+        config.nodeDict.getNextIndex(),
+        pathTypes.asJava,
+        matrix_dir,
+        data,
+        config.edgeDict,
+        config.allowedTargets,
+        edgeExcluder,
+        max_fan_out,
+        normalize)
+    } else if (name.equals("rescal matrix multiplication")) {
+      val followerParamKeys = Seq("name", "rescal dir", "negatives per source")
+      JsonHelper.ensureNoExtras(
+        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+      val dir = (followerParams \ "rescal dir").extract[String]
+      val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
+      val negativesPerSource = JsonHelper.extractWithDefault(followerParams, "negatives per source", 15)
+      new RescalMatrixPathFollower(config, pathTypes.asJava, rescal_dir, data, negativesPerSource)
+    } else {
+      throw new IllegalStateException("Unrecognized path follower")
+    }
+  }
+
+  def createPathTypeSelector(selectorParams: JValue, factory: PathTypeFactory): PathTypeSelector = {
+    val name = JsonHelper.extractWithDefault(selectorParams, "name", "MostFrequentPathTypeSelector")
+    if (name.equals("MostFrequentPathTypeSelector")) {
+      new MostFrequentPathTypeSelector()
+    } else if (name.equals("VectorClusteringPathTypeSelector")) {
+      val similarityThreshold = (selectorParams \ "similarity threshold").extract[Double]
+      new VectorClusteringPathTypeSelector(factory.asInstanceOf[VectorPathTypeFactory],
+        similarityThreshold)
+    } else {
+      throw new IllegalStateException("Unrecognized path type selector")
+    }
   }
 }

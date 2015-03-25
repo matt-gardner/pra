@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator
@@ -17,12 +18,14 @@ import scala.collection.mutable
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
-// TODO(matt): This class has acrued a few too many functions, I think.  It's not focused enough.
-// Maybe I should move the graph creation code somewhere else...
+// TODO(matt): This class has acrued a few too many functions, I think, and the runPra function is
+// much too large.  This class needs some refactoring.
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
   def runPra(_outputBase: String, params: JValue) {
+    val baseKeys = Seq("graph", "split", "relation metadata", "pra parameters")
+    JsonHelper.ensureNoExtras(params, "base", baseKeys)
     val outputBase = fileUtil.addDirectorySeparatorIfNecessary(_outputBase)
     fileUtil.mkdirOrDie(outputBase)
 
@@ -38,11 +41,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     createSimilarityMatricesIfNecessary(params)
     createDenserMatricesIfNecessary(params)
 
-    val mode = (params \ "pra parameters" \ "mode") match {
-      case JNothing => "standard"
-      case JString(m) => m
-      case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
-    }
+    val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "standard")
     if (mode == "no op") {
       fileUtil.deleteFile(outputBase)
       return
@@ -72,7 +71,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     // This takes care of setting everything in the config builder that is consistent across
     // relations.
-    new SpecFileReader(praBase, fileUtil).setPraConfigFromParams(params, baseBuilder)
+    initializeGraphParameters(getGraphDirectory(params), baseBuilder)
 
     var nodeNames: java.util.Map[String, String] = null
     if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
@@ -102,6 +101,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           builder,
           new DatasetFactory(),
           fileUtil)
+        val praParams = params \ "pra parameters"
+        val praParamKeys = Seq("mode", "features", "learning")
+        JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
 
         val config = builder.build()
 
@@ -120,23 +122,37 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
         // Now we actually run PRA.
 
-        // First we train the model.
-        val generator = new FeatureGenerator(config)
+        // First we get features.
+        val generator = new FeatureGenerator(praParams \ "features", praBase, config, fileUtil)
         val pathTypes = generator.selectPathFeatures(config.trainingData)
         val trainingMatrix = generator.computeFeatureValues(pathTypes, config.trainingData, null)
-        val praModel = new PraModel(config)
+
+        // Then we train a model.  It'd be nice here to have all of this parameter stuff pushed
+        // down into the PraModel, but PraModel is currently a java class, which doesn't play
+        // nicely with json4s.
+        val learningParams = praParams \ "learning"
+        val learningParamKeys = Seq("l1 weight", "l2 weight", "binarize features")
+        JsonHelper.ensureNoExtras(learningParams, "pra parameters -> learning", learningParamKeys)
+        val l1Weight = JsonHelper.extractWithDefault(learningParams, "l1 weight", 1.0)
+        val l2Weight = JsonHelper.extractWithDefault(learningParams, "l2 weight", 0.05)
+        val binarize = JsonHelper.extractWithDefault(learningParams, "binarize features", false)
+        val praModel = new PraModel(l1Weight, l2Weight, binarize, config)
         val weights = praModel.learnFeatureWeights(trainingMatrix, config.trainingData, pathTypes.asJava)
         val finalModel = pathTypes.zip(weights.asScala).filter(_._2 != 0.0)
         val finalPathTypes = finalModel.map(_._1)
         val finalWeights = finalModel.map(_._2).asJava
 
-        // Then we test it.
+        // Then we test the model.
         val output = if (config.outputBase == null) null else config.outputBase + "test_matrix.tsv"
         val testMatrix = generator.computeFeatureValues(finalPathTypes, config.testingData, output)
         val scores = praModel.classifyInstances(testMatrix, finalWeights)
         config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
       } else if (mode == "exploration") {
-        val dataToUse = (params \ "pra parameters" \ "explore") match {
+        val praParams = params \ "pra parameters"
+        val praParamKeys = Seq("mode", "explore", "features")
+        JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
+
+        val dataToUse = (praParams \ "explore") match {
           case JNothing => "both"
           case JString("training") => "training"
           case JString("testing") => "testing"
@@ -157,7 +173,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         }
         val config = builder.build()
 
-        val generator = new FeatureGenerator(config)
+        val generator = new FeatureGenerator(praParams \ "features", praBase, config, fileUtil)
         generator.findConnectingPaths(config.trainingData)
       }
       val relation_end = System.currentTimeMillis
@@ -365,6 +381,37 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       println("No range file found!")
       writer.close()
     }
+  }
+
+  def getGraphDirectory(params: JValue): String = {
+    var value = params \ "graph"
+    try {
+      val name = value.extract[String]
+      if (name.startsWith("/")) {
+        return name
+      } else {
+        return praBase + "/graphs/" + name
+      }
+    } catch {
+      case e: MappingException => {
+        val name = (value \ "name").extract[String]
+        return praBase + "/graphs/" + name
+      }
+    }
+  }
+
+  def initializeGraphParameters(graphDirectory: String, config: PraConfig.Builder) {
+    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
+    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv");
+    println(s"Loading node and edge dictionaries from graph directory: $dir");
+    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
+    config.setNumShards(numShards)
+    val nodeDict = new Dictionary();
+    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
+    config.setNodeDictionary(nodeDict);
+    val edgeDict = new Dictionary();
+    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
+    config.setEdgeDictionary(edgeDict);
   }
 }
 

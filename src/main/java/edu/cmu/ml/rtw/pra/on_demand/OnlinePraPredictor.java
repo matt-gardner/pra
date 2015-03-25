@@ -33,6 +33,12 @@ import scala.collection.JavaConverters;
 /**
  * An object for loading and querying a trained PRA model.
  *
+ * THIS FILE IS COMPLETELY BROKEN.  IT NEEDS TO BE BASICALLY REWRITTEN TO BE UPDATED TO CHANGES
+ * I'VE MADE IN THE REST OF THE CODE.  There are a lot of commented out lines, because things
+ * stopped compiling, and all kinds of other problems.  But, no one has used this in a long time,
+ * so it's not too big a deal.  I'm just keeping this here for future reference, in case someone
+ * wants to use this kind of functionality again some time.
+ *
  * This class makes heavy use of methods in PRA driver, but it keeps the models as class variables,
  * so it can be queried for predictions repeatedly.
  *
@@ -110,8 +116,8 @@ public class OnlinePraPredictor {
     PraConfig.Builder builder = new PraConfig.Builder()
         .setGraph(graphFilename)
         .setNumShards(numShardsInGraph)
-        .setWalksPerPath(walksPerPath)
-        .setAcceptPolicy(MatrixRowPolicy.EVERYTHING)
+        //.setWalksPerPath(walksPerPath)
+        //.setAcceptPolicy(MatrixRowPolicy.EVERYTHING)
         .setOutputBase(outputBase);
     if (pathTypeFactoryString != null) {
       //builder.initializeVectorPathTypeFactory(pathTypeFactoryString);
@@ -129,18 +135,20 @@ public class OnlinePraPredictor {
     edgeDict.setFromFile(new File(edgeDictionaryFilename));
     for (int i = 0; i < modelFilenames.size(); i++) {
       List<Pair<PathType, Double>> model;
-      try {
+      //try {
         // TODO(matt): this is ugly and needs to be fixed.  I need to make PraModel better so that
         // I can just use it instead of the list of pairs that I have.
+        /*
         PraModel praModel = new PraModel(config);
-        model = praModel.readWeightsFromFile(modelFilenames.get(i));
+        model = null; //praModel.readWeightsFromFile(modelFilenames.get(i));
         models.add(model);
         String[] parts = modelFilenames.get(i).split("/");
         String relationName = parts[parts.length-2];
         relationNames.add(relationName);
-      } catch(IOException e) {
-        throw new RuntimeException(e);
-      }
+        */
+      //} catch(IOException e) {
+        //throw new RuntimeException(e);
+      //}
       try {
         FileUtil fileUtil = new FileUtil();
         allowedTargets.add(fileUtil.readIntegerSetFromFile(allowedTargetsFiles.get(i), nodeDict));
@@ -151,10 +159,12 @@ public class OnlinePraPredictor {
       pathTypes.add(pathTypeList);
       List<Double> weightList = new ArrayList<Double>();
       weights.add(weightList);
+      /*
       for (int j=0; j<model.size(); j++) {
         pathTypeList.add(model.get(j).getLeft());
         weightList.add(model.get(j).getRight());
       }
+      */
     }
   }
 
@@ -237,13 +247,13 @@ public class OnlinePraPredictor {
       }
     }
     List<PathType> mergedPathTypes = new ArrayList<PathType>();
-    Index<PathType> pathDict = new Index<PathType>(config.pathTypeFactory);
+    Index<PathType> pathDict = null; //new Index<PathType>(config.pathTypeFactory);
     Map<Integer, Map<Integer, Integer>> pathTranslationMaps =
         createPathTranslationMaps(pathDict, modelNums);
     for (int i = 1; i < pathDict.getNextIndex(); i++) {
       mergedPathTypes.add(pathDict.getKey(i));
     }
-    FeatureGenerator generator = new FeatureGenerator(config);
+    FeatureGenerator generator = null; //new FeatureGenerator(config);
     FeatureMatrix featureMatrix = null;
     /* TODO(matt): THIS IS BROKEN!  I moved the FeatureGenerator to scala, and it's turning out to
      * be tricky to create a scala data structure the right way here.  So I'm just ignoring it,
@@ -291,7 +301,7 @@ public class OnlinePraPredictor {
 
   public PraPrediction getPredictionForRow(MatrixRow row, int modelNum) {
     // TODO(matt): again, this is ugly.  Improve PraModel so that it can handle this kind of usage.
-    PraModel model = new PraModel(null);
+    PraModel model = null; //new PraModel(null);
     double score = model.classifyMatrixRow(row, weights.get(modelNum));
     String provenance = getProvenance(row, models.get(modelNum), edgeDict);
     String sourceNode = nodeDict.getString(row.sourceNode);
