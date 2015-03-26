@@ -18,7 +18,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
-class FeatureGeneratorSpec extends FlatSpecLike with Matchers {
+class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val factory = new FakePathTypeFactory()
   val finderParams: JValue =
     ("walks per source" -> 123) ~
@@ -59,7 +59,7 @@ class FeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val graphFile = "src/test/resources/edges.tsv"
   val config = new PraConfig.Builder().noChecks()
     .setGraph(graphFile).setNumShards(1).setUnallowedEdges(unallowedEdges).build()
-  val generator = new FeatureGenerator(params, "/", config)
+  val generator = new PraFeatureGenerator(params, "/", config)
 
   "collapseInverses" should "collapse inverses" in {
     val collapsed = generator.collapseInverses(pathCounts, inverses, factory)

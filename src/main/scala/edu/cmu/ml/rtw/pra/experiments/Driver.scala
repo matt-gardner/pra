@@ -5,12 +5,14 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.SpecFileReader
-import edu.cmu.ml.rtw.pra.features.FeatureGenerator
+import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
+import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 import edu.cmu.ml.rtw.pra.models.PraModel
+import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -41,7 +43,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     createSimilarityMatricesIfNecessary(params)
     createDenserMatricesIfNecessary(params)
 
-    val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "standard")
+    val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "learn models")
     if (mode == "no op") {
       fileUtil.deleteFile(outputBase)
       return
@@ -93,88 +95,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       fileUtil.mkdirs(outdir)
       builder.setOutputBase(outdir)
 
-      if (mode == "standard") {
-        val doCrossValidation = Driver.initializeSplit(
-          splitsDirectory,
-          metadataDirectory,
-          relation,
-          builder,
-          new DatasetFactory(),
-          fileUtil)
-        val praParams = params \ "pra parameters"
-        val praParamKeys = Seq("mode", "features", "learning")
-        JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
-
-        val config = builder.build()
-
-        // Split the data if we're doing cross validation instead of a fixed split.
-        if (doCrossValidation) {
-          val splitData = config.allData.splitData(config.percentTraining)
-          val trainingData = splitData.getLeft()
-          val testingData = splitData.getRight()
-          config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
-          val builder = new PraConfig.Builder(config)
-          builder.setAllData(null)
-          builder.setPercentTraining(0)
-          builder.setTrainingData(trainingData)
-          builder.setTestingData(testingData)
-        }
-
-        // Now we actually run PRA.
-
-        // First we get features.
-        val generator = new FeatureGenerator(praParams \ "features", praBase, config, fileUtil)
-        val pathTypes = generator.selectPathFeatures(config.trainingData)
-        val trainingMatrix = generator.computeFeatureValues(pathTypes, config.trainingData, null)
-
-        // Then we train a model.  It'd be nice here to have all of this parameter stuff pushed
-        // down into the PraModel, but PraModel is currently a java class, which doesn't play
-        // nicely with json4s.
-        val learningParams = praParams \ "learning"
-        val learningParamKeys = Seq("l1 weight", "l2 weight", "binarize features")
-        JsonHelper.ensureNoExtras(learningParams, "pra parameters -> learning", learningParamKeys)
-        val l1Weight = JsonHelper.extractWithDefault(learningParams, "l1 weight", 1.0)
-        val l2Weight = JsonHelper.extractWithDefault(learningParams, "l2 weight", 0.05)
-        val binarize = JsonHelper.extractWithDefault(learningParams, "binarize features", false)
-        val praModel = new PraModel(l1Weight, l2Weight, binarize, config)
-        val weights = praModel.learnFeatureWeights(trainingMatrix, config.trainingData, pathTypes.asJava)
-        val finalModel = pathTypes.zip(weights.asScala).filter(_._2 != 0.0)
-        val finalPathTypes = finalModel.map(_._1)
-        val finalWeights = finalModel.map(_._2).asJava
-
-        // Then we test the model.
-        val output = if (config.outputBase == null) null else config.outputBase + "test_matrix.tsv"
-        val testMatrix = generator.computeFeatureValues(finalPathTypes, config.testingData, output)
-        val scores = praModel.classifyInstances(testMatrix, finalWeights)
-        config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
-      } else if (mode == "exploration") {
-        val praParams = params \ "pra parameters"
-        val praParamKeys = Seq("mode", "explore", "features")
-        JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
-
-        val dataToUse = (praParams \ "explore") match {
-          case JNothing => "both"
-          case JString("training") => "training"
-          case JString("testing") => "testing"
-          case JString("both") => "both"
-          case other => throw new IllegalStateException("explore parameter must be a string, " +
-            "either \"training\", \"testing\", or \"both\"")
-        }
-        val datasetFactory = new DatasetFactory()
-        if (dataToUse == "both") {
-          val trainingFile = s"${splitsDirectory}${relation}/training.tsv"
-          val trainingData = datasetFactory.fromFile(trainingFile, builder.nodeDict)
-          val testingFile = s"${splitsDirectory}${relation}/testing.tsv"
-          val testingData = datasetFactory.fromFile(testingFile, builder.nodeDict)
-          builder.setTrainingData(trainingData.merge(testingData))
-        } else {
-          val inputFile = s"${splitsDirectory}${relation}/${dataToUse}.tsv"
-          builder.setTrainingData(datasetFactory.fromFile(inputFile, builder.nodeDict))
-        }
-        val config = builder.build()
-
-        val generator = new FeatureGenerator(praParams \ "features", praBase, config, fileUtil)
-        generator.findConnectingPaths(config.trainingData)
+      if (mode == "learn models") {
+        learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
+      } else if (mode == "explore graph") {
+        exploreGraph(params, builder.build(), splitsDirectory)
       }
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
@@ -195,6 +119,97 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     writer.write(s"Total time: $minutes minutes and $seconds seconds\n")
     writer.close()
     System.out.println(s"Took $minutes minutes and $seconds seconds")
+  }
+
+  def createFeatureGenerator(praParams: JValue, config: PraConfig) = {
+    new PraFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
+  }
+
+  def learnModels(
+      params: JValue,
+      splitsDirectory: String,
+      metadataDirectory: String,
+      relation: String,
+      builder: PraConfig.Builder) {
+    val doCrossValidation = Driver.initializeSplit(
+      splitsDirectory,
+      metadataDirectory,
+      relation,
+      builder,
+      new DatasetFactory(),
+      fileUtil)
+    val praParams = params \ "pra parameters"
+    val praParamKeys = Seq("mode", "features", "learning")
+    JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
+
+    // Split the data if we're doing cross validation instead of a fixed split.
+    if (doCrossValidation) {
+      val config = builder.build()
+      val splitData = config.allData.splitData(config.percentTraining)
+      val trainingData = splitData.getLeft()
+      val testingData = splitData.getRight()
+      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
+      builder.setAllData(null)
+      builder.setPercentTraining(0)
+      builder.setTrainingData(trainingData)
+      builder.setTestingData(testingData)
+    }
+
+    val config = builder.build()
+
+    // Now we actually run PRA.
+
+    // First we get features.
+    val generator = createFeatureGenerator(praParams, config)
+    val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
+
+    // Then we train a model.  It'd be nice here to have all of this parameter stuff pushed
+    // down into the PraModel, but PraModel is currently a java class, which doesn't play
+    // nicely with json4s.
+    val learningParams = praParams \ "learning"
+    val learningParamKeys = Seq("l1 weight", "l2 weight", "binarize features")
+    JsonHelper.ensureNoExtras(learningParams, "pra parameters -> learning", learningParamKeys)
+    val l1Weight = JsonHelper.extractWithDefault(learningParams, "l1 weight", 1.0)
+    val l2Weight = JsonHelper.extractWithDefault(learningParams, "l2 weight", 0.05)
+    val binarize = JsonHelper.extractWithDefault(learningParams, "binarize features", false)
+    val model = new PraModel(l1Weight, l2Weight, binarize, config)
+    val featureNames = generator.getFeatureNames().toSeq.asJava
+    val weights = model.learnFeatureWeights(trainingMatrix, config.trainingData, featureNames)
+    val finalWeights = generator.removeZeroWeightFeatures(weights.asScala.map(_.toDouble))
+
+    // Then we test the model.
+    val testMatrix = generator.createTestMatrix(config.testingData)
+    val scores = model.classifyInstances(testMatrix,
+      finalWeights.map(x => java.lang.Double.valueOf(x)).asJava)
+    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
+  }
+
+  def exploreGraph(params: JValue, config: PraConfig, splitsDirectory: String) {
+    val praParams = params \ "pra parameters"
+    val praParamKeys = Seq("mode", "explore", "data")
+    JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
+
+    val dataToUse = JsonHelper.extractWithDefault(praParams, "data", "both")
+    val datasetFactory = new DatasetFactory()
+    val data = if (dataToUse == "both") {
+      val trainingFile = s"${splitsDirectory}${config.relation}/training.tsv"
+      val trainingData = datasetFactory.fromFile(trainingFile, config.nodeDict)
+      val testingFile = s"${splitsDirectory}${config.relation}/testing.tsv"
+      val testingData = datasetFactory.fromFile(testingFile, config.nodeDict)
+      trainingData.merge(testingData)
+    } else {
+      val inputFile = s"${splitsDirectory}${config.relation}/${dataToUse}.tsv"
+      datasetFactory.fromFile(inputFile, config.nodeDict)
+    }
+
+    val explorer = new GraphExplorer(praParams \ "explore", config)
+    val pathCountMap = explorer.findConnectingPaths(data)
+    val javaMap = pathCountMap.map(entry => {
+      val key = new Pair[Integer, Integer](entry._1._1, entry._1._2)
+      val value = entry._2.mapValues(x => Integer.valueOf(x)).asJava
+      (key, value)
+    }).asJava
+    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", javaMap, data)
   }
 
   def createGraphIfNecessary(params: JValue) {

@@ -65,17 +65,17 @@ public class PraModel {
    *     those that don't will be used as negative examples.
    * @param positiveTargets A list of target nodes corresponding to the list of source nodes.  It
    *     might be a good idea to switch to using a list of Pair objects instead of two lists...
-   * @param pathTypes The {@link PathType} objects that correspond to the columns in the feature
-   *     matrix.  This is used in two ways.  First, it is used to set the Alphabet for the mallet
-   *     classifier (really we only need the number of path types for this, as we just use the
-   *     index as the feature type).  Second, we use the path type descriptions to output a
-   *     more-or-less human-readable description of the learned model.
+   * @param featureNames The strings that correspond to the columns in the feature matrix.  This is
+   *     used in two ways.  First, it is used to set the Alphabet for the mallet classifier (really
+   *     we only need the number of path types for this, as we just use the index as the feature
+   *     type).  Second, we use the names to output a more-or-less human-readable description of
+   *     the learned model.
    *
    * @return A list of learned weights, one for each path type.
    */
   public List<Double> learnFeatureWeights(FeatureMatrix featureMatrix,
                                           Dataset dataset,
-                                          List<PathType> pathTypes) {
+                                          List<String> featureNames) {
     logger.info("Learning feature weights");
     logger.info("Prepping training data");
     // We could use a Pair here, but it's just for checking set membership, and String hashing
@@ -101,14 +101,14 @@ public class PraModel {
     FeatureMatrix unseenMatrix = new FeatureMatrix(unseenExamples);
     if (config.outputBase != null) {
       String base = config.outputBase;
-      config.outputter.outputFeatureMatrix(base + "positive_matrix.tsv", positiveMatrix, pathTypes);
-      config.outputter.outputFeatureMatrix(base + "negative_matrix.tsv", negativeMatrix, pathTypes);
-      config.outputter.outputFeatureMatrix(base + "unseen_matrix.tsv", unseenMatrix, pathTypes);
+      config.outputter.outputFeatureMatrix(base + "positive_matrix.tsv", positiveMatrix, featureNames);
+      config.outputter.outputFeatureMatrix(base + "negative_matrix.tsv", negativeMatrix, featureNames);
+      config.outputter.outputFeatureMatrix(base + "unseen_matrix.tsv", unseenMatrix, featureNames);
     }
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
     Pipe pipe = new Noop();
     InstanceList data = new InstanceList(pipe);
-    Alphabet alphabet = new Alphabet(pathTypes.toArray());
+    Alphabet alphabet = new Alphabet(featureNames.toArray());
 
     int numPositiveFeatures = 0;
     for (MatrixRow positiveExample : positiveMatrix.getRows()) {
@@ -139,7 +139,7 @@ public class PraModel {
     double bias = lr.getBias();
     List<Double> weights = new ArrayList<Double>();
     int j = 0;
-    for (int i=0; i<pathTypes.size(); i++) {
+    for (int i=0; i<featureNames.size(); i++) {
       if (j >= features.length) {
         weights.add(0.0);
       } else if (features[j] > i) {
@@ -151,7 +151,7 @@ public class PraModel {
     }
     logger.info("Outputting feature weights");
     if (config.outputBase != null) {
-      config.outputter.outputWeights(config.outputBase + "weights.tsv", weights, pathTypes);
+      config.outputter.outputWeights(config.outputBase + "weights.tsv", weights, featureNames);
     }
     return weights;
   }

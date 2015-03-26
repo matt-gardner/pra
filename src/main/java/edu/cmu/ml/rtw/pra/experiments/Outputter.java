@@ -146,13 +146,13 @@ public class Outputter {
 
   public void outputWeights(String filename,
                             List<Double> weights,
-                            List<PathType> pathTypes) {
+                            List<String> featureNames) {
     try {
       FileWriter writer = fileUtil.getFileWriter(filename);
-      List<Pair<PathType, Double>> zipped = CollectionsUtil.zipLists(pathTypes, weights);
-      Collections.sort(zipped, PairComparator.<PathType, Double>negativeRight());
-      for (Pair<PathType, Double> pair : zipped) {
-        writer.write(getPathType(pair.getLeft()) + "\t" + pair.getRight() + "\n");
+      List<Pair<String, Double>> zipped = CollectionsUtil.zipLists(featureNames, weights);
+      Collections.sort(zipped, PairComparator.<String, Double>negativeRight());
+      for (Pair<String, Double> pair : zipped) {
+        writer.write(pair.getLeft() + "\t" + pair.getRight() + "\n");
       }
       writer.close();
     } catch(IOException e) {
@@ -262,14 +262,14 @@ public class Outputter {
     }
   }
 
-  public void outputFeatureMatrix(String filename, FeatureMatrix matrix, List<PathType> pathTypes) {
+  public void outputFeatureMatrix(String filename, FeatureMatrix matrix, List<String> featureNames) {
     try {
       FileWriter writer = fileUtil.getFileWriter(filename);
       for (MatrixRow row : matrix.getRows()) {
         writer.write(getNode(row.sourceNode) + "," + getNode(row.targetNode) + "\t");
         for (int i=0; i<row.columns; i++) {
-          String pathType = getPathType(pathTypes.get(row.pathTypes[i]));
-          writer.write(pathType + "," + row.values[i]);
+          String featureName = featureNames.get(row.pathTypes[i]);
+          writer.write(featureName + "," + row.values[i]);
           if (i < row.columns - 1) {
              writer.write(" -#- ");
           }
