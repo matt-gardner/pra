@@ -269,7 +269,13 @@ public class PraModel {
   public double classifyMatrixRow(MatrixRow row, List<Double> weights) {
     double score = 0.0;
     for (int i=0; i<row.columns; i++) {
-      score += row.values[i] * weights.get(row.pathTypes[i]);
+      int pathType = row.pathTypes[i];
+      // TODO(matt): Maybe there should be an option to throw an error here, instead of just
+      // ignoring features that have higher indices than we're aware of.  In some instances this is
+      // desired behavior, in others it is a bug.
+      if (pathType < weights.size()) {
+        score += row.values[i] * weights.get(row.pathTypes[i]);
+      }
     }
     return score;
   }

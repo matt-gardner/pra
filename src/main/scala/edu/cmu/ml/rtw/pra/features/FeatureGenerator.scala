@@ -2,6 +2,8 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 
+import scala.collection.JavaConverters._
+
 trait FeatureGenerator {
   /**
    * Takes the data, probably does some random walks (or maybe some matrix multiplications, or a
@@ -34,4 +36,23 @@ trait FeatureGenerator {
    * feature spaces; see comments above).
    */
   def getFeatureNames(): Array[String]
+
+  def createEdgesToExclude(data: Dataset, unallowedEdges: java.util.List[Integer]): Seq[((Int, Int), Int)] = {
+    // If there was no input data (e.g., if we are actually trying to predict new edges, not
+    // just hide edges from ourselves to try to recover), then there aren't any edges to
+    // exclude.  So return an empty list.
+    if (data == null) {
+      return Seq()
+    }
+    val sources = data.getAllSources().asScala.map(_.toInt)
+    val targets = data.getAllTargets().asScala.map(_.toInt)
+    if (sources.size == 0 || targets.size == 0) {
+      return Seq()
+    }
+    sources.zip(targets).flatMap(sourceTarget => {
+      unallowedEdges.asScala.map(edge => {
+        (sourceTarget, edge.toInt)
+      })
+    })
+  }
 }

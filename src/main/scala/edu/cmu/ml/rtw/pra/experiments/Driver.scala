@@ -6,6 +6,7 @@ import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator
+import edu.cmu.ml.rtw.pra.features.SubgraphFeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
@@ -122,7 +123,12 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   }
 
   def createFeatureGenerator(praParams: JValue, config: PraConfig) = {
-    new PraFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
+    val featureType = JsonHelper.extractWithDefault(praParams \ "features", "type", "pra")
+    featureType match {
+      case "pra" => new PraFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
+      case "subgraphs" => new SubgraphFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
+      case other => throw new IllegalStateException("Illegal feature type!")
+    }
   }
 
   def learnModels(

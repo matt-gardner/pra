@@ -15,19 +15,13 @@ import scala.collection.JavaConverters._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-// TODO(matt): make this an abstract class, with three methods: createTrainingMatrix,
-// removeZeroWeightFeatures, and createTestingMatrix.  Then move the implementation code to a
-// subclass, like TwoStepFeatureGenerator or StandardFeatureGenerator, and add another subclass
-// that just does a single step to generate the matrix.  The findConnectingPaths method should also
-// be moved to a different file, maybe something like SubgraphExplorer, because it's just useful
-// for looking at connections in the graph.
 class PraFeatureGenerator(
     params: JValue,
     praBase: String,
     config: PraConfig,
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
-  val featureParamKeys = Seq("path finder", "path selector", "path follower")
+  val featureParamKeys = Seq("type", "path finder", "path selector", "path follower")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
   var pathTypes: Seq[PathType] = null
@@ -86,7 +80,7 @@ class PraFeatureGenerator(
     val numIters = JsonHelper.extractWithDefault(finderParams, "path finding iterations", 3)
 
     // Now we create and run the path finder.
-    val edgesToExclude = createEdgesToExclude(data)
+    val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
     val finder = new PathFinder(config.graph,
       config.numShards,
       data.getAllSources(),
@@ -152,7 +146,7 @@ class PraFeatureGenerator(
    */
   def computeFeatureValues(pathTypes: Seq[PathType], data: Dataset, outputFile: String) = {
     println("Computing feature values")
-    val edgesToExclude = createEdgesToExclude(data)
+    val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
     val follower = createPathFollower(params \ "path follower", pathTypes, data)
     follower.execute()
     if (follower.usesGraphChi()) {
@@ -183,25 +177,6 @@ class PraFeatureGenerator(
       inverses: Map[Int, Int],
       pathTypeFactory: PathTypeFactory) = {
     pathCountMap.mapValues(m => collapseInverses(m, inverses, pathTypeFactory))
-  }
-
-  def createEdgesToExclude(data: Dataset): Seq[((Int, Int), Int)] = {
-    // If there was no input data (e.g., if we are actually trying to predict new edges, not
-    // just hide edges from ourselves to try to recover), then there aren't any edges to
-    // exclude.  So return an empty list.
-    if (data == null) {
-      return Seq()
-    }
-    val sources = data.getAllSources().asScala.map(_.toInt)
-    val targets = data.getAllTargets().asScala.map(_.toInt)
-    if (sources.size == 0 || targets.size == 0) {
-      return Seq()
-    }
-    sources.zip(targets).flatMap(sourceTarget => {
-      config.unallowedEdges.asScala.map(edge => {
-        (sourceTarget, edge.toInt)
-      })
-    })
   }
 
   def createPathTypeFactory(params: JValue): PathTypeFactory = {
@@ -261,7 +236,7 @@ class PraFeatureGenerator(
       pathTypes: Seq[PathType],
       data: Dataset): PathFollower = {
     val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
-    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data))
+    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data, config.unallowedEdges))
     if (name.equals("random walks")) {
       val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
         "normalize walk probabilities")
