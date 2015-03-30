@@ -1,12 +1,5 @@
 package edu.cmu.ml.rtw.pra.config
 
-import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy
-import edu.cmu.ml.rtw.pra.features.MatrixPathFollowerFactory
-import edu.cmu.ml.rtw.pra.features.PathTypePolicy
-import edu.cmu.ml.rtw.pra.features.RandomWalkPathFollowerFactory
-import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollowerFactory
-import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
-import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -63,187 +56,27 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   }
 
   def getParamFileFromLoadStatement(load: String) = {
-        val name = load.split(" ")(1)
-        if (name.startsWith("/")) {
-          name
-        } else {
-          s"${baseDir}param_files/${name}.json"
-        }
-  }
-
-  def setPraConfigFromParams(params: JValue, config: PraConfig.Builder) {
-    // It's important that this happens first.  Well, it's at least important that this happens
-    // before anything that uses the dictionaries (like initializePathTypeFactory, for instance),
-    // so we just put it here at the top to be safe.
-    initializeGraphParameters(getGraphDirectory(params), config)
-
-    val pra_params = params \ "pra parameters"
-
-    var value = pra_params \ "l1 weight"
-    if (!value.equals(JNothing)) {
-      config.setL1Weight(value.extract[Double])
-    }
-    value = pra_params \ "l2 weight"
-    if (!value.equals(JNothing)) {
-      config.setL2Weight(value.extract[Double])
-    }
-    value = pra_params \ "walks per source"
-    if (!value.equals(JNothing)) {
-      config.setWalksPerSource(value.extract[Int])
-    }
-    value = pra_params \ "walks per path"
-    if (!value.equals(JNothing)) {
-      config.setWalksPerPath(value.extract[Int])
-    }
-    value = pra_params \ "path finding iterations"
-    if (!value.equals(JNothing)) {
-      config.setNumIters(value.extract[Int])
-    }
-    value = pra_params \ "number of paths to keep"
-    if (!value.equals(JNothing)) {
-      config.setNumPaths(value.extract[Int])
-    }
-    value = pra_params \ "binarize features"
-    if (!value.equals(JNothing)) {
-      config.setBinarizeFeatures(value.extract[Boolean])
-    }
-    value = pra_params \ "normalize walk probabilities"
-    if (!value.equals(JNothing)) {
-      config.setNormalizeWalkProbabilities(value.extract[Boolean])
-    }
-    value = pra_params \ "matrix accept policy"
-    if (!value.equals(JNothing)) {
-      config.setAcceptPolicy(MatrixRowPolicy.parseFromString(value.extract[String]))
-    }
-    value = pra_params \ "path accept policy"
-    if (!value.equals(JNothing)) {
-      config.setPathTypePolicy(PathTypePolicy.parseFromString(value.extract[String]))
-    }
-    value = pra_params \ "path type factory"
-    if (!value.equals(JNothing)) {
-      initializePathTypeFactory(value, config);
-    }
-    value = pra_params \ "path type selector"
-    if (!value.equals(JNothing)) {
-      initializePathTypeSelector(value, config);
-    }
-    value = pra_params \ "path follower"
-    if (!value.equals(JNothing)) {
-      initializePathFollowerFactory(value, config);
-    }
-  }
-
-  def getGraphDirectory(params: JValue): String = {
-    var value = params \ "graph"
-    try {
-      val name = value.extract[String]
-      if (name.startsWith("/")) {
-        return name
-      } else {
-        return baseDir + "/graphs/" + name
-      }
-    } catch {
-      case e: MappingException => {
-        val name = (value \ "name").extract[String]
-        return baseDir + "/graphs/" + name
-      }
-    }
-  }
-
-  def initializeGraphParameters(graphDirectory: String, config: PraConfig.Builder) {
-    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv");
-    println(s"Loading node and edge dictionaries from graph directory: $dir");
-    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
-    config.setNumShards(numShards)
-    val nodeDict = new Dictionary();
-    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
-    config.setNodeDictionary(nodeDict);
-    val edgeDict = new Dictionary();
-    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
-    config.setEdgeDictionary(edgeDict);
-  }
-
-  def initializePathTypeFactory(params: JValue, config: PraConfig.Builder) {
-    val name = (params \ "name").extract[String]
-    if (name.equals("VectorPathTypeFactory")) {
-      initializeVectorPathTypeFactory(params, config)
+    val name = load.split(" ")(1)
+    if (name.startsWith("/")) {
+      name
     } else {
-      throw new RuntimeException("Unrecognized path type factory")
-    }
-  }
-
-  def initializeVectorPathTypeFactory(params: JValue, config: PraConfig.Builder) {
-    println("Initializing vector path type factory")
-    val spikiness = (params \ "spikiness").extract[Double]
-    val resetWeight = (params \ "reset weight").extract[Double]
-    println(s"RESET WEIGHT SET TO $resetWeight")
-    val embeddingsFiles = (params \ "embeddings") match {
-      case JNothing => Nil
-      case JString(path) if (path.startsWith("/")) => List(path)
-      case JString(name) => List(s"${baseDir}embeddings/${name}/embeddings.tsv")
-      case JArray(list) => {
-        list.map(_ match {
-          case JString(path) if (path.startsWith("/")) => path
-          case JString(name) => s"${baseDir}embeddings/${name}/embeddings.tsv"
-          case other => throw new IllegalStateException("Error specifying embeddings")
-        })
-      }
-      case jval => {
-        val name = (jval \ "name").extract[String]
-        List(s"${baseDir}embeddings/${name}/embeddings.tsv")
-      }
-    }
-    val embeddings = config.readEmbeddingsVectors(embeddingsFiles.asJava)
-    config.setPathTypeFactory(
-      new VectorPathTypeFactory(config.edgeDict, embeddings, spikiness, resetWeight))
-  }
-
-  def initializePathTypeSelector(params: JValue, config: PraConfig.Builder) {
-    val name = (params \ "name").extract[String]
-    if (name.equals("VectorClusteringPathTypeSelector")) {
-      initializeVectorClusteringPathTypeSelector(params, config)
-    } else {
-      throw new RuntimeException("Unrecognized path type selector")
-    }
-  }
-
-  def initializeVectorClusteringPathTypeSelector(params: JValue, config: PraConfig.Builder) {
-    println("Initializing VectorClusteringPathTypeSelector")
-    val similarityThreshold = (params \ "similarity threshold").extract[Double]
-    config.setPathTypeSelector( new VectorClusteringPathTypeSelector(
-      config.pathTypeFactory.asInstanceOf[VectorPathTypeFactory],
-      similarityThreshold))
-  }
-
-  def initializePathFollowerFactory(params: JValue, config: PraConfig.Builder) {
-    val name = (params \ "name").extract[String]
-    if (name.equals("random walks")) {
-      config.setPathFollowerFactory(new RandomWalkPathFollowerFactory());
-    } else if (name.equals("matrix multiplication")) {
-      val max_fan_out = (params \ "max fan out") match {
-        case JNothing => 100
-        case value => value.extract[Int]
-      }
-      val matrix_dir = (params \ "matrix dir") match {
-        case JNothing => "matrices"
-        case value => value.extract[String]
-      }
-      config.setPathFollowerFactory(new MatrixPathFollowerFactory(matrix_dir, max_fan_out));
-    } else if (name.equals("rescal matrix multiplication")) {
-      val dir = (params \ "rescal dir").extract[String]
-      val negativesPerSource = (params \ "negatives per source") match {
-        case JNothing => 15
-        case value => value.extract[Int]
-      }
-      config.setPathFollowerFactory(new RescalMatrixPathFollowerFactory(dir, negativesPerSource));
-    } else {
-      throw new RuntimeException("Unrecognized path follower")
+      s"${baseDir}param_files/${name}.json"
     }
   }
 }
 
 object JsonHelper {
+  implicit val formats = DefaultFormats
+
+  // I don't really understand this implicit Manifest stuff, but stackoverflow told me to put it
+  // there, and it worked.
+  def extractWithDefault[T](params: JValue, key: String, default: T)(implicit m: Manifest[T]): T = {
+    (params \ key) match {
+      case JNothing => default
+      case value => value.extract[T]
+    }
+  }
+
   def getPathOrNameOrNull(params: JValue, key: String, baseDir: String, nameDir: String): String = {
     (params \ key) match {
       case JNothing => null
@@ -259,6 +92,20 @@ object JsonHelper {
       case JString(path) if (path.startsWith("/")) => Some(path)
       case JString(name) => Some(s"${baseDir}${nameDir}/${name}/")
       case other => throw new IllegalStateException(s"$key is not a string field")
+    }
+  }
+
+  def ensureNoExtras(params: JValue, base: String, keys: Seq[String]) {
+    params match {
+      case JObject(fields) => {
+        fields.map(field => {
+          if (!keys.contains(field._1)) {
+            val message = s"Malformed parameters under $base: unexpected key: ${field._1}"
+            throw new IllegalStateException(message)
+          }
+        })
+      }
+      case other => {}
     }
   }
 }

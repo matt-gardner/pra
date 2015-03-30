@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
@@ -358,5 +359,9 @@ public class FileUtil {
       }
     } catch (InterruptedException e) { }
     return;
+  }
+
+  public void copy(String from, String to) throws IOException {
+    Files.copy(new File(from).toPath(), new File(to).toPath());
   }
 }

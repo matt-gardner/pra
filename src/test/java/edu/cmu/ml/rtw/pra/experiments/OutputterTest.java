@@ -77,9 +77,9 @@ public class OutputterTest extends TestCase {
     List<Double> weights = Lists.newArrayList();
     weights.add(.2);
     weights.add(.9);
-    List<PathType> pathTypes = Lists.newArrayList();
-    pathTypes.add(factory.fromString("-1-"));
-    pathTypes.add(factory.fromString("-2-"));
+    List<String> featureNames = Lists.newArrayList();
+    featureNames.add("-1-");
+    featureNames.add("-2-");
     String weightFile = "weight_file";
     String expectedWeightFileContents =
         "-2-\t0.9\n" +
@@ -87,7 +87,7 @@ public class OutputterTest extends TestCase {
 
     fileUtil.onlyAllowExpectedFiles();
     fileUtil.addExpectedFileWritten(weightFile, expectedWeightFileContents);
-    outputter.outputWeights(weightFile, weights, pathTypes);
+    outputter.outputWeights(weightFile, weights, featureNames);
     fileUtil.expectFilesWritten();
   }
 
@@ -259,16 +259,16 @@ public class OutputterTest extends TestCase {
     String filename = "/matrix file";
     List<MatrixRow> rows = Lists.newArrayList();
     rows.add(new MatrixRow(1, 2, new int[]{0, 1}, new double[]{0.1, 0.2}));
-    List<PathType> pathTypes = Lists.newArrayList();
-    pathTypes.add(factory.fromString("-1-"));
-    pathTypes.add(factory.fromString("-2-"));
+    List<String> featureNames = Lists.newArrayList();
+    featureNames.add("-1-");
+    featureNames.add("-2-");
 
     String matrixFile = "/matrix file";
     String expectedMatrixFileContents = "1,2\t-1-,0.1 -#- -2-,0.2\n";
 
     fileUtil.onlyAllowExpectedFiles();
     fileUtil.addExpectedFileWritten(matrixFile, expectedMatrixFileContents);
-    outputter.outputFeatureMatrix(filename, new FeatureMatrix(rows), pathTypes);
+    outputter.outputFeatureMatrix(filename, new FeatureMatrix(rows), featureNames);
     fileUtil.expectFilesWritten();
   }
 

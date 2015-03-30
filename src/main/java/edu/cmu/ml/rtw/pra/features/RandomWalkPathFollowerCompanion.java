@@ -86,6 +86,16 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
   }
 
   @VisibleForTesting
+  protected MatrixRowPolicy getAcceptPolicy() {
+    return acceptPolicy;
+  }
+
+  @VisibleForTesting
+  protected boolean getNormalizeWalks() {
+    return normalizeWalkProbabilities;
+  }
+
+  @VisibleForTesting
   protected void setAllowedTargets(Set<Integer> allowedTargets) {
     this.allowedTargets = allowedTargets;
   }

@@ -93,4 +93,14 @@ public class MatrixPathFollower implements PathFollower {
   protected String getMatrixDir() {
     return matrixDir;
   }
+
+  @VisibleForTesting
+  protected int getMaxFanOut() {
+    return maxFanOut;
+  }
+
+  @VisibleForTesting
+  protected boolean getNormalizeWalks() {
+    return normalizeWalkProbabilities;
+  }
 }

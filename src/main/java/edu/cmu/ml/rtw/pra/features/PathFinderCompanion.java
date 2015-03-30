@@ -250,6 +250,75 @@ public class PathFinderCompanion extends TwoKeyCompanion {
     return pathCountMap;
   }
 
+  /**
+   * Also very similar to getPathCounts, but more similar to getPathCountMap.  While
+   * getPathCountMap returns a (path type, count) map for every (source, target) pair, this returns
+   * a (path type, set(node, node)) map.  That is, for every (source, target) pair, we just return
+   * _all_ walks that started from either the source or the target, including those that ended up
+   * at intermediate nodes.  So in the set(node, node), the first node in the pair will always be
+   * either the source or the target, and the second node in the pair is unconstrained.
+   * getPathCountMap, by contrast, constrains the first node to be the source, and the second node
+   * to be the target, and returns a count.
+   *
+   * Note that this method still does path combining on intermediate nodes.
+   */
+  public Map<Pair<Integer, Integer>, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs(
+      List<Integer> sources, List<Integer> targets) {
+    logger.info("Waiting for finish");
+    assureReady();
+    logger.info("Getting paths");
+    // First we just get the two-sided paths using the method above; no need to duplicate all of
+    // that code.
+    Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap =
+        getPathCountMap(sources, targets);
+
+    // Now we go through all of the walk counts a second time, to get one-sided paths.  It might be
+    // more efficient to do this at the same time, but for now this will do.
+    Map<Integer, Map<PathType, Set<Pair<Integer, Integer>>>> oneSidedPaths = Maps.newHashMap();
+    for (Integer intermediateNode : distributions.keySet()) {
+      ConcurrentHashMap<Integer, DiscreteDistribution> map = distributions.get(intermediateNode);
+      for (int originNode : map.keySet()) {
+        DiscreteDistribution dist = map.get(originNode);
+        for (IdCount vc : dist.getTop(10)) {
+          PathType pathType = pathDict.getKey(vc.id);
+          Map<PathType, Set<Pair<Integer, Integer>>> subgraph = oneSidedPaths.get(originNode);
+          if (subgraph == null) {
+            subgraph = Maps.newHashMap();
+            oneSidedPaths.put(originNode, subgraph);
+          }
+          MapUtil.addValueToKeySet(subgraph, pathType, Pair.makePair(originNode, intermediateNode));
+        }
+      }
+    }
+
+    Map<Pair<Integer, Integer>, Map<PathType, Set<Pair<Integer, Integer>>>> localSubgraphs =
+        Maps.newHashMap();
+
+    // And finally, we merge the two maps.
+    for (int i = 0; i < sources.size(); i++) {
+      int source = sources.get(i);
+      int target = targets.get(i);
+      Pair<Integer, Integer> sourceTarget = Pair.makePair(source, target);
+      Map<PathType, Set<Pair<Integer, Integer>>> subgraph = Maps.newHashMap();
+      Map<PathType, Set<Pair<Integer, Integer>>> oneSidedSource = oneSidedPaths.get(source);
+      if (oneSidedSource != null) {
+        subgraph.putAll(oneSidedSource);
+      }
+      Map<PathType, Set<Pair<Integer, Integer>>> oneSidedTarget = oneSidedPaths.get(target);
+      if (oneSidedTarget != null) {
+        subgraph.putAll(oneSidedTarget);
+      }
+      Map<PathType, Integer> twoSided = pathCountMap.get(sourceTarget);
+      if (twoSided != null) {
+        for (PathType pathType : twoSided.keySet()) {
+          MapUtil.addValueToKeySet(subgraph, pathType, sourceTarget);
+        }
+      }
+      localSubgraphs.put(sourceTarget, subgraph);
+    }
+    return localSubgraphs;
+  }
+
   // These top two get called when we have a direct path from source to target.  We square the
   // path count in that case, to account for the effects of the multiplication of the
   // intermediate path counts below.

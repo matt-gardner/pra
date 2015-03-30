@@ -88,4 +88,14 @@ public class RescalMatrixPathFollower implements PathFollower {
   public boolean usesGraphChi() {
     return false;
   }
+
+  @VisibleForTesting
+  public String getRescalDir() {
+    return rescalDir;
+  }
+
+  @VisibleForTesting
+  public int getNegativesPerSource() {
+    return negativesPerSource;
+  }
 }

@@ -149,6 +149,10 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     return companion.getPathCountMap(origSources, origTargets);
   }
 
+  public Map<Pair<Integer, Integer>, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
+    return companion.getLocalSubgraphs(origSources, origTargets);
+  }
+
   public void shutDown() {
     logger.info("Path Finder shutting down");
     companion.close();
