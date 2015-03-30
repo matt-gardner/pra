@@ -19,8 +19,9 @@ public enum MatrixRowPolicy {
   // node.  This either means that the node was in the list of training examples, or that the node
   // was in the "allowedTargets" set passed into the PathFollower.
   ALL_TARGETS,
-  // Only keep rows that correspond to (source, target) pairs in the training data.  This is
-  // obviously only useful during training time, and not testing time.
+  // Only keep rows that correspond to (source, target) pairs given in the data.  This should only
+  // be used when you have both positive and negative instances given both at training and at test
+  // time.
   PAIRED_TARGETS_ONLY;
 
   public static MatrixRowPolicy parseFromString(String policy) {
