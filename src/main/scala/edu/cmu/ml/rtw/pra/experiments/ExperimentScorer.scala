@@ -187,8 +187,12 @@ object ExperimentScorer {
           metrics(relation)(TIMESTAMP) = timestamp
           println(s"Computing metrics for relation $relation")
           for (metricComputer <- metricComputers) {
-            var test_split_file = s"$split_dir/$relation/testing.tsv"
+            val fixed = relation.replace("/", "_")
+            var test_split_file = s"$split_dir/$fixed/testing.tsv"
             if (!new File(test_split_file).exists()) {
+              println(s"Couldn't find testing file in split dir $split_dir - this is probably an "
+                + "error")
+              println(s"Filename I was looking for was this: $test_split_file")
               test_split_file = s"$experiment_dir/$relation/testing_positive_examples.tsv"
             }
             val relation_metrics = metricComputer.computeRelationMetrics(results_file, test_split_file)
