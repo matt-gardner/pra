@@ -90,7 +90,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val builder = new PraConfig.Builder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
-      parseRelationMetadata(metadataDirectory, relation, builder, outputBase)
+      parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
@@ -200,10 +200,22 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val fixed = config.relation.replace("/", "_")
     val data = if (dataToUse == "both") {
       val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
-      val trainingData = datasetFactory.fromFile(trainingFile, config.nodeDict)
+      val trainingData = if (fileUtil.fileExists(trainingFile))
+        datasetFactory.fromFile(trainingFile, config.nodeDict) else null
       val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
-      val testingData = datasetFactory.fromFile(testingFile, config.nodeDict)
-      trainingData.merge(testingData)
+      val testingData = if (fileUtil.fileExists(testingFile))
+        datasetFactory.fromFile(testingFile, config.nodeDict) else null
+      if (trainingData == null && testingData == null) {
+        throw new IllegalStateException("Neither training file nor testing file exists for " +
+          "relation " + config.relation)
+      }
+      if (trainingData == null) {
+        testingData
+      } else if (testingData == null) {
+        trainingData
+      } else {
+        trainingData.merge(testingData)
+      }
     } else {
       val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
       datasetFactory.fromFile(inputFile, config.nodeDict)
@@ -369,6 +381,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   def parseRelationMetadata(
       directory: String,
       relation: String,
+      mode: String,
       builder: PraConfig.Builder,
       outputBase: String) {
     val inverses = Driver.createInverses(directory, builder.edgeDict, fileUtil)
@@ -385,7 +398,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder.edgeDict)
     builder.setUnallowedEdges(unallowedEdges.map(x => Integer.valueOf(x)).asJava)
 
-    if (directory != null && fileUtil.fileExists(directory + "ranges.tsv")) {
+    if (directory != null && mode != "explore graph" && fileUtil.fileExists(directory + "ranges.tsv")) {
       val ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv")
       val range = ranges.get(relation)
       if (range == null) {
