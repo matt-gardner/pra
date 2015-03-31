@@ -99,7 +99,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       if (mode == "learn models") {
         learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
       } else if (mode == "explore graph") {
-        exploreGraph(params, builder.build(), splitsDirectory)
+        exploreGraph(params, builder.noChecks().build(), splitsDirectory)
       }
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
@@ -197,14 +197,15 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val dataToUse = JsonHelper.extractWithDefault(praParams, "data", "both")
     val datasetFactory = new DatasetFactory()
+    val fixed = config.relation.replace("/", "_")
     val data = if (dataToUse == "both") {
-      val trainingFile = s"${splitsDirectory}${config.relation}/training.tsv"
+      val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
       val trainingData = datasetFactory.fromFile(trainingFile, config.nodeDict)
-      val testingFile = s"${splitsDirectory}${config.relation}/testing.tsv"
+      val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
       val testingData = datasetFactory.fromFile(testingFile, config.nodeDict)
       trainingData.merge(testingData)
     } else {
-      val inputFile = s"${splitsDirectory}${config.relation}/${dataToUse}.tsv"
+      val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
       datasetFactory.fromFile(inputFile, config.nodeDict)
     }
 

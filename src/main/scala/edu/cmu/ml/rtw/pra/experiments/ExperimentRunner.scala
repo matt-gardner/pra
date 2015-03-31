@@ -44,7 +44,7 @@ object ExperimentRunner {
       case JString(m) => m
       case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
     }
-    val result_base_dir = if (mode == "exploration") pra_base + EXPLORATION_DIR else pra_base + RESULTS_DIR
+    val result_base_dir = if (mode == "explore graph") pra_base + EXPLORATION_DIR else pra_base + RESULTS_DIR
     val experiment_spec_dir = pra_base + SPEC_DIR
     println(s"Running PRA from spec file $spec_file")
     val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".json", "")
