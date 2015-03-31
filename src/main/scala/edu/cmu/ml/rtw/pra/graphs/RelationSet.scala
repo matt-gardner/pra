@@ -103,7 +103,6 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
         fileUtil.readMapListFromTsvReader(reader, 3, false, new FileUtil.LineFilter() {
           override def filter(fields: Array[String]): Boolean = {
             if (fields.length != 4) return true
-            if (!fields(2).equals("/lang/en")) return true
             return false
           }
         }).asScala.mapValues(_.asScala.toList).toMap
