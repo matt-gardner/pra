@@ -30,6 +30,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val keepOriginalEdges = false
   val alias1 = "alias1"
   val alias2 = "alias2"
+  val alias3 = "alias3"
   val concept1 = "concept1"
   val concept2 = "concept2"
   val embedded1 = "embedded1"
@@ -106,17 +107,18 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     aliasFile += concept1 + "\t/type/object/name\t/lang/en\t" + alias1 + "\n"
     aliasFile += concept2 + "\t/common/topic/alias\t/lang/en\t" + alias1 + "\n"
     aliasFile += concept2 + "\tdoesn't really matter\t/lang/en\t" + alias2 + "\n"
+    aliasFile += concept1 + "\t/type/object/key\t/wikipedia/en\t" + alias3 + "\n"
     // Bad rows that should be filtered out.
-    aliasFile += concept1 + "\t/type/object/key\t/wikipedia/en\twiki1\n"
     aliasFile += concept1 + "\t/type/object/name\t/lang/en\t" + alias1 + "\textra column\n"
     aliasFile += concept1 + "\t/type/object/name\t/lang/en\n"
 
     val reader = new BufferedReader(new StringReader(aliasFile))
     val aliases = relationSet.getAliasesFromReader(reader)
-    aliases.size should be(2)
+    aliases.size should be(3)
     expectCount(aliases(alias1), concept1, 1)
     expectCount(aliases(alias1), concept2, 1)
     expectCount(aliases(alias2), concept2, 1)
+    expectCount(aliases(alias3), concept1, 1)
   }
 
   it should "fail with unrecognized format" in {
