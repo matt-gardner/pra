@@ -22,3 +22,22 @@ class PraFeatureExtractor(edgeDict: Dictionary)  extends FeatureExtractor {
     }).toList.asJava
   }
 }
+
+class OneSidedFeatureExtractor(edgeDict: Dictionary, nodeDict: Dictionary) extends FeatureExtractor {
+  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    subgraph.asScala.flatMap(entry => {
+      entry._2.asScala.map(nodePair => {
+        val path = entry._1.encodeAsHumanReadableString(edgeDict)
+        val endNode = nodeDict.getString(nodePair.getRight)
+        if (nodePair.getLeft == source) {
+          s"SOURCE:${path}:${endNode}"
+        } else if (nodePair.getLeft == target) {
+          s"TARGET:${path}:${endNode}"
+        } else {
+          throw new IllegalStateException("Something is wrong with the subgraph - " +
+            "the first node should always be either the source or the target")
+        }
+      })
+    }).toList.asJava
+  }
+}
