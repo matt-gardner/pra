@@ -21,8 +21,8 @@ import scala.collection.mutable
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
-// TODO(matt): This class has acrued a few too many functions, I think, and the runPra function is
-// much too large.  This class needs some refactoring.
+// TODO(matt): This class is a mess.  It needs some major refactoring, splitting this into several
+// parts, and tests for each of those parts.
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
@@ -44,6 +44,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     createSimilarityMatricesIfNecessary(params)
     createDenserMatricesIfNecessary(params)
 
+    createSplitIfNecessary(params \ "split")
+
     val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "learn models")
     if (mode == "no op") {
       fileUtil.deleteFile(outputBase)
@@ -60,7 +62,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val splitsDirectory = (params \ "split") match {
       case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
       case JString(name) => s"${praBase}splits/${name}/"
-      case other => throw new IllegalStateException("split must be a string")
+      case jval => s"${praBase}splits/" + (jval \ "name").extract[String] + "/"
     }
 
     val start_time = System.currentTimeMillis
@@ -74,7 +76,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     // This takes care of setting everything in the config builder that is consistent across
     // relations.
-    initializeGraphParameters(getGraphDirectory(params), baseBuilder)
+    Driver.initializeGraphParameters(getGraphDirectory(params), baseBuilder)
 
     var nodeNames: java.util.Map[String, String] = null
     if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
@@ -90,7 +92,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val builder = new PraConfig.Builder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
-      parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
+      Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
@@ -237,15 +239,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
     // just use the path as is.  Otherwise, we have some processing to do.
     params match {
-      case path: JString if (path.extract[String].startsWith("/")) => {
-        if (!fileUtil.fileExists(path.extract[String])) {
+      case JString(path) if (path.startsWith("/")) => {
+        if (!fileUtil.fileExists(path)) {
           throw new IllegalStateException("Specified path to graph does not exist!")
         }
       }
-      case name: JString => {
-        graph_name = name.extract[String]
-      }
-      case jval: JValue => {
+      case JString(name) => graph_name = name
+      case jval => {
         graph_name = (jval \ "name").extract[String]
         params_specified = true
       }
@@ -270,6 +270,11 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     }
   }
 
+  // There is a check in the code to make sure that the graph parameters used to create a
+  // particular graph in a directory match the parameters you're trying to use with the same graph
+  // directory.  But, some things might not matter in that check, like which dense matrices have
+  // been created for that graph.  This method specifies which things, exactly, don't matter when
+  // comparing two graph parameter specifications.
   def graphParamsMatch(params1: JValue, params2: JValue): Boolean = {
     return params1.removeField(_._1.equals("denser matrices")) ==
       params2.removeField(_._1.equals("denser matrices"))
@@ -368,6 +373,71 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     })
   }
 
+  def createSplitIfNecessary(params: JValue) {
+    var split_name = ""
+    var params_specified = false
+    // First, is this just a path, or do the params specify a split name?  If it's a path, we'll
+    // just use the path as is.  Otherwise, we have some processing to do.
+    params match {
+      case JString(path) if (path.startsWith("/")) => {
+        if (!fileUtil.fileExists(path)) {
+          throw new IllegalStateException("Specified path to split does not exist!")
+        }
+      }
+      case JString(name) => split_name = name
+      case jval => {
+        split_name = (jval \ "name").extract[String]
+        params_specified = true
+      }
+    }
+    if (split_name != "") {
+      // Here we need to see if the split has already been created, and (if so) whether the split
+      // as specified matches what's already been created.
+      val split_dir = s"${praBase}splits/${split_name}/"
+      val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
+      if (fileUtil.fileExists(split_dir)) {
+        fileUtil.blockOnFileDeletion(creator.inProgressFile)
+        val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
+        if (params_specified == true && current_params != params) {
+          println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+          println(s"Parameters specified in spec file: ${pretty(render(params))}")
+          println(s"Difference: ${current_params.diff(params)}")
+          throw new IllegalStateException("Split parameters don't match!")
+        }
+      } else {
+        creator.createSplit()
+      }
+    }
+  }
+
+  def getGraphDirectory(params: JValue): String = {
+    (params \ "graph") match {
+      case JString(path) if (path.startsWith("/")) => path
+      case JString(name) => praBase + "/graphs/" + name
+      case jval => praBase + "/graphs/" + (jval \ "name").extract[String]
+    }
+  }
+}
+
+object Driver {
+
+  def initializeGraphParameters(
+      graphDirectory: String,
+      config: PraConfig.Builder,
+      fileUtil: FileUtil = new FileUtil) {
+    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
+    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv")
+    println(s"Loading node and edge dictionaries from graph directory: $dir")
+    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
+    config.setNumShards(numShards)
+    val nodeDict = new Dictionary()
+    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
+    config.setNodeDictionary(nodeDict)
+    val edgeDict = new Dictionary()
+    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
+    config.setEdgeDictionary(edgeDict)
+  }
+
   /**
    * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
    * that means deciding which relations are known to be inverses of each other, which edges
@@ -383,7 +453,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       relation: String,
       mode: String,
       builder: PraConfig.Builder,
-      outputBase: String) {
+      outputBase: String,
+      fileUtil: FileUtil = new FileUtil) {
     val inverses = Driver.createInverses(directory, builder.edgeDict, fileUtil)
     builder.setRelationInverses(inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava)
 
@@ -417,40 +488,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       writer.close()
     }
   }
-
-  def getGraphDirectory(params: JValue): String = {
-    var value = params \ "graph"
-    try {
-      val name = value.extract[String]
-      if (name.startsWith("/")) {
-        return name
-      } else {
-        return praBase + "/graphs/" + name
-      }
-    } catch {
-      case e: MappingException => {
-        val name = (value \ "name").extract[String]
-        return praBase + "/graphs/" + name
-      }
-    }
-  }
-
-  def initializeGraphParameters(graphDirectory: String, config: PraConfig.Builder) {
-    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv");
-    println(s"Loading node and edge dictionaries from graph directory: $dir");
-    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
-    config.setNumShards(numShards)
-    val nodeDict = new Dictionary();
-    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
-    config.setNodeDictionary(nodeDict);
-    val edgeDict = new Dictionary();
-    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
-    config.setEdgeDictionary(edgeDict);
-  }
-}
-
-object Driver {
 
   def createUnallowedEdges(
       relation: String,

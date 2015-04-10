@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.experiments;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,10 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import edu.cmu.ml.rtw.users.matt.util.CollectionsUtil;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
@@ -33,6 +36,10 @@ public class Dataset {
 
   public static Dataset readFromFile(String file, Dictionary dict) throws IOException {
     return readFromFile(new File(file), dict);
+  }
+
+  public static Dataset readFromFile(String file, Dictionary dict, FileUtil fileUtil) throws IOException {
+    return readFromReader(fileUtil.getBufferedReader(file), dict);
   }
 
   public static Dataset readFromFile(File file) throws IOException {
@@ -228,6 +235,27 @@ public class Dataset {
     return new Pair<Dataset, Dataset>(trainingData, testingData);
   }
 
+  public void write(FileWriter writer, Dictionary nodeDict) throws IOException {
+    writeInstances(writer, nodeDict, getPositiveInstances(), true);
+    writeInstances(writer, nodeDict, getNegativeInstances(), false);
+  }
+
+  private void writeInstances(FileWriter writer,
+                              Dictionary nodeDict,
+                              List<Pair<Integer, Integer>> instances,
+                              boolean isPositive) throws IOException {
+    for (Pair<Integer, Integer> instance : instances) {
+      writer.write(nodeDict.getString(instance.getLeft()));
+      writer.write("\t");
+      writer.write(nodeDict.getString(instance.getRight()));
+      if (isPositive) {
+        writer.write("\t1\n");
+      } else {
+        writer.write("\t-1\n");
+      }
+    }
+  }
+
   public List<Pair<Integer, Integer>> getPositiveInstances() {
     return CollectionsUtil.zipLists(positiveSources, positiveTargets);
   }
@@ -325,6 +353,17 @@ public class Dataset {
     positiveTargets = builder.positiveTargets;
     negativeSources = builder.negativeSources;
     negativeTargets = builder.negativeTargets;
+  }
+
+  @VisibleForTesting
+  public Dataset(List<Integer> positiveSources,
+                 List<Integer> positiveTargets,
+                 List<Integer> negativeSources,
+                 List<Integer> negativeTargets) {
+    this.positiveSources = positiveSources;
+    this.positiveTargets = positiveTargets;
+    this.negativeSources = negativeSources;
+    this.negativeTargets = negativeTargets;
   }
 
   public static class Builder {
