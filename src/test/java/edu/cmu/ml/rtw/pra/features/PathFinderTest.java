@@ -77,7 +77,6 @@ public class PathFinderTest extends TestCase {
     // details about ordering of edges and random number generators...), and that the Path
     // objects are created and modified consistent with the walk resets and forwarding.
     FakeChiVertex chiVertex = new FakeChiVertex(1);
-    chiVertex = new FakeChiVertex(1);
     chiVertex.addInEdge(1, 1);
     chiVertex.addInEdge(3, 2);
     chiVertex.addOutEdge(5, 2);

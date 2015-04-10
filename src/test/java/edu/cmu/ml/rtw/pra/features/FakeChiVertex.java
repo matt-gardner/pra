@@ -51,6 +51,11 @@ public class FakeChiVertex extends ChiVertex<EmptyType, Integer> {
     }
 
     @Override
+    public int getOutEdgeId(int num) {
+      return outEdges.get(num).getVertexId();
+    }
+
+    @Override
     public FakeChiEdge outEdge(int num) {
         return outEdges.get(num);
     }
