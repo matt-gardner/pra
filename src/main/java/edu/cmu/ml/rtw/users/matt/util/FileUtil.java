@@ -2,9 +2,11 @@ package edu.cmu.ml.rtw.users.matt.util;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +18,8 @@ import java.nio.file.WatchService;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -86,6 +90,20 @@ public class FileUtil {
     return new FileWriter(filename, append);
   }
 
+  public void writeLinesToFile(String filename, List<String> lines) throws IOException {
+    FileWriter writer = getFileWriter(filename);
+    for (String line : lines) {
+      writer.write(line);
+      writer.write("\n");
+    }
+    writer.close();
+  }
+
+  public BufferedReader getBZ2BufferedReader(String filename) throws IOException {
+    return new BufferedReader(new InputStreamReader(
+        new BZip2CompressorInputStream(new FileInputStream(filename))));
+  }
+
   public BufferedReader getBufferedReader(String filename) throws IOException {
     return new BufferedReader(new FileReader(filename));
   }
@@ -120,6 +138,10 @@ public class FileUtil {
 
   public List<String> readLinesFromFile(File file) throws IOException {
     return readLinesFromReader(getBufferedReader(file));
+  }
+
+  public List<String> readLinesFromBZ2File(String filename) throws IOException {
+    return readLinesFromReader(getBZ2BufferedReader(filename));
   }
 
   public List<Pair<String, String>> readStringPairsFromFile(String filename) throws IOException {

@@ -72,7 +72,7 @@ object remove_edges_from_graph {
     files_to_copy.map(f => fileUtil.copy(graph_dir + f, new_dir + f))
   }
 
-  def main(args: Array[String]) {
+  def NOT_main(args: Array[String]) {
     val graph_dir = "/home/mg1/pra/graphs/nell/kb/"
     val new_dir = "/home/mg1/pra/graphs/testing/"
     val split = "/home/mg1/pra/splits/nell_dev/"

@@ -20,6 +20,7 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "17.0",
   "log4j" % "log4j" % "1.2.16",
   "commons-io" % "commons-io" % "2.4",
+  "org.apache.commons" % "commons-compress" % "1.9",
   // Scala utility libraries
   "org.json4s" %% "json4s-native" % "3.2.11",
   // Matrix stuff, both for java and scala
