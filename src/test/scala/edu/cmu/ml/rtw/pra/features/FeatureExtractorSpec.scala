@@ -63,4 +63,15 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("TARGET:-rel1-:node3")
     features should contain("SOURCE:-rel2-:node3")
   }
+  
+  "CategoricalComparisonFeatureExtractor" should "extract categorical comparison features" in {
+    val pathTypes = Seq("-1-", "-2-")
+    val nodePairs = Seq(Set((1,2)), Set((1,3),(2,4)))
+    val extractor = new CategoricalComparisonFeatureExtractor(edgeDict, nodeDict)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    for {s <- features}  println(s)
+    features.size should be(1)
+    features should contain("CATCOMP:-rel2-:node3:node4")
+  }
+
 }
