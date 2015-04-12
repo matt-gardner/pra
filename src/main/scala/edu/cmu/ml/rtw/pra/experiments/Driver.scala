@@ -399,17 +399,21 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       // Here we need to see if the split has already been created, and (if so) whether the split
       // as specified matches what's already been created.
       val split_dir = s"${praBase}splits/${split_name}/"
-      val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
+      val in_progress_file = SplitCreator.inProgressFile(split_dir)
+      val param_file = SplitCreator.paramFile(split_dir)
       if (fileUtil.fileExists(split_dir)) {
-        fileUtil.blockOnFileDeletion(creator.inProgressFile)
-        val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
-        if (params_specified == true && current_params != params) {
-          println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-          println(s"Parameters specified in spec file: ${pretty(render(params))}")
-          println(s"Difference: ${current_params.diff(params)}")
-          throw new IllegalStateException("Split parameters don't match!")
+        fileUtil.blockOnFileDeletion(in_progress_file)
+        if (fileUtil.fileExists(param_file)) {
+          val current_params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
+          if (params_specified == true && current_params != params) {
+            println(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
+            println(s"Parameters specified in spec file: ${pretty(render(params))}")
+            println(s"Difference: ${current_params.diff(params)}")
+            throw new IllegalStateException("Split parameters don't match!")
+          }
         }
       } else {
+        val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
         creator.createSplit()
       }
     }

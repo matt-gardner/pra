@@ -23,8 +23,8 @@ class SplitCreator(
     "negative instances", "relations")
   JsonHelper.ensureNoExtras(params, "split", paramKeys)
 
-  val inProgressFile = s"${splitDir}in_progress"
-  val paramFile = s"${splitDir}params.json"
+  val inProgressFile = SplitCreator.inProgressFile(splitDir)
+  val paramFile = SplitCreator.paramFile(splitDir)
   val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split")
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
@@ -110,4 +110,9 @@ class SplitCreator(
       }
     }
   }
+}
+
+object SplitCreator {
+  def inProgressFile(splitDir: String) = s"${splitDir}in_progress"
+  def paramFile(splitDir: String) = s"${splitDir}params.json"
 }
