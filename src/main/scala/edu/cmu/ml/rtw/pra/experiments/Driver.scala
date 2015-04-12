@@ -102,6 +102,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
       } else if (mode == "explore graph") {
         exploreGraph(params, builder.noChecks().build(), splitsDirectory)
+      } else {
+        throw new IllegalStateException("Unrecognized (or unspecified) mode!")
       }
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
@@ -186,6 +188,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val finalWeights = generator.removeZeroWeightFeatures(weights.asScala.map(_.toDouble))
 
     // Then we test the model.
+    // TODO(matt): with some feature generators, we could feasibly just generate the training and
+    // test matrices at the same time, and because of how GraphChi works, that would save us
+    // considerable time.
     val testMatrix = generator.createTestMatrix(config.testingData)
     val scores = model.classifyInstances(testMatrix,
       finalWeights.map(x => java.lang.Double.valueOf(x)).asJava)

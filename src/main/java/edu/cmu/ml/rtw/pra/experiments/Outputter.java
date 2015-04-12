@@ -54,7 +54,7 @@ public class Outputter {
   }
 
   @VisibleForTesting
-  protected Outputter(Dictionary nodeDict,
+  public Outputter(Dictionary nodeDict,
                       Dictionary edgeDict,
                       Map<String, String> nodeNames,
                       FileUtil fileUtil) {

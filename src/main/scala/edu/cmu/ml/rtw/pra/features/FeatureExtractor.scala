@@ -10,7 +10,7 @@ trait FeatureExtractor {
   def extractFeatures(source: Int, target: Int, subgraph: Subgraph): java.util.List[String]
 }
 
-class PraFeatureExtractor(edgeDict: Dictionary)  extends FeatureExtractor {
+class PraFeatureExtractor(val edgeDict: Dictionary)  extends FeatureExtractor {
   override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
     val sourceTarget = new Pair[Integer, Integer](source, target)
     subgraph.asScala.flatMap(entry => {
@@ -23,7 +23,7 @@ class PraFeatureExtractor(edgeDict: Dictionary)  extends FeatureExtractor {
   }
 }
 
-class OneSidedFeatureExtractor(edgeDict: Dictionary, nodeDict: Dictionary) extends FeatureExtractor {
+class OneSidedFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionary) extends FeatureExtractor {
   override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
     subgraph.asScala.flatMap(entry => {
       entry._2.asScala.map(nodePair => {

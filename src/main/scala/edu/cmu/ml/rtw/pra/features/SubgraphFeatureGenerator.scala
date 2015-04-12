@@ -22,27 +22,31 @@ class SubgraphFeatureGenerator(
     config: PraConfig,
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
-  val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature hashing")
+  val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
   val featureDict = new Dictionary
+  val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
 
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
-    val subgraphs = getLocalSubgraphs(data)
-    extractFeatures(subgraphs)
+    createMatrixFromData(data)
   }
 
   override def removeZeroWeightFeatures(weights: Seq[Double]): Seq[Double] = weights
 
   override def createTestMatrix(data: Dataset): FeatureMatrix = {
-    val subgraphs = getLocalSubgraphs(data)
-    val testMatrix = extractFeatures(subgraphs)
+    val testMatrix = createMatrixFromData(data)
     if (config.outputBase != null) {
       val output = config.outputBase + "test_matrix.tsv"
       config.outputter.outputFeatureMatrix(output, testMatrix, getFeatureNames().toList.asJava)
     }
     testMatrix
+  }
+
+  def createMatrixFromData(data: Dataset) = {
+    val subgraphs = getLocalSubgraphs(data)
+    extractFeatures(subgraphs)
   }
 
   override def getFeatureNames(): Array[String] = {
@@ -99,7 +103,8 @@ class SubgraphFeatureGenerator(
   }
 
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
-    val extractorNames = JsonHelper.extractWithDefault(params, "extractors", List("PraFeatureExtractor"))
+    val extractorNames = JsonHelper.extractWithDefault(params, "feature extractors",
+      List("PraFeatureExtractor"))
     extractorNames.map(_ match {
       case "PraFeatureExtractor" => new PraFeatureExtractor(config.edgeDict)
       case "OneSidedFeatureExtractor" => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
@@ -108,13 +113,20 @@ class SubgraphFeatureGenerator(
   }
 
   def hashFeature(feature: String): Int = {
-    // TODO(matt): implement feature hashing here, with options.
-    featureDict.getIndex(feature)
+    if (featureSize == -1) {
+      featureDict.getIndex(feature)
+    } else {
+      val hash = feature.hashCode % featureSize
+      if (hash >= 0)
+        hash
+      else
+        hash + featureSize
+    }
   }
 
   def createMatrixRow(source: Int, target: Int, features: Seq[Int]): MatrixRow = {
     val values = new Array[Double](features.size + 1)
-    for (i <- 1 to features.size) {
+    for (i <- 0 to features.size) {
       values(i) = 1
     }
     new MatrixRow(source, target, (features :+ 0).toArray, values)

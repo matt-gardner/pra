@@ -41,7 +41,7 @@ trait FeatureGenerator {
     // If there was no input data (e.g., if we are actually trying to predict new edges, not
     // just hide edges from ourselves to try to recover), then there aren't any edges to
     // exclude.  So return an empty list.
-    if (data == null) {
+    if (data == null || unallowedEdges == null) {
       return Seq()
     }
     val sources = data.getAllSources().asScala.map(_.toInt)

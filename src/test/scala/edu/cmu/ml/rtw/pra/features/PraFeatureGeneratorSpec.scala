@@ -4,6 +4,7 @@ import java.io.BufferedReader
 import java.io.StringReader
 
 import org.scalatest._
+
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
