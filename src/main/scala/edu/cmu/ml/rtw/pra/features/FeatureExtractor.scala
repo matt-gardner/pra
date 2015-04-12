@@ -41,3 +41,14 @@ class OneSidedFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionar
     }).toList.asJava
   }
 }
+
+class CategoricalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionary) extends FeatureExtractor{
+  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    subgraph.asScala.flatMap(entry => {
+      val path = entry._1.encodeAsHumanReadableString(edgeDict)
+      val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == source)
+      val pairs = for (int1 <- src; int2 <- targ) yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight));
+      for{pair <- pairs}  yield s"CATCOMP:${path}:${pair._1}:${pair._2}"     
+    }).toList.asJava
+  }
+}
