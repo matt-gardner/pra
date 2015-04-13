@@ -109,7 +109,8 @@ class SubgraphFeatureGenerator(
       case "PraFeatureExtractor" => new PraFeatureExtractor(config.edgeDict)
       case "OneSidedFeatureExtractor" => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
       case "CategoricalComparisonFeatureExtractor" => new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
+      case "NumericalComparisonFeatureExtractor" => new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+     case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
     })
   }
 

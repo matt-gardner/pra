@@ -53,7 +53,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
   def createMatrices(params: JValue): Boolean = {
     val value = params \ "create matrices"
     if (value.equals(JNothing)) {
-      true
+      false
     } else {
       value.extract[Boolean]
     }

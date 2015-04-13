@@ -29,6 +29,8 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   nodeDict.getIndex("node2")
   nodeDict.getIndex("node3")
   nodeDict.getIndex("node4")
+  nodeDict.getIndex("100")
+  nodeDict.getIndex("50")
 
   def getSubgraph(pathTypes: Seq[String], nodePairs: Seq[Set[(Int, Int)]]) = {
     val subgraph = new java.util.HashMap[PathType, java.util.Set[Pair[Integer, Integer]]]
@@ -69,9 +71,17 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1,2)), Set((1,3),(2,4)))
     val extractor = new CategoricalComparisonFeatureExtractor(edgeDict, nodeDict)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
-    for {s <- features}  println(s)
     features.size should be(1)
     features should contain("CATCOMP:-rel2-:node3:node4")
+  }
+  
+    "NumericalComparisonFeatureExtractor" should "extract numerical comparison features" in {
+    val pathTypes = Seq("-1-", "-2-")
+    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
+    val extractor = new NumericalComparisonFeatureExtractor(edgeDict, nodeDict)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    features.size should be(1)
+    features should contain("NUMCOMP:-rel2-:1.7")
   }
 
 }
