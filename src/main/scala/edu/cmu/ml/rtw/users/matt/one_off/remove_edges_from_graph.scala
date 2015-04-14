@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.users.matt.one_off
 
+import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -13,10 +14,12 @@ object remove_edges_from_graph {
   val fileUtil = new FileUtil
 
   def remove_edges(graph_dir: String, new_dir: String, split: String, use_triples: Boolean) {
+    println("Reading node and edge dicts")
     val node_dict = new Dictionary()
     node_dict.setFromFile(graph_dir + "node_dict.tsv")
     val edge_dict = new Dictionary()
     edge_dict.setFromFile(graph_dir + "edge_dict.tsv")
+    println("Reading split")
     val to_remove = readSplit(split, node_dict, edge_dict, use_triples)
     println(s"Node pairs to remove: ${to_remove.size}")
     copyGraphChiEdges(graph_dir, new_dir, to_remove, use_triples)
@@ -61,21 +64,23 @@ object remove_edges_from_graph {
       val source = fields(0)
       val target = fields(1)
       val relation = if (use_triples) fields(2) else -1
-      !to_remove.contains((source, relation, target))
+      !(to_remove.contains((source, relation, target)) || to_remove.contains((target, relation, source)))
     }).seq.map(line => {
       out.write(line)
       out.write("\n")
     })
     out.close()
+    val numShards = fileUtil.readLinesFromFile(graph_dir + "num_shards.tsv").get(0).toInt
+    new GraphCreator("/", "/").shardGraph(new_edge_file, numShards)
     println("Copying other files")
     val files_to_copy = Seq("node_dict.tsv", "edge_dict.tsv", "num_shards.tsv", "params.json")
     files_to_copy.map(f => fileUtil.copy(graph_dir + f, new_dir + f))
   }
 
   def NOT_main(args: Array[String]) {
-    val graph_dir = "/home/mg1/pra/graphs/nell/kb/"
-    val new_dir = "/home/mg1/pra/graphs/testing/"
-    val split = "/home/mg1/pra/splits/nell_dev/"
+    val graph_dir = "/home/mg1/pra/graphs/freebase/kb-t/"
+    val new_dir = "/home/mg1/pra/graphs/hoffmann_freebase_take_2/"
+    val split = "/home/mg1/pra/splits/hoffmann_freebase/"
     val use_triples = false
     remove_edges(graph_dir, new_dir, split, use_triples)
   }
