@@ -51,7 +51,13 @@ class SubgraphFeatureGenerator(
 
   override def getFeatureNames(): Array[String] = {
     // Not really sure if par is useful here...  Maybe I should just take it out.
-    ("bias" +: (1 until featureDict.getNextIndex).par.map(i => featureDict.getString(i)).seq).toArray
+    ("bias" +: (1 until featureDict.getNextIndex).par.map(i => {
+        val name = featureDict.getString(i)
+        if (name == null)
+          "!!!!NULL FEATURE!!!!"  // if you see this in a weight file, there is an error somewhere.
+        else
+          name
+    }).seq).toArray
   }
 
   val featureExtractors = createExtractors(params)
