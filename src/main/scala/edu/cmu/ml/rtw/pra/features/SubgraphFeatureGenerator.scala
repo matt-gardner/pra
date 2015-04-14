@@ -22,12 +22,14 @@ class SubgraphFeatureGenerator(
     config: PraConfig,
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
-  val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size")
+  val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
+    "include bias")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
+  val includeBias = JsonHelper.extractWithDefault(params, "include bias", true)
 
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
     createMatrixFromData(data)
@@ -51,13 +53,24 @@ class SubgraphFeatureGenerator(
 
   override def getFeatureNames(): Array[String] = {
     // Not really sure if par is useful here...  Maybe I should just take it out.
-    ("bias" +: (1 until featureDict.getNextIndex).par.map(i => {
+    val features = (1 until featureDict.getNextIndex).par.map(i => {
         val name = featureDict.getString(i)
-        if (name == null)
-          "!!!!NULL FEATURE!!!!"  // if you see this in a weight file, there is an error somewhere.
-        else
+        if (name == null) {
+          // We need to put these in the feature name array, so that MALLET gets the feature
+          // indices right.  But these features should never show up in any actual output file,
+          // because the index should never appear in a real feature matrix.  We also need to be
+          // careful to make these _unique_, or MALLET will think they are the same feature and
+          // decrease the size of the dictionary, further messing things up.
+          s"!!!!NULL FEATURE-${i}!!!!"
+        } else {
           name
-    }).seq).toArray
+        }
+    }).seq
+    if (includeBias) {
+      ("bias" +: features).toArray
+    } else {
+      ("!!!!NULL FEATURE!!!!" +: features).toArray
+    }
   }
 
   val featureExtractors = createExtractors(params)
@@ -132,10 +145,12 @@ class SubgraphFeatureGenerator(
   }
 
   def createMatrixRow(source: Int, target: Int, features: Seq[Int]): MatrixRow = {
-    val values = new Array[Double](features.size + 1)
-    for (i <- 0 to features.size) {
+    val size = if (includeBias) features.size + 1 else features.size
+    val values = new Array[Double](size)
+    for (i <- 0 until size) {
       values(i) = 1
     }
-    new MatrixRow(source, target, (features :+ 0).toArray, values)
+    val featureIndices = if (includeBias) features :+ 0 else features
+    new MatrixRow(source, target, featureIndices.toArray, values)
   }
 }
