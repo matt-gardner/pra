@@ -110,7 +110,11 @@ class SubgraphFeatureGenerator(
       case "OneSidedFeatureExtractor" => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
       case "CategoricalComparisonFeatureExtractor" => new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
       case "NumericalComparisonFeatureExtractor" => new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-     case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
+      case "VectorSimilarityFeatureExtractor" => {
+        new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, 
+                    "/home/abhishek/pra/embeddings/test_graph/similarity_matrix_0.8_2_1/")
+      }
+      case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
     })
   }
 
