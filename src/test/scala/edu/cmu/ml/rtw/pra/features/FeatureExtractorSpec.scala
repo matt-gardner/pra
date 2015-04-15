@@ -87,16 +87,12 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     "VectorSimilarityFeatureExtractor" should "extract vector similarity features" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
-    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, 
-                    "/home/abhishek/pra/embeddings/test_graph/similarity_matrix_0.8_2_1/")
+    val jval:JValue = JObject(JField("name", JString("VectorSimilarityFeatureExtractor")), 
+                                JField("matrix name", JString("tests")))
+    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
-    ("vector features: " + features)
-    /*
-    features.size should be(6)
-    features should contain("nothing")
-    features should contain("is")
-    features should contain("here")
-    */  
+    features.size should be(1)
+    features should contain("VECSIM:-rel2-")
   }
 
 }

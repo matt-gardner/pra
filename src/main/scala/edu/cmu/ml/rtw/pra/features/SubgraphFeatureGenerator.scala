@@ -14,6 +14,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import org.json4s._
+import org.json4s.Formats
 import org.json4s.native.JsonMethods._
 
 class SubgraphFeatureGenerator(
@@ -103,17 +104,23 @@ class SubgraphFeatureGenerator(
   }
 
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
-    val extractorNames = JsonHelper.extractWithDefault(params, "feature extractors",
-      List("PraFeatureExtractor"))
+    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors", List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
     extractorNames.map(_ match {
-      case "PraFeatureExtractor" => new PraFeatureExtractor(config.edgeDict)
-      case "OneSidedFeatureExtractor" => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
-      case "CategoricalComparisonFeatureExtractor" => new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case "NumericalComparisonFeatureExtractor" => new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case "VectorSimilarityFeatureExtractor" => {
-        new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, 
-                    "/home/abhishek/pra/embeddings/test_graph/similarity_matrix_0.8_2_1/")
-      }
+      case JString("PraFeatureExtractor") => new PraFeatureExtractor(config.edgeDict)
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+      case jval: JValue => {
+        val name = JsonHelper.extractWithDefault(jval, "name", "DummyFeatureExtractor")
+        name match {
+          case "VectorSimilarityFeatureExtractor" => {
+            new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, 
+                    jval)
+            
+          }
+          case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
+        }
+      } 
       case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
     })
   }

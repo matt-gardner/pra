@@ -2,12 +2,17 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.Pair
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.util.control.Exception.allCatch
 import scala.math.log10
 import scala.math.abs
 import scala.io.Source
+
+import org.json4s._
+import org.json4s.Formats
+import org.json4s.native.JsonMethods._
 
 trait FeatureExtractor {
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
@@ -75,12 +80,15 @@ class NumericalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDict
 }
 
 
-class VectorSimilarityFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionary, val path: String) extends FeatureExtractor{
+class VectorSimilarityFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionary, val params: JValue) extends FeatureExtractor{
   override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
+    JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
+    val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
+    val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
     // build similarity matrix in memory
-    val testPath = path + "matrix.tsv"
-    val lines = Source.fromFile(testPath).getLines()
-    //val lines = List("Vishal\tAbhishek","Vishal\tShekhar","Abhishek\tGanesh","Abhishek\tArchit")
+    val matrixPath = "/home/abhishek/pra/embeddings/" + matrixName + "/matrix.tsv"
+    val lines = Source.fromFile(matrixPath).getLines()
     val pairs = lines.map(
          line => {
              val words = line.split("\t")
@@ -91,10 +99,8 @@ class VectorSimilarityFeatureExtractor(val edgeDict: Dictionary, val nodeDict: D
     val sourceTarget = new Pair[Integer, Integer](source, target)
     
     subgraph.asScala.flatMap(entry => {
-      //List("nothing", "is", "here")
       if (entry._2.contains(sourceTarget)) {
         val similarities = relations.get(entry._1.encodeAsHumanReadableString(edgeDict)).getOrElse(List[String]())
-        if(similarities.size > 0)  print("similarities: " + similarities + "\n")
         for {sim <- similarities}  yield s"VECSIM:${sim}"
       } else {
         List[String]()
