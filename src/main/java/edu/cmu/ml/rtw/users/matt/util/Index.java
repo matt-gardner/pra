@@ -80,6 +80,14 @@ public class Index<T> {
     nextIndex.set(1);
   }
 
+  public void writeToFile(String filename, FileUtil fileUtil) throws IOException {
+    writeToWriter(fileUtil.getFileWriter(filename));
+  }
+
+  public void writeToFile(String filename) throws IOException {
+    writeToWriter(new FileWriter(filename));
+  }
+
   public void writeToFile(File outfile) throws IOException {
     writeToWriter(new FileWriter(outfile));
   }
@@ -150,7 +158,12 @@ public class Index<T> {
     for (int i=1; i<nextIndex.get(); i++) {
       builder.append(i);
       builder.append("\t");
-      builder.append(getKey(i).toString());
+      T key = getKey(i);
+      if (key == null) {
+        builder.append("__@NULL KEY@__");
+      } else {
+        builder.append(key.toString());
+      }
       builder.append("\n");
     }
     return builder.toString();

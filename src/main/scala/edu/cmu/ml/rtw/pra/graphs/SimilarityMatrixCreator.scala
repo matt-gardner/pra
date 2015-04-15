@@ -1,5 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import edu.cmu.ml.rtw.pra.config.JsonHelper
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 
 import breeze.linalg._
@@ -9,8 +11,6 @@ import java.util.Random
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
@@ -32,12 +32,13 @@ class SimilarityMatrixCreator(
 
   var num_vectors: Int = 0
   var dimension: Int = 0
-  val upper_threshold = 0.99999
 
   def createSimilarityMatrix(params: JValue) {
     val threshold = (params \ "threshold").extract[Double]
     val num_hashes = (params \ "num_hashes").extract[Int]
     val hash_size = (params \ "hash_size").extract[Int]
+    val max_similar = JsonHelper.extractWithDefault(params, "entries per vector", -1)
+    val upper_threshold = JsonHelper.extractWithDefault(params, "upper threshold", 0.99999)
     val to_ignore: Set[String] = {
       (params \ "to ignore") match {
         case JNothing => Set()
@@ -80,7 +81,8 @@ class SimilarityMatrixCreator(
         (k, v) => v.map(_._2).toSeq).withDefaultValue(Nil)
     }).toSeq
     println("Computing similarities")
-    val similarities = hashed_vectors.flatMap(x => computeSimilarities(threshold, x, hash_maps))
+    val similarities = hashed_vectors.flatMap(x =>
+        computeSimilarities(threshold, upper_threshold, max_similar, x, hash_maps))
     println("Done computing similarities; outputting results")
     val out = fileUtil.getFileWriter(outFile)
     similarities.map(x => out.write(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}\n"))
@@ -89,7 +91,9 @@ class SimilarityMatrixCreator(
   }
 
   def computeSimilarities(
-      threshold: Double,
+      lower_threshold: Double,
+      upper_threshold: Double,
+      max_similar: Int,
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
     val start = System.currentTimeMillis
@@ -105,10 +109,14 @@ class SimilarityMatrixCreator(
     val similarities =
       for (vec2 <- close_vector_set;
            similarity = vec._3 dot vec2._2
-           if similarity > threshold && similarity < upper_threshold)
+           if similarity > lower_threshold && similarity < upper_threshold)
              yield (vec._1, vec2._1, similarity)
     var seconds = ((System.currentTimeMillis - start) / 1000.0)
-    similarities.toSeq
+    if (max_similar == -1) {
+      similarities.toSeq
+    } else {
+      similarities.toSeq.sortBy(-_._3).take(max_similar)
+    }
   }
 
   def createHashFunctions(

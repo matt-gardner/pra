@@ -126,6 +126,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     System.out.println(s"Took $minutes minutes and $seconds seconds")
   }
 
+  // TODO(matt): as part of the refactoring mentioned at the top of this file, maybe these methods
+  // should be moved to be members of the base trait object (e.g.,
+  // FeatureGenerator.create(params)), instead of a member of Driver or whatever other calling
+  // class needs to create the object.
   def createFeatureGenerator(praParams: JValue, config: PraConfig) = {
     val featureType = JsonHelper.extractWithDefault(praParams \ "features", "type", "pra")
     featureType match {
