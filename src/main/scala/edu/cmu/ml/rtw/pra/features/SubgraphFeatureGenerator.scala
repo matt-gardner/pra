@@ -82,10 +82,12 @@ class SubgraphFeatureGenerator(
     // because the params object is hard to work with in java; otherwise we'd just pass part of the
     // object to the path finder).
     val finderParams = params \ "path finder"
-    val finderParamKeys = Seq("walks per source", "path finding iterations")
+    val finderParamKeys = Seq("walks per source", "path finding iterations", "reset probability")
     JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
     val walksPerSource = JsonHelper.extractWithDefault(finderParams, "walks per source", 100)
     val numIters = JsonHelper.extractWithDefault(finderParams, "path finding iterations", 3)
+    // We're just doing three steps; we probably don't need a reset probability here.
+    val resetProbability = JsonHelper.extractWithDefault(finderParams, "reset probability", 0.0)
 
     // Now we create and run the path finder.
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
@@ -97,6 +99,7 @@ class SubgraphFeatureGenerator(
       walksPerSource,
       PathTypePolicy.PAIRED_ONLY,
       new BasicPathTypeFactory)
+    finder.setResetProbability(resetProbability)
     finder.execute(numIters)
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
     // reason I don't understand.

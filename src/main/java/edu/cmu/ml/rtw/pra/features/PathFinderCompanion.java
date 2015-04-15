@@ -302,11 +302,33 @@ public class PathFinderCompanion extends TwoKeyCompanion {
       Map<PathType, Set<Pair<Integer, Integer>>> subgraph = Maps.newHashMap();
       Map<PathType, Set<Pair<Integer, Integer>>> oneSidedSource = oneSidedPaths.get(source);
       if (oneSidedSource != null) {
-        subgraph.putAll(oneSidedSource);
+        for (Map.Entry<PathType, Set<Pair<Integer, Integer>>> entry : oneSidedSource.entrySet()) {
+          for (Pair<Integer, Integer> pair : entry.getValue()) {
+            if (source != pair.getLeft() && target != pair.getLeft()) {
+              // I'm still not really sure why this happens, because it sure looks from the code
+              // above that this should be impossible.  But it's happening, and it breaks some
+              // assumptions that are made downstream.  So we just ignore these cases for now.
+              // TODO(matt): figure out what is actually causing this and fix it.
+              continue;
+            }
+            MapUtil.addValueToKeySet(subgraph, entry.getKey(), pair);
+          }
+        }
       }
       Map<PathType, Set<Pair<Integer, Integer>>> oneSidedTarget = oneSidedPaths.get(target);
       if (oneSidedTarget != null) {
-        subgraph.putAll(oneSidedTarget);
+        for (Map.Entry<PathType, Set<Pair<Integer, Integer>>> entry : oneSidedTarget.entrySet()) {
+          for (Pair<Integer, Integer> pair : entry.getValue()) {
+            if (source != pair.getLeft() && target != pair.getLeft()) {
+              // I'm still not really sure why this happens, because it sure looks from the code
+              // above that this should be impossible.  But it's happening, and it breaks some
+              // assumptions that are made downstream.  So we just ignore these cases for now.
+              // TODO(matt): figure out what is actually causing this and fix it.
+              continue;
+            }
+            MapUtil.addValueToKeySet(subgraph, entry.getKey(), pair);
+          }
+        }
       }
       Map<PathType, Integer> twoSided = pathCountMap.get(sourceTarget);
       if (twoSided != null) {

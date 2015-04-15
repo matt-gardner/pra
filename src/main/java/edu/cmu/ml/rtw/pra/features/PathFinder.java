@@ -46,7 +46,6 @@ import edu.cmu.ml.rtw.users.matt.util.Pair;
 public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
 
   public static final int MAX_HOPS = 10;
-  private static final double RESET_PROBABILITY = 0.35;
   private static final Logger logger = ChiLogger.getLogger("path-finder");
   private final DrunkardMobEngine<EmptyType, Integer>  drunkardMobEngine;
   private final PathFinderCompanion companion;
@@ -61,6 +60,8 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
   private final Object printLock = new Object();
+
+  private double resetProbability = 0.35;
 
   public PathFinder(String baseFilename,
                     int nShards,
@@ -131,6 +132,10 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     int numWalks = sources.size() * numWalksPerSource;
     walkPaths = new Path[numWalks];
     encodedWalkPaths = new int[numWalks][MAX_HOPS][];
+  }
+
+  public void setResetProbability(double resetProbability) {
+    this.resetProbability = resetProbability;
   }
 
   public void execute(int numIters) {
@@ -229,7 +234,7 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     int sourceVertex = sourceIds[staticSourceIdx(walk)];
 
     // Reset?
-    if (random.nextDouble() < RESET_PROBABILITY) {
+    if (random.nextDouble() < resetProbability) {
       resetWalk(walk, walkId, drunkardContext);
       return;
     }
