@@ -41,9 +41,6 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val path1 = factory.fromString("-1-2-3-")
   val path2 = factory.fromString("-1-2-3- INVERSE")
-  val pathCounts = Map(path1 -> 2, path2 -> 2)
-  val inverses = Map(1 -> 2)
-  val pair = (1, 1)
 
   val node1 = "node1"
   val node2 = "node2"
@@ -61,18 +58,6 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val config = new PraConfig.Builder().noChecks()
     .setGraph(graphFile).setNumShards(1).setUnallowedEdges(unallowedEdges).build()
   val generator = new PraFeatureGenerator(params, "/", config)
-
-  "collapseInverses" should "collapse inverses" in {
-    val collapsed = generator.collapseInverses(pathCounts, inverses, factory)
-    collapsed.size should be(1)
-    collapsed(path2) should be(4)
-  }
-
-  "collapseInversesInCountMap" should "collapse inverses in count map" in {
-    val collapsed = generator.collapseInversesInCountMap(Map(pair -> pathCounts), inverses, factory)
-    collapsed.size should be(1)
-    collapsed(pair)(path2) should be(4)
-  }
 
   "createEdgesToExclude" should "handle the basic case" in {
     val edgesToExclude = generator.createEdgesToExclude(data, unallowedEdges)

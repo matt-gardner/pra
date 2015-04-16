@@ -21,7 +21,7 @@ import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
-public class PathFinderCompanion extends TwoKeyCompanion {
+public class RandomWalkPathFinderCompanion extends TwoKeyCompanion {
   private VertexIdTranslate translate;
   private int[] sourceVertexIds;
   private Index<PathType> pathDict;
@@ -33,12 +33,12 @@ public class PathFinderCompanion extends TwoKeyCompanion {
    * @param numThreads number of worker threads (4 is common)
    * @param maxMemoryBytes maximum amount of memory to use for storing the distributions
    */
-  public PathFinderCompanion(int numThreads,
-                             long maxMemoryBytes,
-                             VertexIdTranslate translate,
-                             Index<PathType> pathDict,
-                             PathTypeFactory pathTypeFactory,
-                             PathTypePolicy policy) throws RemoteException {
+  public RandomWalkPathFinderCompanion(int numThreads,
+                                       long maxMemoryBytes,
+                                       VertexIdTranslate translate,
+                                       Index<PathType> pathDict,
+                                       PathTypeFactory pathTypeFactory,
+                                       PathTypePolicy policy) throws RemoteException {
     super(numThreads, maxMemoryBytes);
     this.translate = translate;
     this.pathDict = pathDict;
@@ -59,11 +59,11 @@ public class PathFinderCompanion extends TwoKeyCompanion {
   }
 
   protected int getSecondKey(long walk, int atVertex) {
-    return translate.backward(sourceVertexIds[PathFinder.staticSourceIdx(walk)]);
+    return translate.backward(sourceVertexIds[RandomWalkPathFinder.staticSourceIdx(walk)]);
   }
 
   protected int getValue(long walk, int atVertex) {
-    return PathFinder.Manager.pathType(walk);
+    return RandomWalkPathFinder.Manager.pathType(walk);
   }
 
   @VisibleForTesting

@@ -43,12 +43,12 @@ import edu.cmu.ml.rtw.users.matt.util.Pair;
  * Finds common path types between pairs of nodes in a given set, using DrunkardMobEngine.
  * @author Matt Gardner
  */
-public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
+public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integer> {
 
   public static final int MAX_HOPS = 10;
   private static final Logger logger = ChiLogger.getLogger("path-finder");
   private final DrunkardMobEngine<EmptyType, Integer>  drunkardMobEngine;
-  private final PathFinderCompanion companion;
+  private final RandomWalkPathFinderCompanion companion;
   private final PathTypeFactory pathTypeFactory;
   private final int numWalksPerSource;
   private final Path[] walkPaths;
@@ -63,14 +63,14 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
 
   private double resetProbability = 0.35;
 
-  public PathFinder(String baseFilename,
-                    int nShards,
-                    List<Integer> origSources,
-                    List<Integer> origTargets,
-                    EdgeExcluder edgeExcluder,
-                    int walksPerSource,
-                    PathTypePolicy policy,
-                    PathTypeFactory pathTypeFactory) {
+  public RandomWalkPathFinder(String baseFilename,
+                              int nShards,
+                              List<Integer> origSources,
+                              List<Integer> origTargets,
+                              EdgeExcluder edgeExcluder,
+                              int walksPerSource,
+                              PathTypePolicy policy,
+                              PathTypeFactory pathTypeFactory) {
     try {
       this.drunkardMobEngine =
           new DrunkardMobEngine<EmptyType, Integer>(baseFilename, nShards, new Factory());
@@ -113,12 +113,12 @@ public class PathFinder implements WalkUpdateFunction<EmptyType, Integer> {
     List<Integer> sources = new ArrayList<Integer>(allSourceNodes);
     Collections.sort(sources);
     try {
-      companion = new PathFinderCompanion(4,  // numThreads
-                                          Runtime.getRuntime().maxMemory() / 3,
-                                          vertexIdTranslate,
-                                          pathDict,
-                                          pathTypeFactory,
-                                          policy);
+      companion = new RandomWalkPathFinderCompanion(4,  // numThreads
+                                                    Runtime.getRuntime().maxMemory() / 3,
+                                                    vertexIdTranslate,
+                                                    pathDict,
+                                                    pathTypeFactory,
+                                                    policy);
     } catch(RemoteException e) {
       throw new RuntimeException(e);
     }

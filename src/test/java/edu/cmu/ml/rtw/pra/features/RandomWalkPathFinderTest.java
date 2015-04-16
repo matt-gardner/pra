@@ -15,23 +15,23 @@ import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 
-public class PathFinderTest extends TestCase {
+public class RandomWalkPathFinderTest extends TestCase {
   private FakePathTypeFactory factory = new FakePathTypeFactory();
   private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
-  private PathFinder finder;
+  private RandomWalkPathFinder finder;
 
   @Override
   public void setUp() {
     edgesToExclude = Lists.newArrayList();
     addEdgeToExclude(1, 2, 1, edgesToExclude);
-    finder = new PathFinder("src/test/resources/edges.tsv",
-                            1,
-                            Arrays.asList(1),
-                            Arrays.asList(2),
-                            SingleEdgeExcluder.fromJava(edgesToExclude),
-                            10,
-                            PathTypePolicy.EVERYTHING,
-                            factory);
+    finder = new RandomWalkPathFinder("src/test/resources/edges.tsv",
+                                      1,
+                                      Arrays.asList(1),
+                                      Arrays.asList(2),
+                                      SingleEdgeExcluder.fromJava(edgesToExclude),
+                                      10,
+                                      PathTypePolicy.EVERYTHING,
+                                      factory);
   }
 
   @Override
@@ -54,19 +54,19 @@ public class PathFinderTest extends TestCase {
     int sourceId = 0;
     boolean trackBit = true;
     int off = 0;
-    long walk = PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+    long walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
     int[] pathTypes = new int[]{3,5,6};
     finder.setEncodedWalkPaths(pathTypes, walkId, hopNum);
     long[] encodedWalks = finder.encodeWalkForCompanion(walk);
     assertEquals(pathTypes.length, encodedWalks.length);
     for (int i = 0; i < pathTypes.length; i++) {
-      long e = PathFinder.Manager.encodeForCompanion(pathTypes[i], sourceId, trackBit, off);
+      long e = RandomWalkPathFinder.Manager.encodeForCompanion(pathTypes[i], sourceId, trackBit, off);
       assertEquals(e, encodedWalks[i]);
     }
 
     // This one shouldn't have anything, because encodedWalkPaths hasn't been set for this
     // (walkId, hopNum) combination).
-    walk = PathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
+    walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
     encodedWalks = finder.encodeWalkForCompanion(walk);
     assertEquals(0, encodedWalks.length);
   }
@@ -92,11 +92,11 @@ public class PathFinderTest extends TestCase {
     int sourceId = 0;
     boolean trackBit = true;
     int off = 0;
-    long walk = PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+    long walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
 
     // Test a random restart.
     random.setNextDouble(.00001);
-    long newWalk = PathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
+    long newWalk = RandomWalkPathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
     context.setExpectationsForReset(newWalk, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
     assertEquals(null, finder.getWalkPath(walkId));
@@ -104,17 +104,17 @@ public class PathFinderTest extends TestCase {
     // Test a restart due to returning to the same node (in this case, a reflexive edge).
     random.setNextDouble(.9);
     random.setNextInt(0);
-    newWalk = PathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
     context.setExpectationsForReset(newWalk, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
     assertEquals(null, finder.getWalkPath(walkId));
 
     // Make sure we reset when there are too many hops in this walk.
-    Path path = new Path(1, PathFinder.MAX_HOPS);
+    Path path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
     for (int i = 0; i < 10; i++) {
       path.addHop(1, 1, false);
     }
-    newWalk = PathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
     context.setExpectationsForReset(newWalk, true);
     finder.setWalkPath(path, walkId);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
@@ -124,23 +124,23 @@ public class PathFinderTest extends TestCase {
     random.setNextDouble(.9);
     random.setNextInt(1);
     finder.setWalkPath(null, walkId);
-    newWalk = PathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
     context.setExpectations(false, newWalk, 3, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
-    path = new Path(1, PathFinder.MAX_HOPS);
+    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
     path.addHop(3, 2, true);
     assertEquals(path, finder.getWalkPath(walkId));
 
     // And one with some history in the path, just for kicks.
-    path = new Path(1, PathFinder.MAX_HOPS);
+    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
     path.addHop(10, 10, true);
     finder.setWalkPath(path, walkId);
     random.setNextDouble(.9);
     random.setNextInt(2);
-    newWalk = PathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
     context.setExpectations(false, newWalk, 5, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
-    path = new Path(1, PathFinder.MAX_HOPS);
+    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
     path.addHop(10, 10, true);
     path.addHop(5, 2, false);
     assertEquals(path, finder.getWalkPath(walkId));
@@ -149,7 +149,7 @@ public class PathFinderTest extends TestCase {
     random.setNextDouble(.9);
     random.setNextInt(4);
     finder.setWalkPath(null, walkId);
-    newWalk = PathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
     context.setExpectationsForReset(newWalk, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
     assertEquals(null, finder.getWalkPath(walkId));
@@ -161,42 +161,42 @@ public class PathFinderTest extends TestCase {
     int sourceId = 123;
     boolean trackBit = true;
     int off = 97;
-    long walk = PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
-    assertEquals(walkId, PathFinder.Manager.walkId(walk));
-    assertEquals(hopNum, PathFinder.Manager.hopNum(walk));
-    assertEquals(sourceId, PathFinder.staticSourceIdx(walk));
-    assertEquals(trackBit, PathFinder.staticTrackBit(walk));
-    assertEquals(off, PathFinder.staticOff(walk));
+    long walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+    assertEquals(walkId, RandomWalkPathFinder.Manager.walkId(walk));
+    assertEquals(hopNum, RandomWalkPathFinder.Manager.hopNum(walk));
+    assertEquals(sourceId, RandomWalkPathFinder.staticSourceIdx(walk));
+    assertEquals(trackBit, RandomWalkPathFinder.staticTrackBit(walk));
+    assertEquals(off, RandomWalkPathFinder.staticOff(walk));
 
-    long newWalk = PathFinder.Manager.incrementHopNum(walk);
-    assertEquals(hopNum + 1, PathFinder.Manager.hopNum(newWalk));
-    newWalk = PathFinder.Manager.resetHopNum(walk);
-    assertEquals(0, PathFinder.Manager.hopNum(newWalk));
+    long newWalk = RandomWalkPathFinder.Manager.incrementHopNum(walk);
+    assertEquals(hopNum + 1, RandomWalkPathFinder.Manager.hopNum(newWalk));
+    newWalk = RandomWalkPathFinder.Manager.resetHopNum(walk);
+    assertEquals(0, RandomWalkPathFinder.Manager.hopNum(newWalk));
     trackBit = false;
-    walk = PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
-    assertEquals(trackBit, PathFinder.staticTrackBit(walk));
+    walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+    assertEquals(trackBit, RandomWalkPathFinder.staticTrackBit(walk));
 
-    newWalk = PathFinder.setTrackBit(walk, true);
-    assertTrue(PathFinder.staticTrackBit(newWalk));
-    newWalk = PathFinder.setTrackBit(walk, false);
-    assertFalse(PathFinder.staticTrackBit(newWalk));
+    newWalk = RandomWalkPathFinder.setTrackBit(walk, true);
+    assertTrue(RandomWalkPathFinder.staticTrackBit(newWalk));
+    newWalk = RandomWalkPathFinder.setTrackBit(walk, false);
+    assertFalse(RandomWalkPathFinder.staticTrackBit(newWalk));
     trackBit = true;
-    walk = PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
-    newWalk = PathFinder.setTrackBit(walk, true);
-    assertTrue(PathFinder.staticTrackBit(newWalk));
-    newWalk = PathFinder.setTrackBit(walk, false);
-    assertFalse(PathFinder.staticTrackBit(newWalk));
+    walk = RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+    newWalk = RandomWalkPathFinder.setTrackBit(walk, true);
+    assertTrue(RandomWalkPathFinder.staticTrackBit(newWalk));
+    newWalk = RandomWalkPathFinder.setTrackBit(walk, false);
+    assertFalse(RandomWalkPathFinder.staticTrackBit(newWalk));
 
     int pathType = 12;
     trackBit = true;
-    long forCompanion = PathFinder.Manager.encodeForCompanion(pathType, sourceId, trackBit, off);
-    assertEquals(pathType, PathFinder.Manager.pathType(forCompanion));
-    assertEquals(sourceId, PathFinder.staticSourceIdx(forCompanion));
-    assertEquals(trackBit, PathFinder.staticTrackBit(forCompanion));
-    assertEquals(off, PathFinder.staticOff(forCompanion));
+    long forCompanion = RandomWalkPathFinder.Manager.encodeForCompanion(pathType, sourceId, trackBit, off);
+    assertEquals(pathType, RandomWalkPathFinder.Manager.pathType(forCompanion));
+    assertEquals(sourceId, RandomWalkPathFinder.staticSourceIdx(forCompanion));
+    assertEquals(trackBit, RandomWalkPathFinder.staticTrackBit(forCompanion));
+    assertEquals(off, RandomWalkPathFinder.staticOff(forCompanion));
     trackBit = false;
-    forCompanion = PathFinder.Manager.encodeForCompanion(pathType, sourceId, trackBit, off);
-    assertEquals(trackBit, PathFinder.staticTrackBit(forCompanion));
+    forCompanion = RandomWalkPathFinder.Manager.encodeForCompanion(pathType, sourceId, trackBit, off);
+    assertEquals(trackBit, RandomWalkPathFinder.staticTrackBit(forCompanion));
   }
 
   public void expectAssertionErrorInEncode(final int walkId,
@@ -207,7 +207,7 @@ public class PathFinderTest extends TestCase {
     TestUtil.expectError(AssertionError.class, new TestUtil.Function() {
       @Override
       public void call() {
-        PathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
+        RandomWalkPathFinder.Manager.encode(walkId, hopNum, sourceId, trackBit, off);
       }
     });
   }
@@ -221,15 +221,15 @@ public class PathFinderTest extends TestCase {
     int off = 97;
 
     // Now make each one too high, in turn
-    walkId = PathFinder.Manager.MAX_ENCODABLE_WALKS + 1;
+    walkId = RandomWalkPathFinder.Manager.MAX_ENCODABLE_WALKS + 1;
     expectAssertionErrorInEncode(walkId, hopNum, sourceId, trackBit, off);
     walkId = 23;
 
-    hopNum = PathFinder.Manager.MAX_ENCODABLE_HOPS + 1;
+    hopNum = RandomWalkPathFinder.Manager.MAX_ENCODABLE_HOPS + 1;
     expectAssertionErrorInEncode(walkId, hopNum, sourceId, trackBit, off);
     hopNum = 7;
 
-    sourceId = PathFinder.Manager.MAX_SOURCES;
+    sourceId = RandomWalkPathFinder.Manager.MAX_SOURCES;
     expectAssertionErrorInEncode(walkId, hopNum, sourceId, trackBit, off);
     sourceId = 123;
 
@@ -243,14 +243,14 @@ public class PathFinderTest extends TestCase {
   // had to add it to the node dict.  In that case, we should just drop the node, instead of
   // crashing, which is what the code currently does as of writing this test.
   public void testIgnoresNewSources() {
-    finder = new PathFinder("src/test/resources/edges.tsv",
-                            1,
-                            Arrays.asList(10000),
-                            Arrays.asList(20000),
-                            SingleEdgeExcluder.fromJava(edgesToExclude),
-                            10,
-                            PathTypePolicy.EVERYTHING,
-                            factory);
+    finder = new RandomWalkPathFinder("src/test/resources/edges.tsv",
+                                      1,
+                                      Arrays.asList(10000),
+                                      Arrays.asList(20000),
+                                      SingleEdgeExcluder.fromJava(edgesToExclude),
+                                      10,
+                                      PathTypePolicy.EVERYTHING,
+                                      factory);
     // We don't care about the results, we just want to be sure that this actually runs.
     finder.execute(1);
   }

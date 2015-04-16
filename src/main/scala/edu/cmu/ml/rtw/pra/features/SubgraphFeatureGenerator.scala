@@ -15,6 +15,7 @@ import scala.collection.mutable
 
 import org.json4s._
 import org.json4s.native.JsonMethods._
+import org.json4s.JsonDSL.WithDouble._
 
 class SubgraphFeatureGenerator(
     params: JValue,
@@ -78,35 +79,23 @@ class SubgraphFeatureGenerator(
   def getLocalSubgraphs(data: Dataset): Map[(Int, Int), Subgraph] = {
     println("Finding local subgraphs with " + data.getAllSources().size() + " training instances")
 
-    // First we get necessary path finding parameters from the params object (we do this here
-    // because the params object is hard to work with in java; otherwise we'd just pass part of the
-    // object to the path finder).
-    val finderParams = params \ "path finder"
-    val finderParamKeys = Seq("walks per source", "path finding iterations", "reset probability")
-    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
-    val walksPerSource = JsonHelper.extractWithDefault(finderParams, "walks per source", 100)
-    val numIters = JsonHelper.extractWithDefault(finderParams, "path finding iterations", 3)
-    // We're just doing three steps; we probably don't need a reset probability here.
-    val resetProbability = JsonHelper.extractWithDefault(finderParams, "reset probability", 0.0)
-
-    // Now we create and run the path finder.
+    val finder = createPathFinder(data)
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
-    val finder = new PathFinder(config.graph,
-      config.numShards,
-      data.getAllSources(),
-      data.getAllTargets(),
-      new SingleEdgeExcluder(edgesToExclude),
-      walksPerSource,
-      PathTypePolicy.PAIRED_ONLY,
-      new BasicPathTypeFactory)
-    finder.setResetProbability(resetProbability)
-    finder.execute(numIters)
-    // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
-    // reason I don't understand.
-    Thread.sleep(500)
+    finder.findPaths(config, data, edgesToExclude)
 
     finder.getLocalSubgraphs.asScala.map(entry =>
         ((entry._1.getLeft.toInt, entry._1.getRight.toInt), entry._2)).toMap
+  }
+
+  def createPathFinder(data: Dataset) = {
+    val finderParams = params \ "path finder"
+    val finderParamKeys = Seq("walks per source", "path finding iterations", "reset probability")
+    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
+    // PathFinderCreator might have its own defaults for some parameters; this lets us change them
+    // here if we want different defaults for this use case.
+    val defaults: JValue = ("reset probability" -> 0.0)
+
+    PathFinderCreator.create(defaults merge finderParams, praBase)
   }
 
   def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]): FeatureMatrix = {
