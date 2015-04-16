@@ -141,9 +141,9 @@ class SubgraphFeatureGenerator(
     } else {
       val hash = feature.hashCode % featureSize
       if (hash >= 0)
-        hash
+        featureDict.getIndex(s"hash-${hash}")
       else
-        hash + featureSize
+        featureDict.getIndex(s"hash-${hash + featureSize}")
     }
   }
 
