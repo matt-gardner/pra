@@ -43,6 +43,11 @@ class OneSidedFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionar
         } else if (nodePair.getLeft == target) {
           s"TARGET:${path}:${endNode}"
         } else {
+          println(s"Source: ${source}")
+          println(s"Target: ${target}")
+          println(s"Left node: ${nodePair.getLeft}")
+          println(s"Right node: ${nodePair.getRight}")
+          println(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }

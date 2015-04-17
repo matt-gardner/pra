@@ -196,12 +196,14 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   it should "correctly hash to the feature size when hashing is enabled" in {
     val params: JValue = ("feature size" -> 10)
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil)
+    val hash7 = generator.featureDict.getIndex("hash-7")
+    val hash2 = generator.featureDict.getIndex("hash-2")
     val string1 = "a"  // hash code is 97
-    generator.hashFeature(string1) should be(7)
+    generator.hashFeature(string1) should be(hash7)
     val string2 = " "  // hash code is 32
-    generator.hashFeature(string2) should be(2)
+    generator.hashFeature(string2) should be(hash2)
     val string3 = "asdfasdf"  // hash code is -802263448
-    generator.hashFeature(string3) should be(2)
+    generator.hashFeature(string3) should be(hash2)
   }
 
   "createMatrixRow" should "set feature values to 1 and add a bias feature" in {

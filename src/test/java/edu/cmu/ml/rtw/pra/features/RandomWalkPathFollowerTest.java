@@ -70,7 +70,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         int sourceId = 0;
         boolean trackBit = false;
         int off = 0;
-        long walk = PathFinder.Manager.encode(pathType, hopNum, sourceId, trackBit, off);
+        long walk = RandomWalkPathFinder.Manager.encode(pathType, hopNum, sourceId, trackBit, off);
         LongWalkArray array = new LongWalkArray(new long[]{walk});
 
         // First check that nothing happens if we have no edges.
@@ -83,7 +83,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         // repeat of the main flow of processSingleWalk).
         int nextVertex = 3;
         ((FakePathType) paths.get(0)).setNextVertex(nextVertex);
-        long newWalk = PathFinder.Manager.encode(pathType, hopNum+1, sourceId, trackBit, off);
+        long newWalk = RandomWalkPathFinder.Manager.encode(pathType, hopNum+1, sourceId, trackBit, off);
         context.setExpectations(false, newWalk, nextVertex, trackBit);
         follower.processWalksAtVertex(array, chiVertex, context, random);
         context.testFinished();
@@ -98,7 +98,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         int sourceId = 0;
         boolean trackBit = false;
         int off = 0;
-        long walk = PathFinder.Manager.encode(pathType, hopNum, sourceId, trackBit, off);
+        long walk = RandomWalkPathFinder.Manager.encode(pathType, hopNum, sourceId, trackBit, off);
         long[] walks = new long[1];
         walks[0] = walk;
         PathTypeVertexCache[][] cache = follower.initializePathTypeVertexCaches(vertex, walks);
@@ -106,7 +106,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         // Test that a successful walk is forwarded correctly.
         int nextVertex = 3;
         ((FakePathType) paths.get(0)).setNextVertex(nextVertex);
-        long newWalk = PathFinder.Manager.encode(pathType, hopNum+1, sourceId, trackBit, off);
+        long newWalk = RandomWalkPathFinder.Manager.encode(pathType, hopNum+1, sourceId, trackBit, off);
         context.setExpectations(false, newWalk, nextVertex, trackBit);
         follower.processSingleWalk(walk, vertex, context, random, cache);
         context.testFinished();
@@ -114,7 +114,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         // And test that an unsuccessful walk is reset.
         nextVertex = -1;
         ((FakePathType) paths.get(0)).setNextVertex(nextVertex);
-        newWalk = PathFinder.Manager.encode(pathType, 0, sourceId, trackBit, off);
+        newWalk = RandomWalkPathFinder.Manager.encode(pathType, 0, sourceId, trackBit, off);
         context.setExpectationsForReset(newWalk, trackBit);
         follower.processSingleWalk(walk, vertex, context, random, cache);
         context.testFinished();

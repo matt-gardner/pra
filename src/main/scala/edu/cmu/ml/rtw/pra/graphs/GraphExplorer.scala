@@ -4,7 +4,7 @@ import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
-import edu.cmu.ml.rtw.pra.features.PathFinder
+import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluder
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -31,7 +31,7 @@ class GraphExplorer(params: JValue, config: PraConfig) {
 
     val pathTypeFactory = new BasicPathTypeFactory()
 
-    val finder = new PathFinder(config.graph,
+    val finder = new RandomWalkPathFinder(config.graph,
       config.numShards,
       data.getAllSources(),
       data.getAllTargets(),

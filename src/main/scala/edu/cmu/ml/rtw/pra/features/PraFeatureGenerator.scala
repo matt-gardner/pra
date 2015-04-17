@@ -67,43 +67,18 @@ class PraFeatureGenerator(
   def selectPathFeatures(data: Dataset): Seq[PathType] = {
     println("Selecting path features with " + data.getAllSources().size() + " training instances")
 
-    // First we get necessary path finding parameters from the params object (we do this here
-    // because the params object is hard to work with in java; otherwise we'd just pass part of the
-    // object to the path finder).
-    val finderParams = params \ "path finder"
-    val finderParamKeys = Seq("walks per source", "path accept policy", "path type factory",
-      "path type selector", "path finding iterations")
-    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
-    val walksPerSource = JsonHelper.extractWithDefault(finderParams, "walks per source", 100)
-    val pathAcceptPolicy = JsonHelper.extractWithDefault(finderParams, "path accept policy", "paired-only")
-    val pathTypeFactory = createPathTypeFactory(finderParams \ "path type factory")
-    val numIters = JsonHelper.extractWithDefault(finderParams, "path finding iterations", 3)
-
-    // Now we create and run the path finder.
+    val finder = createPathFinder()
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
-    val finder = new PathFinder(config.graph,
-      config.numShards,
-      data.getAllSources(),
-      data.getAllTargets(),
-      new SingleEdgeExcluder(edgesToExclude),
-      walksPerSource,
-      PathTypePolicy.parseFromString(pathAcceptPolicy),
-      pathTypeFactory)
-    finder.execute(numIters)
-    // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
-    // reason I don't understand.
-    Thread.sleep(500)
+    finder.findPaths(config, data, edgesToExclude)
 
     // Next we get the resultant path counts.
-    val finderPathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
-    val inverses = config.relationInverses.asScala.map(x => (x._1.toInt, x._2.toInt)).toMap
-    val pathCounts = collapseInverses(finderPathCounts, inverses, pathTypeFactory)
-    finder.shutDown()
+    val pathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
+    finder.finished()
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     config.outputter.outputPathCounts(config.outputBase, "found_path_counts.tsv", javaPathCounts)
 
     // And finally, we select and output path types.
-    val pathTypeSelector = createPathTypeSelector(params \ "path selector", pathTypeFactory)
+    val pathTypeSelector = createPathTypeSelector(params \ "path selector", finder)
     val numPaths = JsonHelper.extractWithDefault(params, "number of paths to keep", 1000)
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths)
     config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes)
@@ -162,73 +137,8 @@ class PraFeatureGenerator(
     featureMatrix
   }
 
-  def collapseInverses(
-      pathCounts: Map[PathType, Int],
-      inverses: Map[Int, Int],
-      pathTypeFactory: PathTypeFactory) = {
-    val javaInverses = inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava
-    pathCounts.toSeq.map(pathCount => {
-      (pathTypeFactory.collapseEdgeInverses(pathCount._1, javaInverses), pathCount._2)
-    }).groupBy(_._1).mapValues(_.map(_._2.toInt).sum).toMap
-  }
-
-  def collapseInversesInCountMap(
-      pathCountMap: Map[(Int, Int), Map[PathType, Int]],
-      inverses: Map[Int, Int],
-      pathTypeFactory: PathTypeFactory) = {
-    pathCountMap.mapValues(m => collapseInverses(m, inverses, pathTypeFactory))
-  }
-
-  def createPathTypeFactory(params: JValue): PathTypeFactory = {
-    (params \ "name") match {
-      case JNothing => new BasicPathTypeFactory()
-      case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params)
-      case other => throw new IllegalStateException("Unregonized path type factory")
-    }
-  }
-
-  def createVectorPathTypeFactory(params: JValue) = {
-    println("Initializing vector path type factory")
-    val spikiness = (params \ "spikiness").extract[Double]
-    val resetWeight = (params \ "reset weight").extract[Double]
-    println(s"RESET WEIGHT SET TO $resetWeight")
-    val embeddingsFiles = (params \ "embeddings") match {
-      case JNothing => Nil
-      case JString(path) if (path.startsWith("/")) => List(path)
-      case JString(name) => List(s"${praBase}embeddings/${name}/embeddings.tsv")
-      case JArray(list) => {
-        list.map(_ match {
-          case JString(path) if (path.startsWith("/")) => path
-          case JString(name) => s"${praBase}embeddings/${name}/embeddings.tsv"
-          case other => throw new IllegalStateException("Error specifying embeddings")
-        })
-      }
-      case jval => {
-        val name = (jval \ "name").extract[String]
-        List(s"${praBase}embeddings/${name}/embeddings.tsv")
-      }
-    }
-    val embeddings = readEmbeddingsVectors(embeddingsFiles)
-    val javaEmbeddings = embeddings.map(entry => (Integer.valueOf(entry._1), entry._2)).asJava
-    new VectorPathTypeFactory(config.edgeDict, javaEmbeddings, spikiness, resetWeight)
-  }
-
-  def readEmbeddingsVectors(embeddingsFiles: Seq[String]) = {
-    embeddingsFiles.flatMap(file => {
-      println(s"Embeddings file: $file")
-      readVectorsFromFile(file)
-    }).toMap
-  }
-
-  def readVectorsFromFile(embeddingsFile: String) = {
-    // Embeddings files are formated as tsv, where the first column is the relation name
-    // and the rest of the columns make up the vector.
-    fileUtil.readLinesFromFile(embeddingsFile).asScala.map(line => {
-      val fields = line.split("\t");
-      val relationIndex = config.edgeDict.getIndex(fields(0));
-      val vector = fields.drop(1).map(_.toDouble)
-      (relationIndex, new Vector(vector))
-    }).toMap
+  def createPathFinder(): PathFinder = {
+    PathFinderCreator.create(params \ "path finder", praBase)
   }
 
   def createPathFollower(
@@ -288,13 +198,14 @@ class PraFeatureGenerator(
     }
   }
 
-  def createPathTypeSelector(selectorParams: JValue, factory: PathTypeFactory): PathTypeSelector = {
+  def createPathTypeSelector(selectorParams: JValue, finder: PathFinder): PathTypeSelector = {
     val name = JsonHelper.extractWithDefault(selectorParams, "name", "MostFrequentPathTypeSelector")
     if (name.equals("MostFrequentPathTypeSelector")) {
       new MostFrequentPathTypeSelector()
     } else if (name.equals("VectorClusteringPathTypeSelector")) {
       val similarityThreshold = (selectorParams \ "similarity threshold").extract[Double]
-      new VectorClusteringPathTypeSelector(factory.asInstanceOf[VectorPathTypeFactory],
+      new VectorClusteringPathTypeSelector(
+        finder.asInstanceOf[GraphChiPathFinder].pathTypeFactory.asInstanceOf[VectorPathTypeFactory],
         similarityThreshold)
     } else {
       throw new IllegalStateException("Unrecognized path type selector")
