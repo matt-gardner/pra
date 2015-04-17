@@ -87,7 +87,7 @@ class VectorSimilarityFeatureExtractor(val edgeDict: Dictionary, val nodeDict: D
     val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
     val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
     // build similarity matrix in memory
-    val matrixPath = "/home/abhishek/pra/embeddings/" + matrixName + "/matrix.tsv"
+    val matrixPath = System.getProperty("user.dir") + "/embeddings/" + matrixName + "/matrix.tsv"
     val lines = Source.fromFile(matrixPath).getLines()
     val pairs = lines.map(
          line => {
