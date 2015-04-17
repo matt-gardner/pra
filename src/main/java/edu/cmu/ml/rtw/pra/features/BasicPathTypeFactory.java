@@ -19,7 +19,7 @@ public class BasicPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     return new BasicPathType(edgeTypes, reverse);
   }
 
-  private class BasicPathType extends BaseEdgeSequencePathType {
+  public static class BasicPathType extends BaseEdgeSequencePathType {
     public BasicPathType(int[] edgeTypes, boolean[] reverse) {
       super(edgeTypes, reverse);
     }

@@ -15,6 +15,7 @@ import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.DatasetFactory
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
@@ -65,7 +66,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("TARGET:-rel1-:node3")
     features should contain("SOURCE:-rel2-:node3")
   }
-  
+
   "CategoricalComparisonFeatureExtractor" should "extract categorical comparison features" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,3),(2,4)))
@@ -74,25 +75,28 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features.size should be(1)
     features should contain("CATCOMP:-rel2-:node3:node4")
   }
-  
-    "NumericalComparisonFeatureExtractor" should "extract numerical comparison features" in {
+
+  "NumericalComparisonFeatureExtractor" should "extract numerical comparison features" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val extractor = new NumericalComparisonFeatureExtractor(edgeDict, nodeDict)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
     features.size should be(1)
-    features should contain("NUMCOMP:-rel2-:1.7")
-  }
-    
-    "VectorSimilarityFeatureExtractor" should "extract vector similarity features" in {
-    val pathTypes = Seq("-1-", "-2-")
-    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
-    val jval:JValue = JObject(JField("name", JString("VectorSimilarityFeatureExtractor")), 
-                                JField("matrix name", JString("tests")))
-    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval)
-    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
-    features.size should be(1)
-    features should contain("VECSIM:-rel2-")
+    features should contain("NUMCOMP:-rel2-:1.7")  // log10(50) == 1.7
   }
 
+  "VectorSimilarityFeatureExtractor" should "extract vector similarity features" in {
+    val fileUtil = new FakeFileUtil
+    val matrixFile = "/embeddings/test/matrix.tsv"
+    fileUtil.addFileToBeRead(matrixFile, "rel1\trel2\t.9\n")
+    val pathTypes = Seq("-1-", "-2-")
+    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
+    val jval: JValue = ("name" -> "VectorSimilarityFeatureExtractor") ~ ("matrix name" -> "test")
+    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval, "/", fileUtil)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    features.size should be(3)
+    features should contain("VECSIM:-rel1-")
+    features should contain("VECSIM:-rel2-")
+    features should contain("VECSIM:-@ANY_REL@-")
+  }
 }

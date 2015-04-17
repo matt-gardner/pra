@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 
@@ -62,7 +63,7 @@ class CategoricalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDi
       val path = entry._1.encodeAsHumanReadableString(edgeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == source)
       val pairs = for (int1 <- src; int2 <- targ) yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight));
-      for{pair <- pairs}  yield s"CATCOMP:${path}:${pair._1}:${pair._2}"     
+      for{pair <- pairs}  yield s"CATCOMP:${path}:${pair._1}:${pair._2}"
     }).toList.asJava
   }
 }
@@ -72,47 +73,63 @@ class NumericalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDict
     subgraph.asScala.flatMap(entry => {
       val path = entry._1.encodeAsHumanReadableString(edgeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == source)
-      val strings = for{int1 <- src; int2 <- targ} 
-                      yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight))
+      val strings = for {int1 <- src; int2 <- targ}
+        yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight))
       val valid_strings = strings.filter(str => isDoubleNumber(str._1) && isDoubleNumber(str._2))
-      for(str <- valid_strings )  
+      for(str <- valid_strings )
         yield s"NUMCOMP:${path}:" + "%.2f".format(log10(abs(str._1.toDouble - str._2.toDouble))).toDouble
-      
+
     }).toList.asJava
   }
-  
+
   def isDoubleNumber(s: String): Boolean = (allCatch opt s.toDouble).isDefined
 }
 
 
-class VectorSimilarityFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionary, val params: JValue) extends FeatureExtractor{
+class VectorSimilarityFeatureExtractor(
+    val edgeDict: Dictionary,
+    val nodeDict: Dictionary,
+    val params: JValue,
+    praBase: String,
+    fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
+
   override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
     val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
     JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
     val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
     val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
     // build similarity matrix in memory
-    val matrixPath = System.getProperty("user.dir") + "/embeddings/" + matrixName + "/matrix.tsv"
-    val lines = Source.fromFile(matrixPath).getLines()
+    val matrixPath = s"${praBase}embeddings/${matrixName}/matrix.tsv"
+    val lines = fileUtil.readLinesFromFile(matrixPath).asScala
     val pairs = lines.map(
-         line => {
-             val words = line.split("\t")
-             (words(0), words(1))
-         }
-       ).toList.sorted
+      line => {
+        val words = line.split("\t")
+        (edgeDict.getIndex(words(0)), edgeDict.getIndex(words(1)))
+      }
+    ).toList.sorted
     val relations = pairs.groupBy(_._1).map{case (k,v) => k->(v.map(tup => tup._2))}
     val sourceTarget = new Pair[Integer, Integer](source, target)
-    
+    val anyRel = edgeDict.getIndex("@ANY_REL@")
+
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val similarities = relations.get(entry._1.encodeAsHumanReadableString(edgeDict)).getOrElse(List[String]())
-        for {sim <- similarities}  yield s"VECSIM:${sim}"
+        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
+        val edgeTypes = pathType.getEdgeTypes()
+        val reverses = pathType.getReverse()
+        val similarities = for (i <- (0 until edgeTypes.length);
+          similar <- (Seq(edgeTypes(i), anyRel) ++ relations.getOrElse(edgeTypes(i), Seq())))
+            yield (i, similar)
+        similarities.map(sim => {
+          val oldEdgeType = edgeTypes(sim._1)
+          edgeTypes(sim._1) = sim._2
+          val similar = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
+            .encodeAsHumanReadableString(edgeDict)
+            edgeTypes(sim._1) = oldEdgeType
+            s"VECSIM:${similar}"
+        })
       } else {
         List[String]()
       }
-      
     }).toList.asJava
   }
-  
 }
-

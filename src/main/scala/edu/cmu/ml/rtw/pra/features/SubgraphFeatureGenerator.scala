@@ -115,23 +115,24 @@ class SubgraphFeatureGenerator(
   }
 
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
-    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors", List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
+    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
+      List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
     extractorNames.map(_ match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor(config.edgeDict)
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
-      case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("OneSidedFeatureExtractor") =>
+        new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("CategoricalComparisonFeatureExtractor") =>
+        new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("NumericalComparisonFeatureExtractor") =>
+        new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
       case jval: JValue => {
-        val name = JsonHelper.extractWithDefault(jval, "name", "DummyFeatureExtractor")
-        name match {
+        (jval \ "name").extract[String] match {
           case "VectorSimilarityFeatureExtractor" => {
-            new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, 
-                    jval)
-            
+            new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, jval, praBase, fileUtil)
           }
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
-      } 
+      }
       case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
     })
   }
