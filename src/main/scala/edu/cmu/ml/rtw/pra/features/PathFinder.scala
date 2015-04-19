@@ -38,6 +38,7 @@ object PathFinderCreator {
     val finderType = JsonHelper.extractWithDefault(params, "type", "RandomWalkPathFinder")
     finderType match {
       case "RandomWalkPathFinder" => new GraphChiPathFinder(params, praBase, fileUtil)
+      case "BfsPathFinder" => new BfsPathFinder(params, praBase, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder")
     }
   }
@@ -48,8 +49,8 @@ object PathFinderCreator {
 // class can go away.
 class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = new FileUtil) extends PathFinder {
   implicit val formats = DefaultFormats
-  val allowedKeys = Seq("walks per source", "path accept policy", "path type factory",
-    "path type selector", "path finding iterations", "reset probability")
+  val allowedKeys = Seq("type", "walks per source", "path accept policy", "path type factory",
+    "path finding iterations", "reset probability")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
   val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 100)
   val numIters = JsonHelper.extractWithDefault(params, "path finding iterations", 3)

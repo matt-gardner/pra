@@ -2,19 +2,9 @@ package edu.cmu.ml.rtw.pra.features
 
 import org.scalatest._
 
-import org.json4s._
-import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods._
-
 import scala.collection.JavaConverters._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.DatasetFactory
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.Pair
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
 class GraphChiPathFinderSpec extends FlatSpecLike with Matchers {
   val factory = new FakePathTypeFactory()
