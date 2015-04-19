@@ -39,15 +39,17 @@ class BfsPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = new Fi
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
-    null
+    throw new NotImplementedError
   }
 
   override def getPathCountMap(): JavaMap[Pair[Integer, Integer], JavaMap[PathType, Integer]] = {
-    null
+    throw new NotImplementedError
   }
 
   override def getLocalSubgraphs() = {
-    null
+    results.map(entry => {
+      (Pair.makePair[Integer, Integer](entry._1._1, entry._1._2) -> entry._2)
+    }).asJava
   }
 
   override def finished() { }
