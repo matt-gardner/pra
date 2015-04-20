@@ -55,6 +55,7 @@ class BfsPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = new Fi
   override def finished() { }
 
   def loadGraph(graphFile: String, numNodes: Int): Graph = {
+    println(s"Loading graph")
     val graph = new Array[Map[Int, (Array[Int], Array[Int])]](numNodes)
     val lines = fileUtil.readLinesFromFile(graphFile).asScala
     val edges = lines.par.flatMap(line => {
@@ -83,7 +84,7 @@ class BfsPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = new Fi
     val sources = data.getAllSources.asScala.map(_.toInt).toSet ++ data.getAllTargets.asScala.map(_.toInt).toSet
     var walkResult: ParMap[Int, Map[Int, Set[PathType]]] = sources.par.map(s => (s -> null)).toMap
     for (i <- 1 to numSteps) {
-
+      println(s"Doing step ${i} of the BFS")
       val stepResults = walkResult.flatMap(entry => {
         val currentNode = entry._1
         val pathsSoFar = entry._2

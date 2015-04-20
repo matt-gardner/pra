@@ -89,14 +89,7 @@ class SubgraphFeatureGenerator(
   }
 
   def createPathFinder(data: Dataset) = {
-    val finderParams = params \ "path finder"
-    val finderParamKeys = Seq("walks per source", "path finding iterations", "reset probability")
-    JsonHelper.ensureNoExtras(finderParams, "pra parameters -> features -> path finder", finderParamKeys)
-    // PathFinderCreator might have its own defaults for some parameters; this lets us change them
-    // here if we want different defaults for this use case.
-    val defaults: JValue = ("reset probability" -> 0.0)
-
-    PathFinderCreator.create(defaults merge finderParams, praBase)
+    PathFinderCreator.create(params \ "path finder", praBase)
   }
 
   def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]): FeatureMatrix = {
