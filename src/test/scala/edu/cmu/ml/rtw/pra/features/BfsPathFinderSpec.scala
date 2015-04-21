@@ -27,12 +27,13 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
 
-  val positiveSources = List[Integer](5).asJava
-  val positiveTargets = List[Integer](3).asJava
-  val negativeSources = List[Integer]().asJava
-  val negativeTargets = List[Integer]().asJava
+  val positiveSources = Seq(5:Integer).asJava
+  val positiveTargets = Seq(3:Integer).asJava
+  val negativeSources = Seq[Integer]().asJava
+  val negativeTargets = Seq[Integer]().asJava
   val data = new Dataset(positiveSources, positiveTargets, negativeSources, negativeTargets)
-  val config = new PraConfig.Builder().setGraph(graphFilename).noChecks().build()
+  val config = new PraConfig.Builder()
+    .setUnallowedEdges(Seq(1:Integer).asJava).setGraph(graphFilename).noChecks().build()
   config.nodeDict.getIndex("node1")
   config.nodeDict.getIndex("node2")
   config.nodeDict.getIndex("node3")
@@ -42,7 +43,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   val params: JValue = JNothing
 
-  def makeFinder() = new BfsPathFinder(params, "/", fileUtil)
+  def makeFinder() = new BfsPathFinder(params, config, "/", fileUtil)
 
   "loadGraph" should "correctly read in a graph" in {
     val graph = makeFinder().loadGraph(graphFilename, 7)
@@ -91,7 +92,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()
-    finder.findPaths(config, data, Seq())
+    finder.findPaths(config, data, Seq(((1, 3), 1)))
     val results53 = finder.results((5, 3)).asScala
 
     // 6 Source paths
@@ -124,7 +125,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     results53(factory.fromString("-_1-_3-")).size should be(1)
     results53(factory.fromString("-_1-_3-")) should contain(Pair.makePair(3, 5))
 
-    // 6 Combined paths - some of these contain loops.  If loop detection is ever added, these
+    // 7 Combined paths - some of these contain loops.  If loop detection is ever added, these
     // tests should be revisited.
     results53(factory.fromString("-3-1-_1-1-")).size should be(1)
     results53(factory.fromString("-3-1-_1-1-")) should contain(Pair.makePair(5, 3))
@@ -138,8 +139,20 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     results53(factory.fromString("-3-_4-_1-1-")) should contain(Pair.makePair(5, 3))
     results53(factory.fromString("-3-_1-1-1-")).size should be(1)
     results53(factory.fromString("-3-_1-1-1-")) should contain(Pair.makePair(5, 3))
+    results53(factory.fromString("-3-_3-3-1-")).size should be(1)
+    results53(factory.fromString("-3-_3-3-1-")) should contain(Pair.makePair(5, 3))
 
-    // 6 + 6 + 6 = 18 total paths
-    results53.size should be(18)
+    // 6 + 6 + 7 = 19 total paths
+    results53.size should be(19)
+  }
+
+  it should "exclude edges when specified" in {
+    val data = new Dataset(Seq(1:Integer).asJava, positiveTargets, negativeSources, negativeTargets)
+    val factory = new BasicPathTypeFactory
+    val finder = makeFinder()
+    finder.findPaths(config, data, Seq(((1, 3), 1)))
+    val results13 = finder.results((1, 3)).asScala
+    val badPath = factory.fromString("-1-")
+    results13(badPath) should not contain(Pair.makePair(1, 3))
   }
 }

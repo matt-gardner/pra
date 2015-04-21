@@ -34,11 +34,15 @@ trait PathFinder {
 }
 
 object PathFinderCreator {
-  def create(params: JValue, praBase: String, fileUtil: FileUtil = new FileUtil): PathFinder = {
+  def create(
+      params: JValue,
+      config: PraConfig,
+      praBase: String,
+      fileUtil: FileUtil = new FileUtil): PathFinder = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "RandomWalkPathFinder")
     finderType match {
       case "RandomWalkPathFinder" => new GraphChiPathFinder(params, praBase, fileUtil)
-      case "BfsPathFinder" => new BfsPathFinder(params, praBase, fileUtil)
+      case "BfsPathFinder" => new BfsPathFinder(params, config, praBase, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder")
     }
   }

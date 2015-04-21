@@ -138,7 +138,7 @@ class PraFeatureGenerator(
   }
 
   def createPathFinder(): PathFinder = {
-    PathFinderCreator.create(params \ "path finder", praBase)
+    PathFinderCreator.create(params \ "path finder", config, praBase)
   }
 
   def createPathFollower(

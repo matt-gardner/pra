@@ -33,6 +33,8 @@ class SubgraphFeatureGenerator(
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", true)
 
+  lazy val pathFinder = PathFinderCreator.create(params \ "path finder", config, praBase)
+
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
     createMatrixFromData(data)
   }
@@ -50,6 +52,7 @@ class SubgraphFeatureGenerator(
 
   def createMatrixFromData(data: Dataset) = {
     val subgraphs = getLocalSubgraphs(data)
+    println(s"Done getting subgraphs; extracting features")
     extractFeatures(subgraphs)
   }
 
@@ -80,16 +83,11 @@ class SubgraphFeatureGenerator(
   def getLocalSubgraphs(data: Dataset): Map[(Int, Int), Subgraph] = {
     println("Finding local subgraphs with " + data.getAllSources().size() + " training instances")
 
-    val finder = createPathFinder(data)
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
-    finder.findPaths(config, data, edgesToExclude)
+    pathFinder.findPaths(config, data, edgesToExclude)
 
-    finder.getLocalSubgraphs.asScala.map(entry =>
+    pathFinder.getLocalSubgraphs.asScala.map(entry =>
         ((entry._1.getLeft.toInt, entry._1.getRight.toInt), entry._2)).toMap
-  }
-
-  def createPathFinder(data: Dataset) = {
-    PathFinderCreator.create(params \ "path finder", praBase)
   }
 
   def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]): FeatureMatrix = {
@@ -119,14 +117,13 @@ class SubgraphFeatureGenerator(
       case JString("NumericalComparisonFeatureExtractor") =>
         new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
       case jval: JValue => {
-        (jval \ "name").extract[String] match {
-          case "VectorSimilarityFeatureExtractor" => {
+        (jval \ "name") match {
+          case JString("VectorSimilarityFeatureExtractor") => {
             new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, jval, praBase, fileUtil)
           }
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
       }
-      case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
     })
   }
 
