@@ -302,7 +302,7 @@ public class OnlinePraPredictor {
   public PraPrediction getPredictionForRow(MatrixRow row, int modelNum) {
     // TODO(matt): again, this is ugly.  Improve PraModel so that it can handle this kind of usage.
     PraModel model = null; //new PraModel(null);
-    double score = model.classifyMatrixRow(row, weights.get(modelNum));
+    double score = 0.0; //model.classifyMatrixRow(row, weights.get(modelNum));
     String provenance = getProvenance(row, models.get(modelNum), edgeDict);
     String sourceNode = nodeDict.getString(row.sourceNode);
     String targetNode = nodeDict.getString(row.targetNode);

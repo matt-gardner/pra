@@ -101,6 +101,13 @@ class BfsPathFinder(
     val sources = data.getAllSources.asScala.map(_.toInt)
     val targets = data.getAllTargets.asScala.map(_.toInt)
     val sourceTargets = sources.zip(targets)
+    // Note that we're doing two BFS searches for each instance - one from the source, and one from
+    // the target.  But that's extra work!, you might say, because if there are duplicate sources
+    // or targets across instances, we should only have to do the BFS once!  That's true, unless
+    // you want to hold out the edge from the graph correctly.  What you really want is to run a
+    // BFS for each instance holding out just a _single_ edge from the graph - the training edge
+    // that you're trying to learn to predict.  If you share the BFS across multiple training
+    // instances, you won't be holding out the edges correctly.
     sourceTargets.par.map(sourceTarget => {
       val source = sourceTarget._1
       val target = sourceTarget._2

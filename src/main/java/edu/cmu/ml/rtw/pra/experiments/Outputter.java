@@ -84,7 +84,7 @@ public class Outputter {
    * scores, because they all have useful information for this.
    *
    * @param filename Place to write the output file
-   * @param sourceScores The set of scores for each of the sources
+   * @param sourceScores The set of scores for each of the sources; these should already be sorted
    * @param config We use this to get to the training and testing data, so we know which sources
    *     to score and how well we did on them.
    */
@@ -114,7 +114,6 @@ public class Outputter {
           writer.write("\n\n");
           continue;
         }
-        Collections.sort(scores, PairComparator.<Integer, Double>negativeRight());
         Set<Integer> targetSet = allPositiveSourcesMap.get(source);
         if (targetSet == null) {
           targetSet = Sets.newHashSet();
