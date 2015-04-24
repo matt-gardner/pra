@@ -130,9 +130,9 @@ public class OnlinePraPredictor {
     weights = new ArrayList<List<Double>>();
     allowedTargets = new ArrayList<Set<Integer>>();
     nodeDict = new Dictionary();
-    nodeDict.setFromFile(new File(nodeDictionaryFilename));
+    nodeDict.setFromFile(nodeDictionaryFilename);
     edgeDict = new Dictionary();
-    edgeDict.setFromFile(new File(edgeDictionaryFilename));
+    edgeDict.setFromFile(edgeDictionaryFilename);
     for (int i = 0; i < modelFilenames.size(); i++) {
       List<Pair<PathType, Double>> model;
       //try {

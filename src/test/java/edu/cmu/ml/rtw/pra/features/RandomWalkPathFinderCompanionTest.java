@@ -10,6 +10,7 @@ import junit.framework.TestCase;
 import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
@@ -23,7 +24,7 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private PathType type13 = factory.fromString("-1-3-");
   private PathType type22 = factory.fromString("-2-2-");
   private PathType type23 = factory.fromString("-2-3-");
-  private Index<PathType> pathDict = new Index<PathType>(factory);
+  private Index<PathType> pathDict = new Index<PathType>(factory, false, new FileUtil());
   private int type1Index = pathDict.getIndex(type1);
   private int type2Index = pathDict.getIndex(type2);
   private int type_2Index = pathDict.getIndex(type_2);

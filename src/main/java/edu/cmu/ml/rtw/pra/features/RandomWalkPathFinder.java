@@ -36,6 +36,7 @@ import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
@@ -86,7 +87,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     this.numWalksPerSource = walksPerSource;
     this.origSources = origSources;
     this.origTargets = origTargets;
-    this.pathDict = new Index<PathType>(pathTypeFactory);
+    this.pathDict = new Index<PathType>(pathTypeFactory, false, new FileUtil());
     // We add these to a set first, so we don't start twice as many walks from a node that shows up
     // twice in the training data.  You could argue that those nodes should have more influence on
     // the resultant paths, and that's fair, but it also slows down the computation by quite a bit,
