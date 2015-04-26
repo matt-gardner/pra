@@ -43,7 +43,8 @@ class SubgraphFeatureGenerator(
 
   override def createTestMatrix(data: Dataset): FeatureMatrix = {
     val testMatrix = createMatrixFromData(data)
-    if (config.outputBase != null) {
+    if (config.outputMatrices && config.outputBase != null) {
+      println("Outputting test matrix")
       val output = config.outputBase + "test_matrix.tsv"
       config.outputter.outputFeatureMatrix(output, testMatrix, getFeatureNames().toList.asJava)
     }
@@ -97,7 +98,7 @@ class SubgraphFeatureGenerator(
       val subgraph = entry._2
       val features = featureExtractors.flatMap(_.extractFeatures(source, target, subgraph).asScala)
       if (features.size > 0) {
-        Seq(createMatrixRow(source, target, features.toSet.map(hashFeature).toSeq))
+        Seq(createMatrixRow(source, target, features.toSet.map(hashFeature).toSeq.sorted))
       } else {
         Seq()
       }

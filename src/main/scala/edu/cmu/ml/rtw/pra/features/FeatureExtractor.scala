@@ -40,9 +40,9 @@ class OneSidedFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionar
         val path = entry._1.encodeAsHumanReadableString(edgeDict)
         val endNode = nodeDict.getString(nodePair.getRight)
         if (nodePair.getLeft == source) {
-          s"SOURCE:${path}:${endNode}"
+          "SOURCE:" + path + ":" + endNode
         } else if (nodePair.getLeft == target) {
-          s"TARGET:${path}:${endNode}"
+          "TARGET" + path + ":" + endNode
         } else {
           println(s"Source: ${source}")
           println(s"Target: ${target}")
@@ -63,7 +63,7 @@ class CategoricalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDi
       val path = entry._1.encodeAsHumanReadableString(edgeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == source)
       val pairs = for (int1 <- src; int2 <- targ) yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight));
-      for{pair <- pairs}  yield s"CATCOMP:${path}:${pair._1}:${pair._2}"
+      for{pair <- pairs}  yield "CATCOMP:" + path + ":" + pair._1 + ":" + pair._2
     }).toList.asJava
   }
 }
@@ -93,24 +93,24 @@ class VectorSimilarityFeatureExtractor(
     praBase: String,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
 
-  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
-    val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
-    JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
-    val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
-    val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
-    // build similarity matrix in memory
-    val matrixPath = s"${praBase}embeddings/${matrixName}/matrix.tsv"
-    val lines = fileUtil.readLinesFromFile(matrixPath).asScala
-    val pairs = lines.map(
-      line => {
-        val words = line.split("\t")
-        (edgeDict.getIndex(words(0)), edgeDict.getIndex(words(1)))
-      }
-    ).toList.sorted
-    val relations = pairs.groupBy(_._1).map{case (k,v) => k->(v.map(tup => tup._2))}
-    val sourceTarget = new Pair[Integer, Integer](source, target)
-    val anyRel = edgeDict.getIndex("@ANY_REL@")
+  val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
+  JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
+  val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
+  val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
+  // build similarity matrix in memory
+  val matrixPath = s"${praBase}embeddings/${matrixName}/matrix.tsv"
+  val lines = fileUtil.readLinesFromFile(matrixPath).asScala
+  val pairs = lines.map(
+    line => {
+      val words = line.split("\t")
+      (edgeDict.getIndex(words(0)), edgeDict.getIndex(words(1)))
+    }
+  ).toList.sorted
+  val relations = pairs.groupBy(_._1).map{case (k,v) => k->(v.map(tup => tup._2))}
+  val anyRel = edgeDict.getIndex("@ANY_REL@")
 
+  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    val sourceTarget = new Pair[Integer, Integer](source, target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
         val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]

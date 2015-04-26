@@ -9,7 +9,7 @@ public class Dictionary extends Index<String> {
   }
 
   public Dictionary(boolean verbose) {
-    super(new StringParser(), verbose);
+    super(new StringParser(), verbose, new FileUtil());
   }
 
   /**

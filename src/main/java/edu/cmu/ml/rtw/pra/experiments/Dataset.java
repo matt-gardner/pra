@@ -87,6 +87,7 @@ public class Dataset {
         try {
           positive = Integer.parseInt(fields[2]) == 1;
         } catch (NumberFormatException e) {
+          System.out.println(line);
           throw new RuntimeException("Input split file not formatted correctly", e);
         }
       }

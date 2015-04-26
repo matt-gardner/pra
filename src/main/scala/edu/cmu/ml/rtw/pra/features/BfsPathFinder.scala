@@ -7,6 +7,7 @@ import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.Index
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import org.json4s._
@@ -37,6 +38,8 @@ class BfsPathFinder(
 
   lazy val graph: Graph = loadGraph(config.graph, config.nodeDict.getNextIndex)
   var results: Map[(Int, Int), Subgraph] = null
+  val factory = new BasicPathTypeFactory
+  val pathDict = new Index[PathType](factory)
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
     // In part I'm just doing this here to make sure that the graph gets loaded before we start
@@ -120,15 +123,15 @@ class BfsPathFinder(
         val sourcePaths = sourceSubgraph(node)
         val targetPaths = targetSubgraph(node)
         val combinedPaths = for (sp <- sourcePaths; tp <- targetPaths)
-           yield (factory.concatenatePathTypes(sp, tp), (source, target))
+           yield (factory.concatenatePathTypes(pathDict.getKey(sp), pathDict.getKey(tp)), (source, target))
         combinedPaths.groupBy(_._1).mapValues(_.map(_._2))
       })
       val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
       oneSidedSource.foreach(entry => {
-        result.getOrElseUpdate(entry._1, new mutable.HashSet[(Int, Int)]).++=(entry._2)
+        result.getOrElseUpdate(pathDict.getKey(entry._1), new mutable.HashSet[(Int, Int)]).++=(entry._2)
       })
       oneSidedTarget.foreach(entry => {
-        result.getOrElseUpdate(entry._1, new mutable.HashSet[(Int, Int)]).++=(entry._2)
+        result.getOrElseUpdate(pathDict.getKey(entry._1), new mutable.HashSet[(Int, Int)]).++=(entry._2)
       })
       twoSided.foreach(entry => {
         result.getOrElseUpdate(entry._1, new mutable.HashSet[(Int, Int)]).++=(entry._2)
@@ -138,8 +141,8 @@ class BfsPathFinder(
     }).seq.toMap
   }
 
-  def reKeyBfsResults(origin: Int, bfsResults: Map[Int, Set[PathType]]) = {
-    val rekeyed = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+  def reKeyBfsResults(origin: Int, bfsResults: Map[Int, Set[Int]]) = {
+    val rekeyed = new mutable.HashMap[Int, mutable.HashSet[(Int, Int)]]
     bfsResults.foreach(endNodePaths => {
       val endNode = endNodePaths._1
       val paths = endNodePaths._2
@@ -150,9 +153,9 @@ class BfsPathFinder(
     rekeyed.mapValues(_.toSet).toMap
   }
 
-  def bfsFromNode(source: Int, target: Int, unallowedRelations: Set[Int]): Map[Int, Set[PathType]] = {
-    var currentNodes = Map((source -> Set(factory.emptyPathType)))
-    val results = new mutable.HashMap[Int, mutable.HashSet[PathType]]
+  def bfsFromNode(source: Int, target: Int, unallowedRelations: Set[Int]): Map[Int, Set[Int]] = {
+    var currentNodes = Map((source -> Set(pathDict.getIndex(factory.emptyPathType))))
+    val results = new mutable.HashMap[Int, mutable.HashSet[Int]]
     for (i <- 1 to numSteps) {
       currentNodes = currentNodes.flatMap(nodeEntry => {
         val node = nodeEntry._1
@@ -164,13 +167,13 @@ class BfsPathFinder(
           if (inEdges.length + outEdges.length > maxFanOut) {
             Seq()
           } else {
-            val nextNodes = new mutable.HashMap[Int, mutable.HashSet[PathType]]
+            val nextNodes = new mutable.HashMap[Int, mutable.HashSet[Int]]
             inEdges.foreach(nextNode => {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
                   val newPathType = addToPathType(pathType, relation, true)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[PathType]).add(newPathType)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[PathType]).add(newPathType)
+                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
+                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   newPathType
                 })
               }
@@ -179,8 +182,8 @@ class BfsPathFinder(
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
                   val newPathType = addToPathType(pathType, relation, false)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[PathType]).add(newPathType)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[PathType]).add(newPathType)
+                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
+                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   newPathType
                 })
               }
@@ -195,8 +198,7 @@ class BfsPathFinder(
   }
 
   def shouldSkip(source: Int, target: Int, node1: Int, node2: Int, relation: Int, exclude: Set[Int]) = {
-    val sourceTarget = (source, target)
-    if (!(sourceTarget == (node1, node2) || sourceTarget == (node2, node1)))
+    if (!(source == node1 && target == node2) && !(source == node2 && target == node1))
       false
     else if (exclude.contains(relation))
       true
@@ -204,11 +206,17 @@ class BfsPathFinder(
       false
   }
 
-  val factory = new BasicPathTypeFactory
-  def addToPathType(pathType: PathType, relation: Int, isReverse: Boolean): PathType = {
-    val prevString = pathType.encodeAsString()
-    val newString = if (isReverse) s"${prevString}_${relation}-" else s"${prevString}${relation}-"
-    factory.fromString(newString)
+  def addToPathType(pathType: Int, relation: Int, isReverse: Boolean): Int = {
+    try {
+      val prevString = pathDict.getKey(pathType).encodeAsString()
+      val newString = if (isReverse) prevString + "_" + relation + "-" else prevString + relation + "-"
+      pathDict.getIndex(factory.fromString(newString))
+    } catch {
+      case e: NullPointerException => {
+        println(s"NULL PATH TYPE: $pathType")
+        throw e
+      }
+    }
   }
 
   def convertToPair(entry: (Int, Int)): Pair[Integer, Integer] = {

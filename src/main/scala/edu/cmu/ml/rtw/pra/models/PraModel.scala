@@ -42,6 +42,7 @@ class PraModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
     val knownPositives = dataset.getPositiveInstances.asScala.map(x => (x.getLeft.toInt, x.getRight.toInt)).toSet
     val knownNegatives = dataset.getNegativeInstances.asScala.map(x => (x.getLeft.toInt, x.getRight.toInt)).toSet
 
+    println("Separating into positive, negative, unseen")
     val grouped = featureMatrix.getRows().asScala.groupBy(row => {
       val sourceTarget = (row.sourceNode.toInt, row.targetNode.toInt)
       if (knownPositives.contains(sourceTarget))
@@ -54,18 +55,21 @@ class PraModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
     val positiveMatrix = new FeatureMatrix(grouped.getOrElse("positive", Seq()).asJava)
     val negativeMatrix = new FeatureMatrix(grouped.getOrElse("negative", Seq()).asJava)
     val unseenMatrix = new FeatureMatrix(grouped.getOrElse("unseen", Seq()).asJava)
-    if (config.outputBase != null) {
+    if (config.outputMatrices && config.outputBase != null) {
+      println("Outputting matrices")
       val base = config.outputBase
       config.outputter.outputFeatureMatrix(s"${base}positive_matrix.tsv", positiveMatrix, featureNames.asJava)
       config.outputter.outputFeatureMatrix(s"${base}negative_matrix.tsv", negativeMatrix, featureNames.asJava)
       config.outputter.outputFeatureMatrix(s"${base}unseen_matrix.tsv", unseenMatrix, featureNames.asJava)
     }
 
+    println("Creating alphabet")
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
     val pipe = new Noop()
     val data = new InstanceList(pipe)
     val alphabet = new Alphabet(featureNames.asJava.toArray())
 
+    println("Converting positive matrix to MALLET instances and adding to the dataset")
     // First convert the positive matrix to a scala object
     positiveMatrix.getRows().asScala
     // Then, in parallel, map the MatrixRow objects there to MALLET Instance objects
@@ -75,12 +79,14 @@ class PraModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
       .seq.foreach(instance => {
         data.addThruPipe(instance)
       })
+    println("Adding negative evidence")
     addNegativeEvidence(positiveMatrix.size,
                         positiveMatrix.getRows().asScala.map(_.columns).sum,
                         negativeMatrix,
                         unseenMatrix,
                         data,
                         alphabet)
+    println("Creating the MalletLogisticRegression object")
     val lr = new MalletLogisticRegression(alphabet)
     if (l2Weight != 0.0) {
       println("Setting L2 weight to " + l2Weight)
@@ -191,6 +197,7 @@ class PraModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
    *     from the features in the feature matrix and the supplied weights.
    */
   def classifyInstances(featureMatrix: FeatureMatrix, weights: Seq[Double]): Map[Int, Seq[(Int, Double)]] = {
+    println("Classifying instances")
     val sourceScores = new mutable.HashMap[Int, mutable.ArrayBuffer[(Int, Double)]]
     for (row <- featureMatrix.getRows().asScala) {
       val score = classifyMatrixRow(row, weights)
