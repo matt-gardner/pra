@@ -34,6 +34,7 @@ object ExperimentScorer {
   )
   val significanceTests_ = List("AP")
   val relationMetrics_ = List("AP")
+  val significanceThreshold = 0.05
 
   def main(args: Array[String]) {
     if (args.length < 1) {
@@ -277,7 +278,11 @@ object ExperimentScorer {
           print("         ")
         } else {
           val p_value = testSignificance(metrics, method1, method2, metric)
+          if (p_value < significanceThreshold) {
+            setColor(Console.GREEN)
+          }
           print(f" $p_value%7.5f ")
+          resetColor()
         }
       }
       println()
@@ -389,5 +394,14 @@ object ExperimentScorer {
       }
     }
     metrics
+  }
+
+  def setColor(color: String) {
+    print(color)
+  }
+
+  def resetColor() {
+    print(Console.BLACK_B)
+    print(Console.WHITE)
   }
 }
