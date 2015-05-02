@@ -185,6 +185,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // Then we train a model.  It'd be nice here to have all of this parameter stuff pushed
     // down into the PraModel, but PraModel is currently a java class, which doesn't play
     // nicely with json4s.
+
     val learningParams = praParams \ "learning"
     val model = PraModelCreator.create(config, learningParams)
     val featureNames = generator.getFeatureNames()

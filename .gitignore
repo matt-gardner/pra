@@ -4,3 +4,4 @@
 .settings
 target/
 walkmanager.log
+/bin

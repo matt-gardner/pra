@@ -63,6 +63,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1, 2), (2, 3)), Set((1, 3)))
     val extractor = new OneSidedFeatureExtractor(edgeDict, nodeDict)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    print(features)
     features.size should be(3)
     features should contain("SOURCE:-rel1-:node2")
     features should contain("TARGET:-rel1-:node3")
