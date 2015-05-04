@@ -12,7 +12,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
-import edu.cmu.ml.rtw.pra.models.PraModel
+import edu.cmu.ml.rtw.pra.models.PraModelCreator
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import scala.collection.JavaConverters._
@@ -186,22 +186,16 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // down into the PraModel, but PraModel is currently a java class, which doesn't play
     // nicely with json4s.
     val learningParams = praParams \ "learning"
-    val learningParamKeys = Seq("l1 weight", "l2 weight", "binarize features")
-    JsonHelper.ensureNoExtras(learningParams, "pra parameters -> learning", learningParamKeys)
-    val l1Weight = JsonHelper.extractWithDefault(learningParams, "l1 weight", 1.0)
-    val l2Weight = JsonHelper.extractWithDefault(learningParams, "l2 weight", 0.05)
-    val binarize = JsonHelper.extractWithDefault(learningParams, "binarize features", false)
-    val model = new PraModel(config, l1Weight, l2Weight, binarize)
+    val model = PraModelCreator.create(config, learningParams)
     val featureNames = generator.getFeatureNames()
-    val weights = model.learnFeatureWeights(trainingMatrix, config.trainingData, featureNames)
-    val finalWeights = generator.removeZeroWeightFeatures(weights)
+    model.train(trainingMatrix, config.trainingData, featureNames)
 
     // Then we test the model.
-    // TODO(matt): with some feature generators, we could feasibly just generate the training and
-    // test matrices at the same time, and because of how GraphChi works, that would save us
-    // considerable time.
+    // TODO(matt): if we don't care about removing zero weight features anymore (and it's probably
+    // not worth it, anyway), we could feasibly just generate the training and test matrices at the
+    // same time, and because of how GraphChi works, that would save us considerable time.
     val testMatrix = generator.createTestMatrix(config.testingData)
-    val scores = model.classifyInstances(testMatrix, finalWeights)
+    val scores = model.classifyInstances(testMatrix)
     val javaScores = scores.mapValues(_.map(x => {
       Pair.makePair(Integer.valueOf(x._1), java.lang.Double.valueOf(x._2))
     }).asJava).map(x => (Integer.valueOf(x._1), x._2)).asJava
