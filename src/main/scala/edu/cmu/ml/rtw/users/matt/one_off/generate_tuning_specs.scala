@@ -6,10 +6,15 @@ object generate_tuning_specs {
 
   def fillTemplate(params: (String, Int, Double, Double)): String = {
     s"""load new_feature_experiment_base
-    |load default_subgraph_parameters
     |{
+    |  "split": "nell_with_negatives",
     |  "pra parameters": {
     |    "features": {
+    |      "type": "subgraphs",
+    |      "path finder": {
+    |        "type": "BfsPathFinder",
+    |        "number of steps": 2
+    |      },
     |      "feature extractors": [
     |      ${params._1}
     |      ],
@@ -25,16 +30,23 @@ object generate_tuning_specs {
 
   def main(args: Array[String]) {
     val fileUtil = new FileUtil
-    val base = "/home/mg1/pra/experiment_specs/nell/new_features/tuning/"
+    val base = "/home/mg1/pra/experiment_specs/nell/new_features/bfs/tuning/"
     fileUtil.mkdirs(base)
+    val pra = "\"PraFeatureExtractor\""
+    val one_sided = "\"OneSidedFeatureExtractor\""
+    val catcomp = "\"CategoricalComparisonFeatureExtractor\""
+    val matrix_name = "my_svd/nell/kb-t_svo/similarity_matrix_0.8_3_20_max_10"
+    val vecsim = "{\"name\": \"VectorSimilarityFeatureExtractor\", \"matrix name\": \"" + matrix_name + "\"}"
     val extractors = Seq(
-      //("\"PraFeatureExtractor\"", "pra_")
-      ("\"PraFeatureExtractor\", \"OneSidedFeatureExtractor\"", "pra_one_sided_"),
-      ("\"PraFeatureExtractor\", \"OneSidedFeatureExtractor\", \"CategoricalComparisonFeatureExtractor\"", "pra_one_sided_catcomp_")
+      (pra, "pra_"),
+      (Seq(pra, one_sided).mkString(", "), "pra_one_sided_"),
+      (Seq(pra, catcomp).mkString(", "), "pra_catcomp_"),
+      (Seq(pra, one_sided, catcomp).mkString(", "), "pra_one_sided_catcomp_"),
+      (Seq(pra, vecsim).mkString(", "), "pra_vs_")
     )
 
-    val featureSizes = Seq(-1, 10000, 100000)
-    val l1Values = Seq(0.005, 0.05, 0.5, 5)
+    val featureSizes = Seq(-1)
+    val l1Values = Seq(0.005, 0.05, 0.5)
     val l2Values = Seq(0.01, 0.1, 1)
 
     for (extractor <- extractors;
