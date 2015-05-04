@@ -21,6 +21,8 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.mallet_svm.kernel.LinearKernel
+import edu.cmu.ml.rtw.pra.mallet_svm.kernel.TreeKernel
+import edu.cmu.ml.rtw.pra.mallet_svm.kernel.RBFKernel
 import edu.cmu.ml.rtw.pra.mallet_svm.SVMClassifierTrainer
 import edu.cmu.ml.rtw.pra.mallet_svm.SVMClassifier
 import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_model
@@ -33,7 +35,6 @@ class SVMModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
   var svmClassifier: SVMClassifier = _
   var alphabet: Alphabet = _
   
-  var lrWeights: Seq[Double] = Seq()
   
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
@@ -73,7 +74,6 @@ class SVMModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
     // TODO : Use your own alphabet ?? for Target2Label
     
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
-    //val pipe = new Noop()
     // set up a target to label pipe for the svm classifier
     // the instanceList gets doubles as labels
     
@@ -102,55 +102,15 @@ class SVMModel(config: PraConfig, l1Weight: Double, l2Weight: Double, binarizeFe
                         data,
                         alphabet)
                         
-    /* This LR part is redundant shit */
-    /*                       
-    println("Creating an LR object for non-zero feature weights to generate test matrix ")
-    val lr = new MalletLogisticRegression(alphabet)
-    if (l2Weight != 0.0) {
-      println("Setting L2 weight to " + l2Weight)
-      lr.setL2wt(l2Weight)
-    }
-    if (l1Weight != 0.0) {
-      println("Setting L1 weight to " + l1Weight)
-      lr.setL1wt(l1Weight)
-    }
-    lr.train(data)
-    val features = lr.getSparseFeatures()
-    val params = lr.getSparseParams()
-    val bias = lr.getBias()
-    val weights = new mutable.ArrayBuffer[Double]()
-    var j = 0
-    for (i <- 0 until featureNames.size) {
-      if (j >= features.length) {
-        weights += 0.0
-      } else if (features(j) > i) {
-        weights += 0.0
-      } else if (features(j) == i) {
-        weights += params(j)
-        j += 1
-      }
-    }
-    println("Outputting feature weights")
-    if (config.outputBase != null) {
-      val javaWeights = weights.map(java.lang.Double.valueOf).asJava
-      config.outputter.outputWeights(config.outputBase + "weights.tsv", javaWeights, featureNames.asJava)
-    }
-    lrWeights = weights.toSeq
-    */
-    
+        
     println("Creating the MalletLibSVM object")
-    //val lr = new MalletLogisticRegression(alphabet)
+    
+    var param = new svm_parameter()
+    param.probability = 0
+    //Uncomment  one of the two below
+    //val svmTrainer = new SVMClassifierTrainer(new RBFKernel(param))
     val svmTrainer = new SVMClassifierTrainer(new LinearKernel())
-    /*
-    if (l2Weight != 0.0) {
-      println("Setting L2 weight to " + l2Weight)
-      lr.setL2wt(l2Weight)
-    }
-    if (l1Weight != 0.0) {
-      println("Setting L1 weight to " + l1Weight)
-      lr.setL1wt(l1Weight)
-    }*/
-
+      
     // Finally, we train.  All that prep and everything that follows is really just to get
     // ready for and pass on the output of this one line.
     svmClassifier = svmTrainer.train(data)

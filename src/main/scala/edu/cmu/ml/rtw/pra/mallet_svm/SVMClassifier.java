@@ -105,12 +105,6 @@ public class SVMClassifier extends Classifier implements Serializable {
         }	
         else
         	p = -5.0;
-        /*
-        System.out.print("SVM Classifier: Scores are ");
-        for(int i=0;i<scores.length;i++)
-        	System.out.print(scores[i] + " ");
-        System.out.println("");
-        */
     	return p;
     }
 

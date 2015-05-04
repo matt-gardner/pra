@@ -26,6 +26,7 @@ public class RBFKernel implements CustomKernel {
         SparseVector v1 = (SparseVector) x.data;
         SparseVector v2 = (SparseVector) y.data;
         double result = 0.0;
+        double norm = 0.0;
         int i = 0;
         int j = 0;        
         
@@ -59,8 +60,15 @@ public class RBFKernel implements CustomKernel {
             j++;
         }
         
-        //System.out.println("score: " + result);
-        return Math.exp(-param.gamma * result);
+        
+        if(v1.size() > v2.size())
+        	norm = 1 / v1.size();
+        else
+        	norm = 1 / v2.size();
+        
+        //return Math.exp(-param.gamma * result);
+        return Math.exp(-norm * result);
+        
     }
     
 }
