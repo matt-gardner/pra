@@ -12,9 +12,6 @@ import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
-import edu.cmu.ml.rtw.pra.features.PathType
-import edu.cmu.ml.rtw.pra.features.PathTypeFactory
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
