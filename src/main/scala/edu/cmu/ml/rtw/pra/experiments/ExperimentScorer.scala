@@ -299,15 +299,16 @@ object ExperimentScorer {
          if metrics(experiment)(relation).isDefinedAt(metric)) {
       relations += relation
     }
+    val sorted_relations = relations.toList.sorted
     println(s"\nPer-relation $metric:")
     val header = "Relation"
-    print(f"$header%-40s")
+    print(f"$header%-60s")
     for ((method, i) <- experiments.zipWithIndex) {
       print(f"      ${i+1}%2d ")
     }
     println()
-    for (relation <- relations) {
-      print(f"${relation}%-40s")
+    for (relation <- sorted_relations) {
+      print(f"${relation}%-60s")
       for (method <- experiments) {
         if (!metrics(method).isDefinedAt(relation)) {
           print("         ")
