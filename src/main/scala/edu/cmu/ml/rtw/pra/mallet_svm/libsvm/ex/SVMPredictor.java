@@ -30,8 +30,9 @@ public class SVMPredictor {
         return svm.svm_predict_probability(model, new svm_node(instance.getData()), probabilities);
     }    
     
+ // only call this if the data has 2 classes and type is C_SVC
     public static double myPredictValues(Instance instance, svm_model model, double[] scores){
-    	return svm.svm_predict_values(model, new svm_node(instance.getData()), scores);
+    	return svm.svm_my_predict_values(model, new svm_node(instance.getData()), scores);
     }
     public static double[] predict(Instance[] instances, svm_model model, boolean displayResult) {
         int total = 0;

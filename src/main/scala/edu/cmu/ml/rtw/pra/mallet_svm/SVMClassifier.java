@@ -17,6 +17,7 @@ import edu.cmu.ml.rtw.pra.mallet_svm.kernel.CustomKernel;
 import edu.cmu.ml.rtw.pra.mallet_svm.kernel.KernelManager;
 import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex.SVMPredictor;
 import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_model;
+import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_parameter;
 
 /**
  * A wrapper for LibSVM classifier.
@@ -49,11 +50,9 @@ public class SVMClassifier extends Classifier implements Serializable {
         for (Entry<String, Double> entry : mltLabel2svmLabel.entrySet()) {
             svmLabel2mltLabel.put(entry.getValue(), entry.getKey());
         }
-
         svmIndex2mltIndex = new int[model.nr_class + 1];
         int[] sLabels = model.label;
         LabelAlphabet labelAlphabet = getLabelAlphabet();
-        System.out.println("label alphabet string is " + labelAlphabet.toString());
         for (int sIndex = 0; sIndex < sLabels.length; sIndex++) {
             double sLabel = sLabels[sIndex];
             String mLabel = svmLabel2mltLabel.get(sLabel * 1.0);
@@ -91,16 +90,23 @@ public class SVMClassifier extends Classifier implements Serializable {
     
     public double scoreInstance(Instance instance){
     	KernelManager.setCustomKernel(this.kernel);
-    	System.out.println("Scoring instance");
         SparseVector vector = SVMClassifierTrainer.getVector(instance);	// convert this into a sparse vector
         double[] scores = new double[model.nr_class];	// scores for each each class
-        
         double sLabel = mltLabel2svmLabel.get(getLabelAlphabet().lookupLabel(instance.getTarget()).toString());
-        //double p = SVMPredictor.myPredictValues(new edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
-        double p = SVMPredictor.predictProbability(new edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
-        System.out.println("returned label is " + p);
+        double p = 0.0;
+        // call myPredictprobability if the number of classes is 2
+        if( model.param.svm_type == svm_parameter.C_SVC){
+        	if(model.nr_class == 2)
+        		p = SVMPredictor.myPredictValues(new edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
+        	else{
+        		System.out.println("Number of classes is not 2, printing out the most likely label instead.");
+        		p = SVMPredictor.predictProbability(new edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
+        	}
+        }	
+        else
+        	p = -5.0;
         /*
-        System.out.print("Scores are ");
+        System.out.print("SVM Classifier: Scores are ");
         for(int i=0;i<scores.length;i++)
         	System.out.print(scores[i] + " ");
         System.out.println("");
@@ -122,5 +128,7 @@ public class SVMClassifier extends Classifier implements Serializable {
         }
     }
     
-    
+    public svm_model getModel(){
+    	return this.model;
+    }
 }

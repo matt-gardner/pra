@@ -137,6 +137,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   // class needs to create the object.
   def createFeatureGenerator(praParams: JValue, config: PraConfig) = {
     val featureType = JsonHelper.extractWithDefault(praParams \ "features", "type", "pra")
+    println("feature type being used is " + featureType)
     featureType match {
       case "pra" => new PraFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
       case "subgraphs" => new SubgraphFeatureGenerator(praParams \ "features", praBase, config, fileUtil)

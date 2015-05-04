@@ -2310,8 +2310,8 @@ public class svm {
                 vote[i] = 0;
             }
 
-            svm.info("Number of classes from deep inside is " + nr_class);
             int p = 0;
+            
             for (i = 0; i < nr_class; i++) {
                 for (int j = i + 1; j < nr_class; j++) {
                     double sum = 0;
@@ -2331,7 +2331,7 @@ public class svm {
                     }
                     sum -= model.rho[p];
                     dec_values[p] = sum;
-                    svm.info("dec value at index " + p + " is " + sum);
+                    //svm.info("dec value at index " + p + " for labels " + i + " and " + j + " is " + sum + "\n");
                     if (dec_values[p] > 0) {
                         ++vote[i];
                     } else {
@@ -2348,7 +2348,90 @@ public class svm {
                 }
             }
 
+            //svm.info("returned label has vote max index " + vote_max_idx + "\n");
             return model.label[vote_max_idx];
+        
+        }
+    }
+    
+    // only to be called when svm_type is C_SVC and nr_class is 2
+    public static double svm_my_predict_values(svm_model model, svm_node x, double[] dec_values) {
+        int i;
+        
+        if(model.nr_class != 2)
+        	svm.info("WARNING: Potential incorrect use of the svm function svm_my_predict_values, nr_class is not 2");
+        if(model.param.svm_type != svm_parameter.C_SVC)
+        	svm.info("WARNING: Incorrect use of the svm function svm_my_predict_values, type is not C_SVC");
+        
+        double result = 0.0;
+        
+        if (model.param.svm_type == svm_parameter.ONE_CLASS
+                || model.param.svm_type == svm_parameter.EPSILON_SVR
+                || model.param.svm_type == svm_parameter.NU_SVR) {
+            double[] sv_coef = model.sv_coef[0];
+            double sum = 0;
+            for (i = 0; i < model.l; i++) {
+                sum += sv_coef[i] * Kernel.k_function(x, model.SV[i], model.param);
+            }
+            sum -= model.rho[0];
+            dec_values[0] = sum;
+
+            return sum;
+            /*
+            if (model.param.svm_type == svm_parameter.ONE_CLASS) {
+                return (sum > 0) ? 1 : -1;
+            } else {
+                return sum;
+            }
+            */
+        } else {
+            int nr_class = model.nr_class;
+            int l = model.l;
+            
+            double[] kvalue = new double[l];
+            for (i = 0; i < l; i++) {
+                kvalue[i] = Kernel.k_function(x, model.SV[i], model.param);
+            }
+
+            int[] start = new int[nr_class];
+            start[0] = 0;
+            for (i = 1; i < nr_class; i++) {
+                start[i] = start[i - 1] + model.nSV[i - 1];
+            }
+
+            int[] vote = new int[nr_class];
+            for (i = 0; i < nr_class; i++) {
+                vote[i] = 0;
+            }
+
+            int p = 0;
+            
+            for (i = 0; i < nr_class; i++) {
+                for (int j = i + 1; j < nr_class; j++) {
+                    double sum = 0;
+                    int si = start[i];
+                    int sj = start[j];
+                    int ci = model.nSV[i];
+                    int cj = model.nSV[j];
+
+                    int k;
+                    double[] coef1 = model.sv_coef[j - 1];
+                    double[] coef2 = model.sv_coef[i];
+                    for (k = 0; k < ci; k++) {
+                        sum += coef1[si + k] * kvalue[si + k];
+                    }
+                    for (k = 0; k < cj; k++) {
+                        sum += coef2[sj + k] * kvalue[sj + k];
+                    }
+                    sum -= model.rho[p];
+                    dec_values[p] = sum;
+                    result = sum;
+                    
+                }
+            }
+
+            return result;
+        
         }
     }
 
@@ -2372,7 +2455,7 @@ public class svm {
             int i;
             int nr_class = model.nr_class;
             double[] dec_values = new double[nr_class * (nr_class - 1) / 2];
-            svm_predict_values(model, x, dec_values);
+            svm_predict_values(model, x, dec_values);	// assign values to dec_values
 
             double min_prob = 1e-7;
             double[][] pairwise_prob = new double[nr_class][nr_class];

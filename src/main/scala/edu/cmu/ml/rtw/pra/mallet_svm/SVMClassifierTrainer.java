@@ -32,7 +32,7 @@ public class SVMClassifierTrainer extends ClassifierTrainer<SVMClassifier> {
     private svm_parameter param;
 
     public SVMClassifierTrainer(CustomKernel kernel) {
-        this(kernel, false);
+        this(kernel, false);		// predictProbability set to false
     }
 
     public SVMClassifierTrainer(CustomKernel kernel, boolean predictProbability) {
@@ -76,22 +76,11 @@ public class SVMClassifierTrainer extends ClassifierTrainer<SVMClassifier> {
         cleanUp();
         KernelManager.setCustomKernel(kernel);
         svm_model model = SVMTrainer.train(getSVMInstances(trainingSet), param);
+        
         System.out.println("the label map used to create the svm classifier is ");
         System.out.println(mLabel2sLabel.toString());
         classifier = new SVMClassifier(model, kernel, mLabel2sLabel, trainingSet.getPipe(), predictProbability);
-        System.out.println("number of classes in svm model is " + model.nr_class);
-        if(model.param.svm_type == svm_parameter.ONE_CLASS)
-        	System.out.println("SVM type is ONE_CLASS");
-        else if(model.param.svm_type == svm_parameter.EPSILON_SVR)
-        	System.out.println("SVM type is EPSILON_SVR");
-        else if(model.param.svm_type == svm_parameter.NU_SVR)
-        	System.out.println("SVM type is NU_SVR");
-        else if(model.param.svm_type == svm_parameter.NU_SVC)
-        	System.out.println("SVM type is NU_SVC");
-        else if(model.param.svm_type == svm_parameter.C_SVC)
-        	System.out.println("SVM type is C_SVC");
-        else
-        	System.out.println("SVM type is unknown");
+        
         return classifier;
     }
 
