@@ -1,31 +1,31 @@
-package edu.cmu.ml.rtw.pra.mallet_svm.libsvm.ex;
+package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex;
 
 /**
  *
  * @author Syeed Ibn Faiz
  */
 public class Instance {
-    private double label;
-    private Object data;
+  private double label;
+  private Object data;
 
-    public Instance(double label, Object data) {
-        this.label = label;
-        this.data = data;
-    }
+  public Instance(double label, Object data) {
+    this.label = label;
+    this.data = data;
+  }
 
-    public Object getData() {
-        return data;
-    }
+  public Object getData() {
+    return data;
+  }
 
-    public void setData(Object data) {
-        this.data = data;
-    }
+  public void setData(Object data) {
+    this.data = data;
+  }
 
-    public double getLabel() {
-        return label;
-    }
+  public double getLabel() {
+    return label;
+  }
 
-    public void setLabel(double label) {
-        this.label = label;
-    }            
+  public void setLabel(double label) {
+    this.label = label;
+  }
 }

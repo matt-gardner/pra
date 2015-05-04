@@ -19,16 +19,16 @@ import edu.cmu.ml.rtw.pra.features.MatrixRow
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import edu.cmu.ml.rtw.pra.mallet_svm.common.SparseVector
-import edu.cmu.ml.rtw.pra.mallet_svm.kernel.CustomKernel
-import edu.cmu.ml.rtw.pra.mallet_svm.kernel.LinearKernel
-import edu.cmu.ml.rtw.pra.mallet_svm.kernel.TreeKernel
-import edu.cmu.ml.rtw.pra.mallet_svm.kernel.RBFKernel
-import edu.cmu.ml.rtw.pra.mallet_svm.SVMClassifierTrainer
-import edu.cmu.ml.rtw.pra.mallet_svm.SVMClassifier
-import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_model
-import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_node
-import edu.cmu.ml.rtw.pra.mallet_svm.libsvm.svm_parameter
+import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector
+import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.CustomKernel
+import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.LinearKernel
+import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.TreeKernel
+import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.RBFKernel
+import edu.cmu.ml.rtw.pra.models.mallet_svm.SVMClassifierTrainer
+import edu.cmu.ml.rtw.pra.models.mallet_svm.SVMClassifier
+import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_model
+import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node
+import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter
 
 class SVMModel(config: PraConfig, params: JValue)
     extends PraModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
@@ -50,7 +50,7 @@ class SVMModel(config: PraConfig, params: JValue)
         new RBFKernel(param)
       }
       case "quadratic" => new CustomKernel() {
-        override def evaluate(x: svm_node, y: svm_node) {
+        override def evaluate(x: svm_node, y: svm_node): Double = {
           val dotProduct = x.data.asInstanceOf[SparseVector] dot y.data.asInstanceOf[SparseVector]
           dotProduct * dotProduct
         }
@@ -62,7 +62,7 @@ class SVMModel(config: PraConfig, params: JValue)
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instances is positive or negative, train an SVM.
    */
-  def trainModel(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String]) = {
+  override def train(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String]) = {
     println("Learning feature weights")
     println("Prepping training data")
 
@@ -88,7 +88,7 @@ class SVMModel(config: PraConfig, params: JValue)
    * Compute score for matrix row according to learned parameters and support vectors
    * which are stored in the svmClassifier
    */
-  def classifyMatrixRow(row: MatrixRow) = {
+  override def classifyMatrixRow(row: MatrixRow) = {
     svmClassifier.scoreInstance(matrixRowToInstance(row, alphabet, true))
   }
 }

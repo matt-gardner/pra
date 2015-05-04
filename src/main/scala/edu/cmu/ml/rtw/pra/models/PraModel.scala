@@ -136,7 +136,8 @@ object PraModelCreator {
   def create(config: PraConfig, params: JValue): PraModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "LogisticRegressionModel")
     modelType match {
-      case "LogisticRegressionModel" => new LogisticRegressionModel(config, params)
+      case "logistic regression" => new LogisticRegressionModel(config, params)
+      case "svm" => new SVMModel(config, params)
       case other => throw new IllegalStateException("Unrecognized model type")
     }
   }
