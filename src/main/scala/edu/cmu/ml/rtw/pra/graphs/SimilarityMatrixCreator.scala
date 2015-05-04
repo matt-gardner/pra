@@ -33,7 +33,9 @@ class SimilarityMatrixCreator(
   var num_vectors: Int = 0
   var dimension: Int = 0
 
-  def createSimilarityMatrix(params: JValue) {
+  var bad_vector: DenseVector[Double] = null
+
+  def createSimilarityMatrix(params: JValue): Unit = {
     val threshold = (params \ "threshold").extract[Double]
     val num_hashes = (params \ "num_hashes").extract[Int]
     val hash_size = (params \ "hash_size").extract[Int]
@@ -63,7 +65,9 @@ class SimilarityMatrixCreator(
         if (!to_ignore.contains(relation)) {
           val vector = normalize(DenseVector(fields.drop(1).map(_.toDouble)))
           if (norm(vector) > 0) {
-            tmp += Tuple2(dict.getIndex(relation), vector)
+            if (bad_vector == null || ((vector dot bad_vector) < .99 && (vector dot -bad_vector) < .99)) {
+              tmp += Tuple2(dict.getIndex(relation), vector)
+            }
           }
         }
       }
@@ -90,17 +94,23 @@ class SimilarityMatrixCreator(
     fileUtil.deleteFile(inProgressFile)
   }
 
+  val done = new java.util.concurrent.atomic.AtomicInteger
   def computeSimilarities(
       lower_threshold: Double,
       upper_threshold: Double,
       max_similar: Int,
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
+    if (done.getAndIncrement % 10000 == 0) println(done.get)
     val start = System.currentTimeMillis
     val close_vectors =
       for ((hash_map, index) <- hash_maps.zipWithIndex; vec2 <- hash_map(vec._2(index))
            if vec2._1 != vec._1)
              yield vec2
+    if (close_vectors.size > 100000) {
+      println("There were too many hash collisions, so I'm giving up on this one")
+      return Seq()
+    }
     val close_vector_set = close_vectors.toSet
     if (close_vector_set.size > 1000) {
       println(s"Saw ${close_vector_set.size} hash collisions for relation ${vec._1}.  Consider " +
