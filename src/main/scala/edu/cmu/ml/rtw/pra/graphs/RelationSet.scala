@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
@@ -22,42 +23,28 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
   val relationFile = (params \ "relation file").extract[String]
 
   // If not null, prepend this prefix to all relation strings in this set.
-  val relationPrefix = (params \ "relation prefix") match {
-    case JString(value) => value
-    case other => null
-  }
+  val relationPrefix = JsonHelper.extractWithDefault(params, "relation prefix", null: String)
 
   // KB relations or surface relations?  The difference is only in the alias relation format (and
   // in the relation file format).
-  val isKb = (params \ "is kb").extract[Boolean]
+  val isKb = JsonHelper.extractWithDefault(params, "is kb", false)
 
   // Fields specific to KB relations.
 
   // If this is a KB relation set, this file contains the mapping from entities to noun phrases.
-  val aliasFile = (params \ "alias file") match {
-    case JString(value) => value
-    case other => null
-  }
+  val aliasFile = JsonHelper.extractWithDefault(params, "alias file", null: String)
 
   // What should we call the alias relation?  Defaults to "@ALIAS@".  Note that we specify this for
   // each set of _KB_ relations, not for each set of _surface_ relations.  If you want something
   // more complicated, like a different name for each (KB, surface) relation set pair, you'll have
   // to approximate it with relation prefixes.
-  val aliasRelation = (params \ "alias relation") match {
-    case JString(value) => value
-    case other => "@ALIAS@"
-  }
+  val aliasRelation = JsonHelper.extractWithDefault(params, "alias relation", "@ALIAS@")
 
   // Determines how we try to read the alias file.  We currently allow two values: "freebase" and
   // "nell".  The freebase format is a little complicated the nell format is just a list of
   // (concept, noun phrase) pairs that we read into a map.  The "nell" format is generic enough
   // that it could be used for more than just NELL KBs, probably.
-  val aliasFileFormat = (params \ "alias file format") match {
-    case JString("nell") => "nell"
-    case JString("freebase") => "freebase"
-    case JNothing => null
-    case other => throw new IllegalStateException("bad alias file format specification")
-  }
+  val aliasFileFormat = JsonHelper.extractWithDefault(params, "alias file format", null: String)
 
 
   // Fields specific to surface relations.
@@ -65,26 +52,17 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
   // If this is true, we only add the alias edges that get generated from the set, not the
   // relations themselves (either from a KB relation set or a surface relation set).  This is still
   // somewhat experimental, but there are some cases where you might want to try this.
-  val aliasesOnly = (params \ "aliases only") match {
-    case JBool(value) => value
-    case JNothing => false
-    case other => throw new IllegalStateException("bad aliases only specification")
-  }
+  val aliasesOnly = JsonHelper.extractWithDefault(params, "aliases only", false)
 
   // Fields for embeddings.
 
   // The file where we can find embeddings for the relations in this set.
-  val embeddingsFile = (params \ "embeddings file") match {
-    case JString(value) => value
-    case other => null
-  }
+  val embeddingsFile = JsonHelper.extractWithDefault(params, "embeddings file", null: String)
 
   // If we are embedding the edges, should we replace the original edges or just augment them?
-  val keepOriginalEdges = (params \ "keep original edges") match {
-    case JBool(value) => value
-    case JNothing => false
-    case other => throw new IllegalStateException("bad keep original edges specification")
-  }
+  val keepOriginalEdges = JsonHelper.extractWithDefault(params, "keep original edges", false)
+
+  val replaceRelationsWith = JsonHelper.extractWithDefault(params, "replace relations with", null: String)
 
   /**
    * Get the set of aliases specified by this KB relation set.
@@ -111,7 +89,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
         fileUtil.readInvertedMapListFromTsvReader(reader, 1000000)
           .asScala.mapValues(_.asScala.toList).toMap
       }
-      case other => throw new RuntimeException("Unrecognized alias file format")
+      case other => throw new IllegalStateException("Unrecognized alias file format")
     }
   }
 
@@ -186,7 +164,8 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       }
 
       if (!aliasesOnly) {
-        val relationEdges = getEmbeddedRelations(relation, embeddings)
+        val replaced = replaceRelation(relation)
+        val relationEdges = getEmbeddedRelations(replaced, embeddings)
         for (relation <- relationEdges) {
           val prefixed_relation = prefix + relation
           val relation_index = edgeDict.getIndex(prefixed_relation)
@@ -235,6 +214,14 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       }
     }
     return numEdges
+  }
+
+  def replaceRelation(relation: String): String = {
+    if (replaceRelationsWith != null) {
+      replaceRelationsWith
+    } else {
+      relation
+    }
   }
 
   def getEmbeddedRelations(relation: String, embeddings: Map[String, List[String]]) = {

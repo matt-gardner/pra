@@ -39,6 +39,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val np2 = "np2"
   val relation1 = "relation1"
   val relation2 = "relation2"
+  val replaced = "replaced"
   val verb1 = "verb1"
   val verb2 = "verb2"
   val nodeDict = new Dictionary()
@@ -54,6 +55,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val aliasRelationIndex = edgeDict.getIndex(aliasRelation)
   val relation1Index = edgeDict.getIndex(prefix + relation1)
   val relation2Index = edgeDict.getIndex(prefix + relation2)
+  val replacedIndex = edgeDict.getIndex(prefix + replaced)
   val relationNoPrefix1Index = edgeDict.getIndex(relation1)
   val relationFileContents =
     np1 + "\t" + verb1 + "\t" + np2 + "\n" +
@@ -122,7 +124,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   }
 
   it should "fail with unrecognized format" in {
-    TestUtil.expectError(classOf[IllegalStateException], "bad alias file format", new Function() {
+    TestUtil.expectError(classOf[IllegalStateException], "Unrecognized alias file format", new Function() {
       override def call() {
         val params: JValue = ("alias file format" -> "unknown")
         val relationSet = new RelationSet(defaultParams merge params)
@@ -195,6 +197,28 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     writer.expectWritten(expected.asJava)
   }
 
+  it should "replace edge labels when requested to" in {
+    val params: JValue = ("is kb" -> false) ~ ("replace relations with" -> replaced)
+    val relationSet = new RelationSet(defaultParams merge params)
+
+    val seenNps = new mutable.HashSet[String]
+    val writer = new FakeFileWriter()
+    val reader = new BufferedReader(new StringReader(relationFileContents))
+
+    val expected = List(
+      // Np-to-concept edges.
+      np1Index + "\t" + concept1Index + "\t" + aliasRelationIndex + "\n",
+      np2Index + "\t" + concept1Index + "\t" + aliasRelationIndex + "\n",
+      np2Index + "\t" + concept2Index + "\t" + aliasRelationIndex + "\n",
+      // And verb edges.
+      np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n",
+      np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n")
+    val numEdges = relationSet.writeRelationEdgesFromReader(
+      reader, embeddings, null, prefix, seenNps, aliases, writer, nodeDict, edgeDict)
+    numEdges should be(expected.size)
+    writer.expectWritten(expected.asJava)
+  }
+
   it should "write aliases only correctly" in {
     val params: JValue = ("is kb" -> false ) ~ ("aliases only" -> true)
     val relationSet = new RelationSet(defaultParams merge params)
@@ -261,10 +285,6 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     val numEdges = relationSet.writeRelationEdgesFromReader(
       reader, Map(), null, null, seenNps, aliases, writer, nodeDict, edgeDict)
     numEdges should be(expected.size)
-    println(expected)
-    println(writer.getWritten)
-    println(edgeDict.getString(8))
-    println(edgeDict.getString(9))
     writer.expectWritten(expected.asJava)
   }
 }
