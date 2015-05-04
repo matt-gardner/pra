@@ -42,7 +42,7 @@ class OneSidedFeatureExtractor(val edgeDict: Dictionary, val nodeDict: Dictionar
         if (nodePair.getLeft == source) {
           "SOURCE:" + path + ":" + endNode
         } else if (nodePair.getLeft == target) {
-          "TARGET" + path + ":" + endNode
+          "TARGET:" + path + ":" + endNode
         } else {
           println(s"Source: ${source}")
           println(s"Target: ${target}")
@@ -92,21 +92,20 @@ class VectorSimilarityFeatureExtractor(
     val params: JValue,
     praBase: String,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
+  implicit val formats = DefaultFormats
 
   val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
   JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
-  val matrixName = JsonHelper.extractWithDefault(params, "matrix name", "dummyPath")
-  val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 3)
+  val matrixName = (params \ "matrix name").extract[String]
+  val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 10)
   // build similarity matrix in memory
   val matrixPath = s"${praBase}embeddings/${matrixName}/matrix.tsv"
   val lines = fileUtil.readLinesFromFile(matrixPath).asScala
-  val pairs = lines.map(
-    line => {
-      val words = line.split("\t")
-      (edgeDict.getIndex(words(0)), edgeDict.getIndex(words(1)))
-    }
-  ).toList.sorted
-  val relations = pairs.groupBy(_._1).map{case (k,v) => k->(v.map(tup => tup._2))}
+  val pairs = lines.map(line => {
+    val words = line.split("\t")
+    (edgeDict.getIndex(words(0)), (edgeDict.getIndex(words(1)), words(2).toDouble))
+  }).toList.sorted
+  val relations = pairs.groupBy(_._1).mapValues(_.map(_._2).sortBy(-_._2).take(maxSimilarVectors).map(_._1))
   val anyRel = edgeDict.getIndex("@ANY_REL@")
 
   override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
@@ -116,7 +115,8 @@ class VectorSimilarityFeatureExtractor(
         val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
         val edgeTypes = pathType.getEdgeTypes()
         val reverses = pathType.getReverse()
-        val similarities = for (i <- (0 until edgeTypes.length);
+        val similarities =
+          for (i <- (0 until edgeTypes.length);
           similar <- (Seq(edgeTypes(i), anyRel) ++ relations.getOrElse(edgeTypes(i), Seq())))
             yield (i, similar)
         similarities.map(sim => {
@@ -124,9 +124,9 @@ class VectorSimilarityFeatureExtractor(
           edgeTypes(sim._1) = sim._2
           val similar = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
             .encodeAsHumanReadableString(edgeDict)
-            edgeTypes(sim._1) = oldEdgeType
-            s"VECSIM:${similar}"
-        })
+          edgeTypes(sim._1) = oldEdgeType
+          "VECSIM:" + similar
+        }).toSet
       } else {
         List[String]()
       }

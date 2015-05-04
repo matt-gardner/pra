@@ -131,7 +131,7 @@ class PraFeatureGenerator(
     }
     val featureMatrix = follower.getFeatureMatrix()
     follower.shutDown()
-    if (outputFile != null) {
+    if (config.outputMatrices && outputFile != null) {
       config.outputter.outputFeatureMatrix(outputFile, featureMatrix, getFeatureNames().toSeq.asJava)
     }
     featureMatrix

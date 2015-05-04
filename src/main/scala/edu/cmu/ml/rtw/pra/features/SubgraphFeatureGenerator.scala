@@ -31,7 +31,7 @@ class SubgraphFeatureGenerator(
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
-  val includeBias = JsonHelper.extractWithDefault(params, "include bias", true)
+  val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
 
   lazy val pathFinder = PathFinderCreator.create(params \ "path finder", config, praBase)
 

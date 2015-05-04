@@ -25,6 +25,8 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   val edgeDict = new Dictionary
   edgeDict.getIndex("rel1")
   edgeDict.getIndex("rel2")
+  edgeDict.getIndex("rel3")
+  edgeDict.getIndex("rel4")
   val nodeDict = new Dictionary
   nodeDict.getIndex("node1")
   nodeDict.getIndex("node2")
@@ -88,15 +90,43 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   "VectorSimilarityFeatureExtractor" should "extract vector similarity features" in {
     val fileUtil = new FakeFileUtil
     val matrixFile = "/embeddings/test/matrix.tsv"
-    fileUtil.addFileToBeRead(matrixFile, "rel1\trel2\t.9\n")
-    val pathTypes = Seq("-1-", "-2-")
+    fileUtil.addFileToBeRead(matrixFile, "rel1\trel2\t.9\nrel3\trel4\t.8\nrel1\trel3\t.7\n")
+    val pathTypes = Seq("-1-3-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
-    val jval: JValue = ("name" -> "VectorSimilarityFeatureExtractor") ~ ("matrix name" -> "test")
+    val jval: JValue =
+      ("name" -> "VectorSimilarityFeatureExtractor") ~
+      ("matrix name" -> "test") ~
+      ("max similar vectors" -> 10)
     val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval, "/", fileUtil)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
-    features.size should be(3)
-    features should contain("VECSIM:-rel1-")
-    features should contain("VECSIM:-rel2-")
-    features should contain("VECSIM:-@ANY_REL@-")
+    println(features)
+    features.size should be(6)
+    features should contain("VECSIM:-rel1-rel3-")
+    features should contain("VECSIM:-rel2-rel3-")
+    features should contain("VECSIM:-rel3-rel3-")
+    features should contain("VECSIM:-rel1-rel4-")
+    features should contain("VECSIM:-@ANY_REL@-rel3-")
+    features should contain("VECSIM:-rel1-@ANY_REL@-")
+  }
+
+  it should "only use max similar vectors" in {
+    val fileUtil = new FakeFileUtil
+    val matrixFile = "/embeddings/test/matrix.tsv"
+    fileUtil.addFileToBeRead(matrixFile, "rel1\trel2\t.9\nrel3\trel4\t.8\nrel1\trel3\t.7\n")
+    val pathTypes = Seq("-1-3-", "-2-")
+    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
+    val jval: JValue =
+      ("name" -> "VectorSimilarityFeatureExtractor") ~
+      ("matrix name" -> "test") ~
+      ("max similar vectors" -> 1)
+    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval, "/", fileUtil)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    println(features)
+    features.size should be(5)
+    features should contain("VECSIM:-rel1-rel3-")
+    features should contain("VECSIM:-rel2-rel3-")
+    features should contain("VECSIM:-rel1-rel4-")
+    features should contain("VECSIM:-@ANY_REL@-rel3-")
+    features should contain("VECSIM:-rel1-@ANY_REL@-")
   }
 }
