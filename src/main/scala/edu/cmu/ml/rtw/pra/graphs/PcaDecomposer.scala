@@ -17,12 +17,7 @@ class PcaDecomposer(
   val fileUtil = new FileUtil
   val graph_file = graph_dir + "/graph_chi/edges.tsv"
   val in_progress_file = result_dir + "in_progress"
-  val node_dict = {
-    val dict = new Dictionary
-    dict.setFromFile(graph_dir + "node_dict.tsv")
-    dict
-  }
-  val edge_dict = {
+  lazy val edge_dict = {
     val dict = new Dictionary
     dict.setFromFile(graph_dir + "edge_dict.tsv")
     dict
