@@ -20,7 +20,7 @@ import scala.collection.JavaConverters._
 class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
 
-  val params = JNothing
+  val params: JValue = ("include bias" -> true)
   val config = new PraConfig.Builder().noChecks()
     .setGraph("src/test/resources/edges.tsv").setNumShards(1).build()
   val fakeFileUtil = new FakeFileUtil
@@ -71,7 +71,8 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     nodeDict.getIndex("node1")
     nodeDict.getIndex("node2")
     val out = new Outputter(nodeDict, null, null, fakeFileUtil)
-    val config = new PraConfig.Builder().setOutputBase("/").setOutputter(out).noChecks().build()
+    val config = new PraConfig.Builder().setOutputMatrices(true)
+      .setOutputBase("/").setOutputter(out).noChecks().build()
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil) {
       override def getLocalSubgraphs(data: Dataset) = {
         if (data != dataset) throw new RuntimeException()

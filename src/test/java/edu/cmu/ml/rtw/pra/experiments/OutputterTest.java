@@ -126,9 +126,9 @@ public class OutputterTest extends TestCase {
 
     Map<Integer, List<Pair<Integer, Double>>> sourceScores = Maps.newHashMap();
     List<Pair<Integer, Double>> list3 = Lists.newArrayList();
-    list3.add(Pair.makePair(7, 0.1));
     list3.add(Pair.makePair(4, 0.6));
     list3.add(Pair.makePair(8, 0.3));
+    list3.add(Pair.makePair(7, 0.1));
     sourceScores.put(3, list3);
     List<Pair<Integer, Double>> list12 = Lists.newArrayList();
     list12.add(Pair.makePair(1, 0.1));

@@ -74,8 +74,12 @@ public class PraConfig {
   // and edgeDict that are already here.
   public final Outputter outputter;
 
-  // TODO(matt): FIX THIS, make it configurable
-  public final boolean outputMatrices = false;
+  // Whether or not we should save the train/test matrices that are created when running PRA.
+  // These files can be very large, so if all you care about is the MAP or MRR score of each run,
+  // you should probably not create them.  They can be very helpful for debugging, though.  I would
+  // recommend leaving this as false (the default), unless you need to debug something or do some
+  // error analysis, then you can set it to true.
+  public final boolean outputMatrices;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Split-related objects - what do we use to train and test?
@@ -162,6 +166,7 @@ public class PraConfig {
     nodeDict = builder.nodeDict;
     edgeDict = builder.edgeDict;
     outputter = builder.outputter;
+    outputMatrices = builder.outputMatrices;
   }
 
   public static class Builder {
@@ -176,6 +181,7 @@ public class PraConfig {
     private List<Integer> unallowedEdges;
     private Map<Integer, Integer> relationInverses;
     private String outputBase;
+    private boolean outputMatrices;
     // These three are public because that makes things easier in KbPraDriver.
     public Dictionary nodeDict = new Dictionary();
     public Dictionary edgeDict = new Dictionary();
@@ -198,6 +204,7 @@ public class PraConfig {
     public Builder setNodeDictionary(Dictionary d) {this.nodeDict = d;return this;}
     public Builder setEdgeDictionary(Dictionary d) {this.edgeDict = d;return this;}
     public Builder setOutputter(Outputter o) {this.outputter = o;return this;}
+    public Builder setOutputMatrices(boolean o) {this.outputMatrices = o;return this;}
 
     public PraConfig build() {
       if (outputter == null) {
@@ -236,6 +243,7 @@ public class PraConfig {
       setNodeDictionary(config.nodeDict);
       setEdgeDictionary(config.edgeDict);
       setOutputter(config.outputter);
+      setOutputMatrices(config.outputMatrices);
     }
 
     /**
