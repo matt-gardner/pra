@@ -60,15 +60,6 @@ public class RBFKernel implements CustomKernel {
       j++;
     }
 
-
-    if(v1.size() > v2.size())
-      norm = 1 / v1.size();
-    else
-      norm = 1 / v2.size();
-
-    //return Math.exp(-param.gamma * result);
-    return Math.exp(-norm * result);
-
+    return Math.exp(-param.gamma * result);
   }
-
 }
