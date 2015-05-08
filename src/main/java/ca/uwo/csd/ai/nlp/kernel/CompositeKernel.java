@@ -1,8 +1,8 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.kernel;
+package ca.uwo.csd.ai.nlp.kernel;
 
 import java.util.ArrayList;
 import java.util.List;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node;
+import ca.uwo.csd.ai.nlp.libsvm.svm_node;
 
 /**
  *

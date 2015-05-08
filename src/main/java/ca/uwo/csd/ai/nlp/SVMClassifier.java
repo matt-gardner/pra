@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm;
+package ca.uwo.csd.ai.nlp;
 
 import cc.mallet.classify.Classification;
 import cc.mallet.classify.Classifier;
@@ -12,12 +12,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.io.Serializable;
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.CustomKernel;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.KernelManager;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.SVMPredictor;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_model;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter;
+import ca.uwo.csd.ai.nlp.common.SparseVector;
+import ca.uwo.csd.ai.nlp.kernel.CustomKernel;
+import ca.uwo.csd.ai.nlp.kernel.KernelManager;
+import ca.uwo.csd.ai.nlp.libsvm.ex.SVMPredictor;
+import ca.uwo.csd.ai.nlp.libsvm.svm_model;
+import ca.uwo.csd.ai.nlp.libsvm.svm_parameter;
 
 /**
  * A wrapper for LibSVM classifier.
@@ -71,7 +71,7 @@ public class SVMClassifier extends Classifier implements Serializable {
     double[] scores = new double[model.nr_class];    // scores for each each class
 
     double sLabel = mltLabel2svmLabel.get(getLabelAlphabet().lookupLabel(instance.getTarget().toString()).toString());
-    double p = SVMPredictor.predictProbability(new edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
+    double p = SVMPredictor.predictProbability(new ca.uwo.csd.ai.nlp.libsvm.ex.Instance(sLabel, vector), model, scores);
 
     //if SVM is not predicting probability then assign a score of 1.0 to the best class(p)
     //and 0.0 to the other classes
@@ -97,10 +97,10 @@ public class SVMClassifier extends Classifier implements Serializable {
     // call myPredictprobability if the number of classes is 2
     if( model.param.svm_type == svm_parameter.C_SVC){
       if(model.nr_class == 2)
-        p = SVMPredictor.myPredictValues(new edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
+        p = SVMPredictor.myPredictValues(new ca.uwo.csd.ai.nlp.libsvm.ex.Instance(sLabel, vector), model, scores);
       else{
         System.out.println("Number of classes is not 2, printing out the most likely label instead.");
-        p = SVMPredictor.predictProbability(new edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance(sLabel, vector), model, scores);
+        p = SVMPredictor.predictProbability(new ca.uwo.csd.ai.nlp.libsvm.ex.Instance(sLabel, vector), model, scores);
       }
     }
     else

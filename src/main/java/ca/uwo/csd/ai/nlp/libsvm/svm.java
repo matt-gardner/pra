@@ -1,7 +1,7 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm;
+package ca.uwo.csd.ai.nlp.libsvm;
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.KernelManager;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.CustomKernel;
+import ca.uwo.csd.ai.nlp.kernel.KernelManager;
+import ca.uwo.csd.ai.nlp.kernel.CustomKernel;
 import java.io.*;
 import java.util.*;
 

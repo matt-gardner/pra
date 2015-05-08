@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm;
+package ca.uwo.csd.ai.nlp;
 
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.types.FeatureVector;
@@ -11,12 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.CustomKernel;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.KernelManager;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.SVMTrainer;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_model;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter;
+import ca.uwo.csd.ai.nlp.common.SparseVector;
+import ca.uwo.csd.ai.nlp.kernel.CustomKernel;
+import ca.uwo.csd.ai.nlp.kernel.KernelManager;
+import ca.uwo.csd.ai.nlp.libsvm.ex.SVMTrainer;
+import ca.uwo.csd.ai.nlp.libsvm.svm_model;
+import ca.uwo.csd.ai.nlp.libsvm.svm_parameter;
 
 /**
  * Class used to generate an SVMClassifier.
@@ -89,11 +89,11 @@ public class SVMClassifierTrainer extends ClassifierTrainer<SVMClassifier> {
     numClasses = 0;
   }
 
-  private List<edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance> getSVMInstances(InstanceList instanceList) {
-    List<edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance> list = new ArrayList<edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance>();
+  private List<ca.uwo.csd.ai.nlp.libsvm.ex.Instance> getSVMInstances(InstanceList instanceList) {
+    List<ca.uwo.csd.ai.nlp.libsvm.ex.Instance> list = new ArrayList<ca.uwo.csd.ai.nlp.libsvm.ex.Instance>();
     for (Instance instance : instanceList) {
       SparseVector vector = getVector(instance);
-      list.add(new edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex.Instance(getLabel((Label) instance.getTarget()), vector));
+      list.add(new ca.uwo.csd.ai.nlp.libsvm.ex.Instance(getLabel((Label) instance.getTarget()), vector));
     }
     return list;
   }

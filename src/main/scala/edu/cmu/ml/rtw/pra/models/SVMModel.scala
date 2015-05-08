@@ -19,16 +19,16 @@ import edu.cmu.ml.rtw.pra.features.MatrixRow
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.CustomKernel
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.LinearKernel
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.TreeKernel
-import edu.cmu.ml.rtw.pra.models.mallet_svm.kernel.RBFKernel
-import edu.cmu.ml.rtw.pra.models.mallet_svm.SVMClassifierTrainer
-import edu.cmu.ml.rtw.pra.models.mallet_svm.SVMClassifier
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_model
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter
+import ca.uwo.csd.ai.nlp.common.SparseVector
+import ca.uwo.csd.ai.nlp.kernel.CustomKernel
+import ca.uwo.csd.ai.nlp.kernel.LinearKernel
+import ca.uwo.csd.ai.nlp.kernel.TreeKernel
+import ca.uwo.csd.ai.nlp.kernel.RBFKernel
+import ca.uwo.csd.ai.nlp.SVMClassifierTrainer
+import ca.uwo.csd.ai.nlp.SVMClassifier
+import ca.uwo.csd.ai.nlp.libsvm.svm_model
+import ca.uwo.csd.ai.nlp.libsvm.svm_node
+import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel(config: PraConfig, params: JValue)
     extends PraModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {

@@ -1,7 +1,7 @@
 //
 // svm_model
 //
-package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm;
+package ca.uwo.csd.ai.nlp.libsvm;
 
 public class svm_model implements java.io.Serializable {
 

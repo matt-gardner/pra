@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.common;
+package ca.uwo.csd.ai.nlp.common;
 
 import java.util.ArrayList;
 import java.util.List;

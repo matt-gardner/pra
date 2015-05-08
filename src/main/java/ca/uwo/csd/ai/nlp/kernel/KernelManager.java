@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.kernel;
+package ca.uwo.csd.ai.nlp.kernel;
 
 /**
  * <code>KernelManager</code> provides the custom kernel function to <code>svm</code>.

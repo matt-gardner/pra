@@ -1,11 +1,11 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex;
+package ca.uwo.csd.ai.nlp.libsvm.ex;
 
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_model;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_problem;
+import ca.uwo.csd.ai.nlp.libsvm.svm;
+import ca.uwo.csd.ai.nlp.libsvm.svm_model;
+import ca.uwo.csd.ai.nlp.libsvm.svm_node;
+import ca.uwo.csd.ai.nlp.libsvm.svm_parameter;
+import ca.uwo.csd.ai.nlp.libsvm.svm_problem;
 
 import java.io.IOException;
 import java.util.ArrayList;

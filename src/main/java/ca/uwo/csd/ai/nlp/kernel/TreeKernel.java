@@ -1,10 +1,10 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.kernel;
+package ca.uwo.csd.ai.nlp.kernel;
 
 //import edu.stanford.nlp.trees.Tree;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.Tree;
+import ca.uwo.csd.ai.nlp.common.Tree;
 import java.util.ArrayList;
 import java.util.List;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node;
+import ca.uwo.csd.ai.nlp.libsvm.svm_node;
 
 /**
  * <code>TreeKernel</code> provides a naive implementation of the kernel function described in

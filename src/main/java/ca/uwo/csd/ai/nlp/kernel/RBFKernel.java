@@ -1,9 +1,9 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.kernel;
+package ca.uwo.csd.ai.nlp.kernel;
 
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_node;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.common.SparseVector.Element;
-import edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.svm_parameter;
+import ca.uwo.csd.ai.nlp.common.SparseVector;
+import ca.uwo.csd.ai.nlp.libsvm.svm_node;
+import ca.uwo.csd.ai.nlp.common.SparseVector.Element;
+import ca.uwo.csd.ai.nlp.libsvm.svm_parameter;
 
 /**
  *  <code>RBFKernel</code> implements an RBF kernel.

@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm;
+package ca.uwo.csd.ai.nlp.libsvm;
 
 public class svm_problem implements java.io.Serializable {
 

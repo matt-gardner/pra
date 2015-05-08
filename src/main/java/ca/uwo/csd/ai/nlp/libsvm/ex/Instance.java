@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.models.mallet_svm.libsvm.ex;
+package ca.uwo.csd.ai.nlp.libsvm.ex;
 
 /**
  *
