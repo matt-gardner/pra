@@ -5,7 +5,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-object fix_multilingual_svo {
+object multilingual_svo_experiments {
   val fileUtil = new FileUtil
 
   val aliasFile = "/home/mg1/data/freebase/freebase-aliases-only.tsv"
@@ -36,7 +36,7 @@ object fix_multilingual_svo {
   val french_split_base = "/home/mg1/pra/splits/multilingual/french_test/"
   val percent_training = .8
 
-  def main(args: Array[String]) {
+  def NOT_main(args: Array[String]) {
     //println("Reformatting SVO data")
     //reformat_all_languages()
     //println("Finding aliases in the SVO data")
