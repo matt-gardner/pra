@@ -134,7 +134,7 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
 
 object PraModelCreator {
   def create(config: PraConfig, params: JValue): PraModel = {
-    val modelType = JsonHelper.extractWithDefault(params, "type", "LogisticRegressionModel")
+    val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new LogisticRegressionModel(config, params)
       case "svm" => new SVMModel(config, params)

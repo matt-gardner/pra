@@ -85,6 +85,28 @@ class NumericalComparisonFeatureExtractor(val edgeDict: Dictionary, val nodeDict
   def isDoubleNumber(s: String): Boolean = (allCatch opt s.toDouble).isDefined
 }
 
+class PathBigramsFeatureExtractor(val edgeDict: Dictionary) extends FeatureExtractor {
+  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    val sourceTarget = new Pair[Integer, Integer](source, target)
+    subgraph.asScala.flatMap(entry => {
+      if (entry._2.contains(sourceTarget)) {
+        List(entry._1.encodeAsHumanReadableString(edgeDict))
+        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
+        val edgeTypes = pathType.getEdgeTypes()
+        val reverses = pathType.getReverse()
+        val edgeTypeStrings = "@START@" +: edgeTypes.zip(reverses).map(edge => {
+          val edgeString = edgeDict.getString(edge._1)
+          if (edge._2) "_" + edgeString else edgeString
+        }).toList :+ "@END@"
+        val bigrams = for (i <- (1 until edgeTypeStrings.size))
+            yield "BIGRAM:" + edgeTypeStrings(i-1) + "-" + edgeTypeStrings(i)
+        bigrams
+      } else {
+        List[String]()
+      }
+    }).toList.asJava
+  }
+}
 
 class VectorSimilarityFeatureExtractor(
     val edgeDict: Dictionary,

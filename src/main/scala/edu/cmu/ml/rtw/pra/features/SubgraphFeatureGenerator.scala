@@ -111,6 +111,7 @@ class SubgraphFeatureGenerator(
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
     extractorNames.map(_ match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor(config.edgeDict)
+      case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor(config.edgeDict)
       case JString("OneSidedFeatureExtractor") =>
         new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
       case JString("CategoricalComparisonFeatureExtractor") =>

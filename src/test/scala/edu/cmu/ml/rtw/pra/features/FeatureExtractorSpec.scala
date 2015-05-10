@@ -57,6 +57,16 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("-rel1-")
   }
 
+  "PathBigramsFeatureExtractor" should "extract bigrams from standard PRA features" in {
+    val pathTypes = Seq("-1-2-", "-2-")
+    val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
+    val extractor = new PathBigramsFeatureExtractor(edgeDict)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    features.size should be(3)
+    features should contain("BIGRAM:@START@-rel1")
+    features should contain("BIGRAM:rel1-rel2")
+    features should contain("BIGRAM:rel2-@END@")
+  }
 
   "OneSidedFeatureExtractor" should "map each path type entry to a one-sided feature" in {
     val pathTypes = Seq("-1-", "-2-")

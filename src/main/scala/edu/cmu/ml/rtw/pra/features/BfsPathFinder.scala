@@ -30,6 +30,7 @@ class BfsPathFinder(
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.
+  // On NELL + SVO, it looks like it takes _way_ too much memory to do more than 2 steps here.
   val numSteps = JsonHelper.extractWithDefault(params, "number of steps", 2)
 
   // If any node has more edges of a single type connected to it than this, we give up the walk at

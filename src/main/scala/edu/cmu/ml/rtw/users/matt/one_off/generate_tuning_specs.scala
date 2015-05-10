@@ -33,12 +33,14 @@ object generate_tuning_specs {
     val base = "/home/mg1/pra/experiment_specs/nell/new_features/bfs/tuning/"
     fileUtil.mkdirs(base)
     val pra = "\"PraFeatureExtractor\""
+    val bigrams = "\"PathBigramsFeatureExtractor\""
     val one_sided = "\"OneSidedFeatureExtractor\""
     val catcomp = "\"CategoricalComparisonFeatureExtractor\""
     val matrix_name = "my_svd/nell/kb-t_svo/similarity_matrix_0.8_3_20_max_10"
     val vecsim = "{\"name\": \"VectorSimilarityFeatureExtractor\", \"matrix name\": \"" + matrix_name + "\"}"
     val extractors = Seq(
       (pra, "pra_"),
+      (Seq(pra, bigrams).mkString, "pra_bigrams_"),
       (Seq(pra, one_sided).mkString(", "), "pra_one_sided_"),
       (Seq(pra, catcomp).mkString(", "), "pra_catcomp_"),
       (Seq(pra, one_sided, catcomp).mkString(", "), "pra_one_sided_catcomp_"),
@@ -47,7 +49,7 @@ object generate_tuning_specs {
 
     val featureSizes = Seq(-1)
     val l1Values = Seq(0.005, 0.05, 0.5)
-    val l2Values = Seq(0.01, 0.1, 1)
+    val l2Values = Seq(0.01, 0.1)
 
     for (extractor <- extractors;
          featureSize <- featureSizes;
