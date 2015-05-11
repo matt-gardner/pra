@@ -83,7 +83,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "createPathFollower" should "create random walk path follower" in {
-    val follower = generator.createPathFollower(followerParams, Seq(path1, path2), data)
+    val follower = generator.createPathFollower(followerParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[RandomWalkPathFollower])
     val rwFollower = follower.asInstanceOf[RandomWalkPathFollower]
     rwFollower.getWalksPerPath should be(246)
@@ -98,7 +98,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       ("max fan out" -> 2) ~
       ("matrix dir" -> "m") ~
       ("normalize walk probabilities" -> false)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data)
+    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[MatrixPathFollower])
     val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
     matrixFollower.getMaxFanOut should be(2)
@@ -112,7 +112,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       ("max fan out" -> 2) ~
       ("matrix dir" -> "m/") ~
       ("normalize walk probabilities" -> false)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data)
+    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
     matrixFollower.getMatrixDir should be("src/test/resources/m/")
   }
@@ -122,7 +122,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       ("name" -> "rescal matrix multiplication") ~
       ("rescal dir" -> "/path/to/r/") ~
       ("negatives per source" -> 23)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data)
+    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[RescalMatrixPathFollower])
     val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
     rescalFollower.getNegativesPerSource should be(23)
@@ -133,7 +133,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val matrixParams =
       ("name" -> "rescal matrix multiplication") ~
       ("rescal dir" -> "/path/to/r")
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data)
+    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
     rescalFollower.getRescalDir should be("/path/to/r/")
   }
@@ -142,7 +142,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val badParams: JValue = ("name" -> "bad")
     TestUtil.expectError(classOf[IllegalStateException], "Unrecognized path follower", new Function() {
       def call() {
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data)
+        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
       }
     })
   }
@@ -151,19 +151,19 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
       def call() {
         val badParams: JValue = ("name" -> "random walks") ~ ("fake" -> "bad")
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data)
+        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
       }
     })
     TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
       def call() {
         val badParams: JValue = ("name" -> "matrix multiplication") ~ ("fake" -> "bad")
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data)
+        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
       }
     })
     TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
       def call() {
         val badParams: JValue = ("name" -> "rescal matrix multiplication") ~ ("fake" -> "bad")
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data)
+        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
       }
     })
   }
