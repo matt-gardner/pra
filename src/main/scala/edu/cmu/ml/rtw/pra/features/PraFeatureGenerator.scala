@@ -28,7 +28,7 @@ class PraFeatureGenerator(
 
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
     pathTypes = selectPathFeatures(data)
-    computeFeatureValues(pathTypes, data, null)
+    computeFeatureValues(pathTypes, data, null, true)
   }
 
   override def removeZeroWeightFeatures(weights: Seq[Double]): Seq[Double] = {
@@ -39,7 +39,7 @@ class PraFeatureGenerator(
 
   override def createTestMatrix(data: Dataset): FeatureMatrix = {
     val output = if (config.outputBase == null) null else config.outputBase + "test_matrix.tsv"
-    computeFeatureValues(pathTypes, data, output)
+    computeFeatureValues(pathTypes, data, output, false)
   }
 
   override def getFeatureNames(): Array[String] = {
@@ -99,17 +99,6 @@ class PraFeatureGenerator(
    *
    * @param pathTypes A list of {@link PathType} objects specifying the path types to follow from
    *     each source node.
-   * @param sourcesMap A set of source nodes to start walks from, mapped to targets that are
-   *     known to be paired with that source.  The mapped targets have two uses.  First, along
-   *     with <code>config.unallowedEdges</code>, they determine which edges are cheating and
-   *     thus not allowed to be followed for a given source.  Second, they are used in some
-   *     accept policies (see documentation for <code>config.acceptPolicy</code>).  To do a query
-   *     of the form (source, relation, *), simply pass in a map that has empty sets
-   *     corresponding to each source.  This is appropriate for production use during prediction
-   *     time, but not really appropriate for testing, as you could easily be cheating if the
-   *     edge you are testing already exists in the graph.  You also shouldn't do this during
-   *     training time, as you want to training data to match the test data, and the test data
-   *     will not have the relation edge between the source and the possible targets.
    * @param outputFile If not null, the location to save the computed feature matrix.  We can't
    *     just use config.outputBase here, because this method gets called from several places,
    *     with potentially different filenames under config.outputBase.
@@ -119,10 +108,14 @@ class PraFeatureGenerator(
    *     were no paths from a source to an acceptable target following any of the path types,
    *     there will be no row in the matrix for that source.
    */
-  def computeFeatureValues(pathTypes: Seq[PathType], data: Dataset, outputFile: String) = {
+  def computeFeatureValues(
+      pathTypes: Seq[PathType],
+      data: Dataset,
+      outputFile: String,
+      isTraining: Boolean) = {
     println("Computing feature values")
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
-    val follower = createPathFollower(params \ "path follower", pathTypes, data)
+    val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
     follower.execute()
     if (follower.usesGraphChi()) {
       // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
@@ -144,16 +137,17 @@ class PraFeatureGenerator(
   def createPathFollower(
       followerParams: JValue,
       pathTypes: Seq[PathType],
-      data: Dataset): PathFollower = {
+      data: Dataset,
+      isTraining: Boolean): PathFollower = {
     val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
     val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data, config.unallowedEdges))
     if (name.equals("random walks")) {
       val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
-        "normalize walk probabilities")
+        "matrix accept policy: training", "matrix accept policy: test", "normalize walk probabilities")
       JsonHelper.ensureNoExtras(
         followerParams, "pra parameters -> features -> path follower", followerParamKeys)
       val walksPerPath = JsonHelper.extractWithDefault(followerParams, "walks per path", 100)
-      val acceptPolicy = JsonHelper.extractWithDefault(followerParams, "matrix accept policy", "all-targets")
+      val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
       val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
       new RandomWalkPathFollower(
         config.graph,
@@ -163,7 +157,7 @@ class PraFeatureGenerator(
         edgeExcluder,
         pathTypes.asJava,
         walksPerPath,
-        MatrixRowPolicy.parseFromString(acceptPolicy),
+        acceptPolicy,
         normalize)
     } else if (name.equals("matrix multiplication")) {
       val followerParamKeys = Seq("name", "max fan out", "matrix dir", "normalize walk probabilities")
@@ -209,6 +203,21 @@ class PraFeatureGenerator(
         similarityThreshold)
     } else {
       throw new IllegalStateException("Unrecognized path type selector")
+    }
+  }
+
+  def getMatrixAcceptPolicy(params: JValue, isTraining: Boolean) = {
+    val both = JsonHelper.extractWithDefault(params, "matrix accept policy", null: String)
+    if (both != null) {
+      MatrixRowPolicy.parseFromString(both)
+    } else {
+      val training = JsonHelper.extractWithDefault(params, "matrix accept policy: training", "all-targets")
+      if (isTraining) {
+        MatrixRowPolicy.parseFromString(training)
+      } else {
+        val test = JsonHelper.extractWithDefault(params, "matrix accept policy: test", training)
+        MatrixRowPolicy.parseFromString(test)
+      }
     }
   }
 }

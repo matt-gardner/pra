@@ -44,7 +44,8 @@ object generate_tuning_specs {
       (Seq(pra, one_sided).mkString(", "), "pra_one_sided_"),
       (Seq(pra, catcomp).mkString(", "), "pra_catcomp_"),
       (Seq(pra, one_sided, catcomp).mkString(", "), "pra_one_sided_catcomp_"),
-      (Seq(pra, vecsim).mkString(", "), "pra_vs_")
+      (Seq(pra, vecsim).mkString(", "), "pra_vs_"),
+      (Seq(pra, bigrams, vecsim).mkString, "pra_bigrams_vs_")
     )
 
     val featureSizes = Seq(-1)
