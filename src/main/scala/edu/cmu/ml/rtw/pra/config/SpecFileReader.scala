@@ -23,7 +23,7 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
   def readSpecFile(lines: Seq[String]): JValue = {
     val empty_params = new JObject(Nil)
     val params = populateParamsFromSpecs(lines, empty_params)
-    doNestedLoads(params)
+    removeDeletes(doNestedLoads(params))
   }
 
   // This handles load statements at the beginning of a file, however many there are.
@@ -53,6 +53,10 @@ class SpecFileReader(baseDir: String, fileUtil: FileUtil = new FileUtil()) {
       }
       case other => other
     }
+  }
+
+  def removeDeletes(params: JValue): JValue = {
+    params.removeField(field => field._2 == JString("delete"))
   }
 
   def getParamFileFromLoadStatement(load: String) = {

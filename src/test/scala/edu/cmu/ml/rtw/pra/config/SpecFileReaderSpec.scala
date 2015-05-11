@@ -211,6 +211,18 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
       ("reset weight" -> .8) ~
       ("embeddings" -> List(relationEmbeddingsFilename))))
 
+  val deletedSpecFilename = "/deleted/spec/file"
+  val deletedSpecFile = """{
+    |  "level 1": {
+    |    "field to keep": "keep",
+    |    "field to delete": "delete",
+    |    "field to not delete": "don't delete"
+    |  }
+    |}""".stripMargin
+
+  val deletedParams: JValue =
+    ("level 1" -> ("field to keep" -> "keep") ~ ("field to not delete" -> "don't delete"))
+
   val fileUtil: FakeFileUtil = {
     val f = new FakeFileUtil
     f.addFileToBeRead("/graphs/" + graphDir + "/node_dict.tsv", nodeDictionaryFile)
@@ -224,6 +236,7 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
     f.addFileToBeRead(praSpecFilename, praSpecFile)
     f.addFileToBeRead(graphSpecFilename, graphSpecFile)
     f.addFileToBeRead(nestedLoadSpecFilename, nestedLoadSpecFile)
+    f.addFileToBeRead(deletedSpecFilename, deletedSpecFile)
     f
   }
 
@@ -248,5 +261,9 @@ class SpecFileReaderSpec extends FlatSpecLike with Matchers {
 
   it should "expand loads found in values in the json" in {
     new SpecFileReader("", fileUtil).readSpecFile(nestedLoadSpecFilename) should be(nestedLoadParams)
+  }
+
+  it should "remove fields labeled 'delete'" in {
+    new SpecFileReader("", fileUtil).readSpecFile(deletedSpecFilename) should be(deletedParams)
   }
 }
