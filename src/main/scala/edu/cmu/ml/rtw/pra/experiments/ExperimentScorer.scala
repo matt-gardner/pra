@@ -42,10 +42,10 @@ object ExperimentScorer {
       return
     }
     val pra_base = args(0)
-    val filter = if (args.length > 1) args(1) else ""
+    val filters = args.toList.drop(1)
     scoreExperiments(
       pra_base,
-      filter,
+      filters,
       displayMetrics_,
       sortResultsBy_,
       metricComputers_,
@@ -53,9 +53,16 @@ object ExperimentScorer {
       relationMetrics_)
   }
 
+  def shouldKeepFile(filters: Seq[String])(file: File): Boolean = {
+    for (filter <- filters) {
+      if (file.getAbsolutePath.contains(filter)) return true
+    }
+    false
+  }
+
   def scoreExperiments(
       pra_base: String,
-      experiment_filter: String,
+      experiment_filters: Seq[String],
       displayMetrics: List[(String, String)],
       sortResultsBy: List[String],
       metricComputers: List[MetricComputer],
@@ -64,7 +71,7 @@ object ExperimentScorer {
     val results_dir = pra_base + RESULTS_DIR
     val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir), """settings.txt""".r)
       .map(_.getParentFile)
-      .filter(_.getAbsolutePath.contains(experiment_filter))
+      .filter(shouldKeepFile(experiment_filters))
 
     var greatest_common_path = experiment_dirs.last.getParentFile
     var all_in_common = false

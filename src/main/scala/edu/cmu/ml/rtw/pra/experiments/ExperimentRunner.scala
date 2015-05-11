@@ -20,7 +20,7 @@ object ExperimentRunner {
       return
     }
     val pra_base = new FileUtil().addDirectorySeparatorIfNecessary(args(0))
-    val filter = if (args.length > 1) args(1) else ""
+    val filter = args.toList.drop(1)
     runPra(pra_base, filter)
 
     // The GraphChi code doesn't do a good job at killing all of its threads, so we do so here.
@@ -29,10 +29,17 @@ object ExperimentRunner {
     System.exit(0)
   }
 
-  def runPra(pra_base: String, experiment_filter: String) {
+  def shouldKeepFile(filters: Seq[String])(file: File): Boolean = {
+    for (filter <- filters) {
+      if (file.getAbsolutePath.contains(filter)) return true
+    }
+    false
+  }
+
+  def runPra(pra_base: String, experiment_filters: Seq[String]) {
     val experiment_spec_dir = s"${pra_base}/experiment_specs/"
     val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
-    experiment_specs.filter(_.getAbsolutePath().contains(experiment_filter))
+    experiment_specs.filter(shouldKeepFile(experiment_filters))
       .map(runPraFromSpec(pra_base) _)
   }
 
