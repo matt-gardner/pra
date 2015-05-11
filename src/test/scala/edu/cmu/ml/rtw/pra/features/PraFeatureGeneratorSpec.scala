@@ -13,8 +13,9 @@ import scala.collection.JavaConverters._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.DatasetFactory
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
@@ -41,23 +42,26 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val path1 = factory.fromString("-1-2-3-")
   val path2 = factory.fromString("-1-2-3- INVERSE")
+  val unallowedEdges = List(1, 3, 2).map(x => java.lang.Integer.valueOf(x)).asJava
+  val graphFile = "src/test/resources/edges.tsv"
+  val config = new PraConfig.Builder().noChecks()
+    .setGraph(graphFile).setNumShards(1).setUnallowedEdges(unallowedEdges).build()
 
   val node1 = "node1"
   val node2 = "node2"
   val node3 = "node3"
   val node4 = "node4"
-  val nodeDict = new Dictionary()
-  val node1Index = nodeDict.getIndex(node1)
-  val node2Index = nodeDict.getIndex(node2)
-  val node3Index = nodeDict.getIndex(node3)
-  val node4Index = nodeDict.getIndex(node4)
-  val unallowedEdges = List(1, 3, 2).map(x => java.lang.Integer.valueOf(x)).asJava
+  val node1Index = config.nodeDict.getIndex(node1)
+  val node2Index = config.nodeDict.getIndex(node2)
+  val node3Index = config.nodeDict.getIndex(node3)
+  val node4Index = config.nodeDict.getIndex(node4)
   val dataFile = node1 + "\t" + node2 + "\n" + node3 + "\t" + node4 + "\n"
-  val data = new DatasetFactory().fromReader(new BufferedReader(new StringReader(dataFile)), new Dictionary())
-  val graphFile = "src/test/resources/edges.tsv"
-  val config = new PraConfig.Builder().noChecks()
-    .setGraph(graphFile).setNumShards(1).setUnallowedEdges(unallowedEdges).build()
-  val generator = new PraFeatureGenerator(params, "/", config)
+  val data = new Dataset(Seq(Instance(node1Index, node2Index, true),
+    Instance(node3Index, node4Index, true)))
+
+  val fileUtil = new FakeFileUtil
+  fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")
+  val generator = new PraFeatureGenerator(params, "/", config, fileUtil)
 
   "createEdgesToExclude" should "handle the basic case" in {
     val edgesToExclude = generator.createEdgesToExclude(data, unallowedEdges)
@@ -75,13 +79,8 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     edgesToExclude.size should be(0)
   }
 
-  it should "work with a dataset with no targets" in {
-    val nodes = List(Integer.valueOf(node1Index), Integer.valueOf(node3Index)).asJava
-    val data = new Dataset.Builder().setPositiveSources(nodes).build()
-    val edgesToExclude = generator.createEdgesToExclude(data, unallowedEdges)
-    edgesToExclude.size should be(0)
-  }
-
+  // TODO(matt): this method should move to a PathFollower object, after PathFollower is moved from
+  // java to scala.
   "createPathFollower" should "create random walk path follower" in {
     val follower = generator.createPathFollower(followerParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[RandomWalkPathFollower])
@@ -101,9 +100,9 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[MatrixPathFollower])
     val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
-    matrixFollower.getMaxFanOut should be(2)
-    matrixFollower.getNormalizeWalks should be(false)
-    matrixFollower.getMatrixDir should be("src/test/resources/m/")
+    matrixFollower.maxFanOut should be(2)
+    matrixFollower.normalizeWalkProbabilities should be(false)
+    matrixFollower.matrixDir should be("src/test/resources/m/")
   }
 
   it should "normalize the matrix directory" in {
@@ -114,7 +113,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       ("normalize walk probabilities" -> false)
     val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
-    matrixFollower.getMatrixDir should be("src/test/resources/m/")
+    matrixFollower.matrixDir should be("src/test/resources/m/")
   }
 
   it should "create a rescal matrix path follower" in {
@@ -125,8 +124,8 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     follower.getClass should be(classOf[RescalMatrixPathFollower])
     val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
-    rescalFollower.getNegativesPerSource should be(23)
-    rescalFollower.getRescalDir should be("/path/to/r/")
+    rescalFollower.negativesPerSource should be(23)
+    rescalFollower.rescalDir should be("/path/to/r/")
   }
 
   it should "normalize the rescal directory" in {
@@ -135,7 +134,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       ("rescal dir" -> "/path/to/r")
     val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
     val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
-    rescalFollower.getRescalDir should be("/path/to/r/")
+    rescalFollower.rescalDir should be("/path/to/r/")
   }
 
   it should "throw error with unrecognized path follower" in {

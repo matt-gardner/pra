@@ -46,23 +46,17 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   node_dict.getIndex("node1")
   node_dict.getIndex("node2")
 
-  val positiveSources = Seq(1:Integer, 1:Integer)
-  val positiveTargets = Seq(1:Integer, 2:Integer)
-  val negativeSources = Seq(2:Integer, 1:Integer)
-  val negativeTargets = Seq(2:Integer, 2:Integer)
-  // TODO(matt): need to override splitData here.
-  val goodData = new Dataset(positiveSources.asJava, positiveTargets.asJava,
-      negativeSources.asJava, negativeTargets.asJava) {
+  val positiveInstances = Seq(Instance(1, 1, true), Instance(1, 2, true))
+  val negativeInstances = Seq(Instance(2, 2, false), Instance(1, 2, false))
+  val goodData = new Dataset(positiveInstances ++ negativeInstances) {
     override def splitData(percent: Double) = {
       println("Splitting fake data")
-      val training = new Dataset(positiveSources.take(1).asJava, positiveTargets.take(1).asJava,
-        negativeSources.take(1).asJava, negativeTargets.take(1).asJava)
-      val testing = new Dataset(positiveSources.drop(1).asJava, positiveTargets.drop(1).asJava,
-        negativeSources.drop(1).asJava, negativeTargets.drop(1).asJava)
-      new Pair[Dataset, Dataset](training, testing)
+      val training = new Dataset(positiveInstances.take(1) ++ negativeInstances.take(1))
+      val testing = new Dataset(positiveInstances.drop(1) ++ negativeInstances.drop(1))
+      (training, testing)
     }
   }
-  val badData = new FakeDatasetFactory().fromFile(null, null)
+  val badData = new Dataset(Seq())
 
   "createNegativeExampleSelector" should "return null with no input" in {
     splitCreator.createNegativeExampleSelector(JNothing) should be(null)

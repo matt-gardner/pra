@@ -79,8 +79,8 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
     // Now we create and run the path finder.
     finder = new RandomWalkPathFinder(config.graph,
       config.numShards,
-      data.getAllSources(),
-      data.getAllTargets(),
+      data.instances.map(instance => Integer.valueOf(instance.source)).asJava,
+      data.instances.map(instance => Integer.valueOf(instance.target)).asJava,
       new SingleEdgeExcluder(edgesToExclude),
       walksPerSource,
       PathTypePolicy.parseFromString(pathAcceptPolicy),

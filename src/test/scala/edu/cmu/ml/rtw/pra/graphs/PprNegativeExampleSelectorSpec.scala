@@ -6,6 +6,7 @@ import edu.cmu.graphchi.walks.IntWalkArray
 import edu.cmu.graphchi.walks.IntWalkManager
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.features.FakeChiVertex
 import edu.cmu.ml.rtw.pra.features.FakeIntDrunkardContext
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom
@@ -20,9 +21,7 @@ import org.json4s.native.JsonMethods._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val positiveSources = Seq(1:Integer).asJava
-  val positiveTargets = Seq(2:Integer).asJava
-  val dataset = new Dataset(positiveSources, positiveTargets, Seq[Integer]().asJava, Seq[Integer]().asJava)
+  val dataset = new Dataset(Seq(Instance(1, 2, true)))
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, "", 1) {
@@ -35,10 +34,9 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val withNegatives = selector.selectNegativeExamples(dataset, Set(), Set())
-    withNegatives.getPositiveSources should be(positiveSources)
-    withNegatives.getPositiveTargets should be(positiveTargets)
-    withNegatives.getNegativeSources should be(Seq(1, 2, 3).asJava)
-    withNegatives.getNegativeTargets should be(Seq(1, 2, 3).asJava)
+    withNegatives.getPositiveInstances should be(Seq(Instance(1, 2, true)))
+    withNegatives.getNegativeInstances should be(Seq(Instance(1, 1, false), Instance(2, 2, false),
+      Instance(3, 3, false)))
   }
 
   "sampleByPrr" should "get enough negatives per positive" in {

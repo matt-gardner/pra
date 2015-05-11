@@ -84,10 +84,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // relations.
     Driver.initializeGraphParameters(getGraphDirectory(params), baseBuilder)
 
-    var nodeNames: java.util.Map[String, String] = null
-    if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
-      nodeNames = fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true)
-    }
+    val nodeNames =
+      if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
+        fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true).asScala.toMap
+      } else null
     baseBuilder.setOutputter(new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames))
     // TODO(matt): move this parameter to the outputter.  That would require moving the outputter
     // to scala, though...
@@ -160,7 +160,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       metadataDirectory,
       relation,
       builder,
-      new DatasetFactory(),
       fileUtil)
     val praParams = params \ "pra parameters"
     val praParamKeys = Seq("mode", "features", "learning")
@@ -169,9 +168,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // Split the data if we're doing cross validation instead of a fixed split.
     if (doCrossValidation) {
       val config = builder.build()
-      val splitData = config.allData.splitData(config.percentTraining)
-      val trainingData = splitData.getLeft()
-      val testingData = splitData.getRight()
+      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
       config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
       builder.setAllData(null)
       builder.setPercentTraining(0)
@@ -202,10 +199,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // same time, and because of how GraphChi works, that would save us considerable time.
     val testMatrix = generator.createTestMatrix(config.testingData)
     val scores = model.classifyInstances(testMatrix)
-    val javaScores = scores.mapValues(_.map(x => {
-      Pair.makePair(Integer.valueOf(x._1), java.lang.Double.valueOf(x._2))
-    }).asJava).map(x => (Integer.valueOf(x._1), x._2)).asJava
-    config.outputter.outputScores(config.outputBase + "scores.tsv", javaScores, config)
+    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
   }
 
   def exploreGraph(params: JValue, config: PraConfig, splitsDirectory: String) {
@@ -214,15 +208,14 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
 
     val dataToUse = JsonHelper.extractWithDefault(praParams, "data", "both")
-    val datasetFactory = new DatasetFactory()
     val fixed = config.relation.replace("/", "_")
     val data = if (dataToUse == "both") {
       val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
       val trainingData = if (fileUtil.fileExists(trainingFile))
-        datasetFactory.fromFile(trainingFile, config.nodeDict) else null
+        Dataset.fromFile(trainingFile, config.nodeDict, fileUtil) else null
       val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
       val testingData = if (fileUtil.fileExists(testingFile))
-        datasetFactory.fromFile(testingFile, config.nodeDict) else null
+        Dataset.fromFile(testingFile, config.nodeDict, fileUtil) else null
       if (trainingData == null && testingData == null) {
         throw new IllegalStateException("Neither training file nor testing file exists for " +
           "relation " + config.relation)
@@ -236,17 +229,12 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       }
     } else {
       val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      datasetFactory.fromFile(inputFile, config.nodeDict)
+      Dataset.fromFile(inputFile, config.nodeDict, fileUtil)
     }
 
     val explorer = new GraphExplorer(praParams \ "explore", config)
     val pathCountMap = explorer.findConnectingPaths(data)
-    val javaMap = pathCountMap.map(entry => {
-      val key = new Pair[Integer, Integer](entry._1._1, entry._1._2)
-      val value = entry._2.mapValues(x => Integer.valueOf(x)).asJava
-      (key, value)
-    }).asJava
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", javaMap, data)
+    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, data)
   }
 
   def createGraphIfNecessary(params: JValue) {
@@ -579,7 +567,6 @@ object Driver {
       relationMetadataDirectory: String,
       relation: String,
       builder: PraConfig.Builder,
-      datasetFactory: DatasetFactory,
       fileUtil: FileUtil = new FileUtil) = {
     val fixed = relation.replace("/", "_")
     // We look in the splits directory for a fixed split if we don't find one, we do cross
@@ -587,16 +574,16 @@ object Driver {
     if (fileUtil.fileExists(splitsDirectory + fixed)) {
       val training = splitsDirectory + fixed + "/training.tsv"
       val testing = splitsDirectory + fixed + "/testing.tsv"
-      builder.setTrainingData(datasetFactory.fromFile(training, builder.nodeDict))
-      builder.setTestingData(datasetFactory.fromFile(testing, builder.nodeDict))
+      builder.setTrainingData(Dataset.fromFile(training, builder.nodeDict, fileUtil))
+      builder.setTestingData(Dataset.fromFile(testing, builder.nodeDict, fileUtil))
       false
     } else {
       if (relationMetadataDirectory == null) {
         throw new IllegalStateException("Must specify a relation metadata directory if you do not "
           + "have a fixed split!")
       }
-      builder.setAllData(datasetFactory.fromFile(relationMetadataDirectory + "relations/" + fixed,
-                                                 builder.nodeDict))
+      builder.setAllData(
+        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, builder.nodeDict, fileUtil))
       val percent_training_file = splitsDirectory + "percent_training.tsv"
       builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0))
       true

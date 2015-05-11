@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 
 import edu.cmu.graphchi.ChiVertex
@@ -55,10 +56,7 @@ class PprNegativeExampleSelector(
     val pprValues = computePersonalizedPageRank(data, allowedSources, allowedTargets)
     val negativeExamples = sampleByPrr(data, pprValues)
 
-    val negativeData = new Dataset.Builder()
-      .setNegativeSources(negativeExamples.map(x => Integer.valueOf(x._1)).asJava)
-      .setNegativeTargets(negativeExamples.map(x => Integer.valueOf(x._2)).asJava)
-      .build
+    val negativeData = new Dataset(negativeExamples.map(x => Instance(x._1, x._2, false)))
     data.merge(negativeData)
   }
 
@@ -77,7 +75,10 @@ class PprNegativeExampleSelector(
     }
     val job = engine.addJob("ppr", EdgeDirection.IN_AND_OUT_EDGES, this, companion)
     val translate = engine.getVertexIdTranslate;
-    val walkSources = (data.getPositiveSources().asScala ++ data.getPositiveTargets().asScala).toSet
+    val positiveInstances = data.getPositiveInstances
+    val sources = positiveInstances.map(_.source).toSet
+    val targets = positiveInstances.map(_.target).toSet
+    val walkSources = sources ++ targets
     val translatedSources = walkSources.map(x => translate.forward(x)).toList.sorted
     val javaTranslatedSources = new java.util.ArrayList[Integer]
     for (s <- translatedSources) {
@@ -86,8 +87,6 @@ class PprNegativeExampleSelector(
     job.configureWalkSources(javaTranslatedSources, walksPerSource)
 
     engine.run(iterations)
-    val sources = data.getPositiveSources.asScala.toSet
-    val targets = data.getPositiveTargets.asScala.toSet
     val pprValues = translatedSources.map(s => {
       val originalSource = translate.backward(s).toInt
       val allowed = if (sources.contains(originalSource)) allowedSources else allowedTargets
@@ -109,7 +108,7 @@ class PprNegativeExampleSelector(
   }
 
   def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]): Seq[(Int, Int)] = {
-    val positive_instances = data.getPositiveInstances.asScala.map(x => (x.getLeft.toInt, x.getRight.toInt))
+    val positive_instances = data.getPositiveInstances.map(instance => (instance.source, instance.target))
     // The amount of weight in excess of 1 here goes to the original source or target.
     val base_weight = 1.25
     positive_instances.par.flatMap(instance => {

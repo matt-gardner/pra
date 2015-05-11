@@ -46,7 +46,7 @@ class SubgraphFeatureGenerator(
     if (config.outputMatrices && config.outputBase != null) {
       println("Outputting test matrix")
       val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, testMatrix, getFeatureNames().toList.asJava)
+      config.outputter.outputFeatureMatrix(output, testMatrix, getFeatureNames())
     }
     testMatrix
   }
@@ -82,7 +82,7 @@ class SubgraphFeatureGenerator(
   val featureExtractors = createExtractors(params)
 
   def getLocalSubgraphs(data: Dataset): Map[(Int, Int), Subgraph] = {
-    println("Finding local subgraphs with " + data.getAllSources().size() + " training instances")
+    println("Finding local subgraphs with " + data.instances.size + " training instances")
 
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
     pathFinder.findPaths(config, data, edgesToExclude)

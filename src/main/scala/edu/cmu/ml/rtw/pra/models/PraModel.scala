@@ -39,8 +39,8 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
       featureNames: Seq[String],
       data: InstanceList,
       alphabet: Alphabet) {
-    val knownPositives = dataset.getPositiveInstances.asScala.map(x => (x.getLeft.toInt, x.getRight.toInt)).toSet
-    val knownNegatives = dataset.getNegativeInstances.asScala.map(x => (x.getLeft.toInt, x.getRight.toInt)).toSet
+    val knownPositives = dataset.getPositiveInstances.map(x => (x.source, x.target)).toSet
+    val knownNegatives = dataset.getNegativeInstances.map(x => (x.source, x.target)).toSet
 
     println("Separating into positive, negative, unseen")
     val grouped = featureMatrix.getRows().asScala.groupBy(row => {
@@ -58,9 +58,9 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
     if (config.outputMatrices && config.outputBase != null) {
       println("Outputting matrices")
       val base = config.outputBase
-      config.outputter.outputFeatureMatrix(s"${base}positive_matrix.tsv", positiveMatrix, featureNames.asJava)
-      config.outputter.outputFeatureMatrix(s"${base}negative_matrix.tsv", negativeMatrix, featureNames.asJava)
-      config.outputter.outputFeatureMatrix(s"${base}unseen_matrix.tsv", unseenMatrix, featureNames.asJava)
+      config.outputter.outputFeatureMatrix(s"${base}positive_matrix.tsv", positiveMatrix, featureNames)
+      config.outputter.outputFeatureMatrix(s"${base}negative_matrix.tsv", negativeMatrix, featureNames)
+      config.outputter.outputFeatureMatrix(s"${base}unseen_matrix.tsv", unseenMatrix, featureNames)
     }
 
     println("Converting positive matrix to MALLET instances and adding to the dataset")

@@ -61,22 +61,18 @@ class SplitCreator(
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
       val relation_file = s"${relationMetadata}relations/${fixed}"
-      val all_instances = Dataset.readFromFile(relation_file, node_dict, fileUtil)
+      val all_instances = Dataset.fromFile(relation_file, node_dict, fileUtil)
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {
         addNegativeExamples(all_instances, relation, domains.toMap, ranges.toMap, node_dict)
       }
       println("Splitting data")
-      val split = data.splitData(percentTraining)
+      val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      val training_out = fileUtil.getFileWriter(s"${rel_dir}training.tsv")
-      split.getLeft.write(training_out, node_dict)
-      training_out.close
-      val testing_out = fileUtil.getFileWriter(s"${rel_dir}testing.tsv")
-      split.getRight.write(testing_out, node_dict)
-      testing_out.close
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", training.instancesToStrings(node_dict).asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", testing.instancesToStrings(node_dict).asJava)
     }
     fileUtil.deleteFile(inProgressFile)
   }

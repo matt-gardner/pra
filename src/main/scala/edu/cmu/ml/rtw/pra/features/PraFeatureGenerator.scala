@@ -65,7 +65,7 @@ class PraFeatureGenerator(
    *     {@link PathType} objects.
    */
   def selectPathFeatures(data: Dataset): Seq[PathType] = {
-    println("Selecting path features with " + data.getAllSources().size() + " training instances")
+    println("Selecting path features with " + data.instances.size + " training instances")
 
     val finder = createPathFinder()
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
@@ -74,15 +74,15 @@ class PraFeatureGenerator(
     // Next we get the resultant path counts.
     val pathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
     finder.finished()
-    val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
-    config.outputter.outputPathCounts(config.outputBase, "found_path_counts.tsv", javaPathCounts)
+    config.outputter.outputPathCounts(config.outputBase, "found_path_counts.tsv", pathCounts)
 
     // And finally, we select and output path types.
     val pathTypeSelector = createPathTypeSelector(params \ "path selector", finder)
     val numPaths = JsonHelper.extractWithDefault(params, "number of paths to keep", 1000)
-    val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths)
+    val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
+    val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
     config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes)
-    pathTypes.asScala
+    pathTypes
   }
 
   /**
@@ -125,7 +125,7 @@ class PraFeatureGenerator(
     val featureMatrix = follower.getFeatureMatrix()
     follower.shutDown()
     if (config.outputMatrices && outputFile != null) {
-      config.outputter.outputFeatureMatrix(outputFile, featureMatrix, getFeatureNames().toSeq.asJava)
+      config.outputter.outputFeatureMatrix(outputFile, featureMatrix, getFeatureNames())
     }
     featureMatrix
   }
@@ -152,7 +152,8 @@ class PraFeatureGenerator(
       new RandomWalkPathFollower(
         config.graph,
         config.numShards,
-        data.getCombinedSourceMap,
+        data.getSourceMap.map(entry => (Integer.valueOf(entry._1) -> entry._2.map(x =>
+            Integer.valueOf(x)).asJava)).asJava,
         config.allowedTargets,
         edgeExcluder,
         pathTypes.asJava,
@@ -171,14 +172,15 @@ class PraFeatureGenerator(
         matrix_base + "/"
       new MatrixPathFollower(
         config.nodeDict.getNextIndex(),
-        pathTypes.asJava,
+        pathTypes,
         matrix_dir,
         data,
         config.edgeDict,
-        config.allowedTargets,
+        if (config.allowedTargets == null) null else config.allowedTargets.asScala.map(_.toInt).toSet,
         edgeExcluder,
         max_fan_out,
-        normalize)
+        normalize,
+        fileUtil)
     } else if (name.equals("rescal matrix multiplication")) {
       val followerParamKeys = Seq("name", "rescal dir", "negatives per source")
       JsonHelper.ensureNoExtras(
@@ -186,7 +188,7 @@ class PraFeatureGenerator(
       val dir = (followerParams \ "rescal dir").extract[String]
       val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
       val negativesPerSource = JsonHelper.extractWithDefault(followerParams, "negatives per source", 15)
-      new RescalMatrixPathFollower(config, pathTypes.asJava, rescal_dir, data, negativesPerSource)
+      new RescalMatrixPathFollower(config, pathTypes, rescal_dir, data, negativesPerSource, fileUtil)
     } else {
       throw new IllegalStateException("Unrecognized path follower")
     }
