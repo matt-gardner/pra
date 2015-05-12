@@ -14,14 +14,16 @@ import scala.util.Random
 import scalax.io.Resource
 
 import breeze.linalg._
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import com.google.common.collect.Lists
+import com.google.common.collect.Sets
 
+import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
+class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val numNodes = 100
   val path_type_factory = new BasicPathTypeFactory()
   val relation1File = {
@@ -121,22 +123,23 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
     val matrixFile = relation1File + relation2File + relation3File + relation4File
     fileUtil.addFileToBeRead("/matrices/1-4", matrixFile)
     val edgesToExclude = Seq[((Int, Int), Int)](((4, 2), 4), ((1, 4), 4))
-    val edgeDict = new Dictionary();
-    edgeDict.getIndex("1");
-    edgeDict.getIndex("2");
-    edgeDict.getIndex("3");
-    edgeDict.getIndex("4");
+    val edgeDict = new Dictionary()
+    edgeDict.getIndex("1")
+    edgeDict.getIndex("2")
+    edgeDict.getIndex("3")
+    edgeDict.getIndex("4")
     val path_types = seqAsJavaList(Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
       path_type_factory.fromString("-1-_1-")
       ))
-    new PathMatrixCreator(
+    new MatrixPathFollower(
       numNodes,
       path_types,
-      Sets.newHashSet(1, 2, 3),
       "/matrices/",
+      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
       edgeDict,
+      Set(),
       new SingleEdgeExcluder(edgesToExclude),
       3,
       false,
@@ -144,16 +147,17 @@ class PathMatrixCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   "getFeatureMatrixRow" should "return complete matrix rows" in {
-    var matrix_row = creatorWithPathTypes.getFeatureMatrixRow(1, 1)
+    val path_matrices = creatorWithPathTypes.getPathMatrices()
+    var matrix_row = creatorWithPathTypes.getFeatureMatrixRow(path_matrices, 1, 1)
     checkMatrixRow(matrix_row, Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
 
-    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(1, 2)
+    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(path_matrices, 1, 2)
     checkMatrixRow(matrix_row, Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
 
-    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(1, 3)
+    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(path_matrices, 1, 3)
     checkMatrixRow(matrix_row, Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
 
-    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(2, 2)
+    matrix_row = creatorWithPathTypes.getFeatureMatrixRow(path_matrices, 2, 2)
     checkMatrixRow(matrix_row, Seq((0, 0.0), (1, 0.0), (2, 0.0)).toMap)
   }
 

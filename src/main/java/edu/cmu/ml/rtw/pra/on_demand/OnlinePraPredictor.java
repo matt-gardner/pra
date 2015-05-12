@@ -224,7 +224,7 @@ public class OnlinePraPredictor {
       // No need to waste time starting up GraphChi if we have nothing to predict.
       return predictionMap;
     }
-    Dataset dataset = new Dataset.Builder().setPositiveSources(sourceNodes).build();
+    Dataset dataset = null; //new Dataset.Builder().setPositiveSources(sourceNodes).build();
     String matrixOutput = null;
     if (config.outputBase != null) {
       // TODO?: make this so it doesn't overwrite files?  Not sure if it's worth it

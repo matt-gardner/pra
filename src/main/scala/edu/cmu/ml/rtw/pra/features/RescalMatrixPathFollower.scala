@@ -10,27 +10,42 @@ import java.util.{Set => JSet}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.parallel.mutable.ParSeq
+import scala.collection.parallel.ParSeq
 
+import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-class RescalPathMatrixCreator(
-    java_path_types: JList[PathType],
-    java_source_nodes: JSet[Integer],
-    rescal_dir: String,
-    node_dict: Dictionary,
-    edge_dict: Dictionary,
-    negatives_per_source: Int,
-    fileUtil: FileUtil = new FileUtil) {
+// Some of these are vals so that they can be accessed in tests.  That's because they are things
+// that are specified from params.  TODO(matt): change this to take a JValue as input for those
+// params.
+class RescalMatrixPathFollower(
+    config: PraConfig,
+    pathTypes: Seq[PathType],
+    val rescalDir: String,
+    data: Dataset,
+    val negativesPerSource: Int,
+    fileUtil: FileUtil = new FileUtil) extends PathFollower {
 
-  // First we convert the java inputs that we got into scala objects.
-  val path_types = java_path_types.asScala
-  val source_nodes = java_source_nodes.asScala.map(_.toInt)
+  val allowedTargets =
+    if (config.allowedTargets == null) {
+      data.getAllTargets
+    } else {
+      config.allowedTargets.asScala.map(_.toInt).toSet
+    }
+  override def execute = {}
+  override def shutDown = {}
+  override def usesGraphChi = false
+  override def getFeatureMatrix = getFeatureMatrix(data.getAllSources, allowedTargets, false)
+
+  val source_nodes = data.getAllSources
+  val node_dict = config.nodeDict
+  val edge_dict = config.edgeDict
 
   // Now we build up a few data structures that we'll need.  First are the node vectors.
-  val node_vectors = fileUtil.readLinesFromFile(rescal_dir + "/a_matrix.tsv").asScala.map(line => {
+  val node_vectors = fileUtil.readLinesFromFile(rescalDir + "a_matrix.tsv").asScala.map(line => {
     val fields = line.split("\t")
     val node_index = node_dict.getIndex(fields(0))
     val vector_entries = fields.drop(1).map(_.toDouble)
@@ -67,8 +82,8 @@ class RescalPathMatrixCreator(
     }
   }
 
-  val rescal_matrices: Map[Int, DenseMatrix[Double]] = {
-    val filename = rescal_dir + "/r_matrix.tsv"
+  def getRescalMatrices(): Map[Int, DenseMatrix[Double]] = {
+    val filename = rescalDir + "/r_matrix.tsv"
     val lines = fileUtil.readLinesFromFile(filename).asScala
     val matrices_with_lines = splitMatrixLines(lines)
     matrices_with_lines.par.map(matrix_lines => {
@@ -76,9 +91,10 @@ class RescalPathMatrixCreator(
     }).seq.toMap
   }
 
-  val path_matrices: Map[PathType, DenseMatrix[Double]] = {
-    println(s"Creating path matrices from the relation matrices in $rescal_dir")
-    val _path_types = path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
+  def getPathMatrices(): Map[PathType, DenseMatrix[Double]] = {
+    val rescal_matrices = getRescalMatrices()
+    println(s"Creating path matrices from the relation matrices in $rescalDir")
+    val _path_types = pathTypes.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
 
     _path_types.par.map(x => (x, createPathMatrix(x, rescal_matrices))).seq.toMap
   }
@@ -165,7 +181,7 @@ class RescalPathMatrixCreator(
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int], keep_all: Boolean): FeatureMatrix = {
-    println("Getting feature matrix for input sources");
+    println("Getting feature matrix for input sources")
     val sources_list = sources.toList.sorted
     val targets_list = allowed_targets.toList.sorted
     val source_indices = sources.map(id  => (id, sources_list.indexOf(id))).toMap
@@ -186,7 +202,7 @@ class RescalPathMatrixCreator(
           })
         } else {
           val kept_targets = new mutable.ArrayBuffer[((Int, Int), (Int, Double))]
-          for (i <- 1 to negatives_per_source) {
+          for (i <- 1 to negativesPerSource) {
             val best_t = argmax(all_target_values)
             val target = targets_list(best_t)
             val value = all_target_values(best_t)
@@ -202,9 +218,10 @@ class RescalPathMatrixCreator(
   }
 
   def multiplyPathMatrices(sources: Seq[Int], targets: Seq[Int]) = {
+    val path_matrices = getPathMatrices()
     val source_matrix = createNodeMatrix(sources, false)
     val target_matrix = createNodeMatrix(targets, true)
-    path_types.zipWithIndex.par.map(path_type =>
+    pathTypes.zipWithIndex.par.map(path_type =>
         (path_type._2, source_matrix * path_matrices(path_type._1) * target_matrix))
   }
 
@@ -214,8 +231,9 @@ class RescalPathMatrixCreator(
       target_matrix: DenseMatrix[Double],
       source_indices: Map[Int, Int],
       target_indices: Map[Int, Int]) = {
+    val path_matrices = getPathMatrices()
     println("Doing (sources * path_type * targets) multiplications")
-    val matrix_rows = path_types.zipWithIndex.par.flatMap(path_type => {
+    val matrix_rows = pathTypes.zipWithIndex.par.flatMap(path_type => {
       val feature_matrix = source_matrix * path_matrices(path_type._1) * target_matrix
       pairs.map(pair => {
         val s = source_indices(pair._1)

@@ -25,7 +25,6 @@ class DriverSpec extends FlatSpecLike with Matchers {
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
   val builder = new PraConfig.Builder()
-  val factory = new FakeDatasetFactory()
   val fileUtil = new FakeFileUtil()
   val driver = new Driver("/", fileUtil)
 
@@ -89,13 +88,16 @@ class DriverSpec extends FlatSpecLike with Matchers {
 
   "initializeSplit" should "not do cross validation when there's a fixed split" in {
     fileUtil.addExistingFile(splitsDirectory + fixedSplitRelation.replace("/", "_"))
-    Driver.initializeSplit(splitsDirectory, kbDirectory, fixedSplitRelation, builder, factory,
+    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/training.tsv", "")
+    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/testing.tsv", "")
+    Driver.initializeSplit(splitsDirectory, kbDirectory, fixedSplitRelation, builder,
       fileUtil) should be(false)
   }
 
   it should "do cross validation when there's no fixed split" in {
     fileUtil.setDoubleList(List(java.lang.Double.valueOf(0.0)).asJava)
-    Driver.initializeSplit(splitsDirectory, kbDirectory, crossValidatedRelation, builder, factory,
+    fileUtil.addFileToBeRead(splitsDirectory + "relations/" + crossValidatedRelation.replace("/", "_"), "")
+    Driver.initializeSplit(splitsDirectory, kbDirectory, crossValidatedRelation, builder,
       fileUtil) should be(true)
   }
 }

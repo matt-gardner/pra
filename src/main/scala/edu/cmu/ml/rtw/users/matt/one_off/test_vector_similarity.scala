@@ -1,6 +1,8 @@
 package edu.cmu.ml.rtw.users.matt.one_off
 
-import edu.cmu.ml.rtw.pra.features.RescalPathMatrixCreator
+import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollower
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -17,17 +19,17 @@ object test_vector_similarity {
     val rescal_dir = "/home/mg1/pra/comparison/rescal/synthetic/small/easy/"
     val node_dict = new Dictionary
     val edge_dict = new Dictionary
-    val creator = new RescalPathMatrixCreator(
-      List[PathType]().asJava,
-      Set[java.lang.Integer]().asJava,
+    val follower = new RescalMatrixPathFollower(
+      new PraConfig.Builder().noChecks().build(),
+      Seq[PathType](),
       rescal_dir,
-      node_dict,
-      edge_dict,
+      new Dataset(Seq()),
       0)
 
     val edge_index = edge_dict.getIndex("base_01_training_01")
-    val matrix = normalize(creator.rescal_matrices(edge_index).toDenseVector)
-    val similarities = creator.rescal_matrices.par.map(entry => {
+    val rescal_matrices = follower.getRescalMatrices
+    val matrix = normalize(rescal_matrices(edge_index).toDenseVector)
+    val similarities = rescal_matrices.par.map(entry => {
       val matrix2 = normalize(entry._2.toDenseVector)
       val similarity = matrix dot matrix2
       (similarity, edge_dict.getString(entry._1))

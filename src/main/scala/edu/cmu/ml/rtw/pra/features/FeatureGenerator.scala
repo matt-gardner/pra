@@ -44,14 +44,9 @@ trait FeatureGenerator {
     if (data == null || unallowedEdges == null) {
       return Seq()
     }
-    val sources = data.getAllSources().asScala.map(_.toInt)
-    val targets = data.getAllTargets().asScala.map(_.toInt)
-    if (sources.size == 0 || targets.size == 0) {
-      return Seq()
-    }
-    sources.zip(targets).flatMap(sourceTarget => {
+    data.instances.flatMap(instance => {
       unallowedEdges.asScala.map(edge => {
-        (sourceTarget, edge.toInt)
+        ((instance.source, instance.target), edge.toInt)
       })
     })
   }

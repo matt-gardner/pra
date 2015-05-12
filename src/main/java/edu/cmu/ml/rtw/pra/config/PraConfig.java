@@ -208,7 +208,7 @@ public class PraConfig {
 
     public PraConfig build() {
       if (outputter == null) {
-        outputter = new Outputter(nodeDict, edgeDict);
+        outputter = new Outputter(nodeDict, edgeDict, null, new FileUtil());
       }
       if (noChecks) return new PraConfig(this);
 

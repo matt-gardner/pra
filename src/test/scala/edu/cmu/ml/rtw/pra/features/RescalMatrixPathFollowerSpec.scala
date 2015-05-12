@@ -8,11 +8,14 @@ import scala.util.Random
 
 import breeze.linalg._
 
+import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
+class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val numNodes = 3
   val path_type_factory = new BasicPathTypeFactory()
   val path_types = Seq(
@@ -80,25 +83,23 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
   val fileUtil = {
     val f = new FakeFileUtil()
     f.addFileToBeRead("/r_matrix.tsv", rMatrixFile)
-    f.addFileToBeRead("/a_matrix.tsv", aMatrixFile)
+    f.addFileToBeRead("a_matrix.tsv", aMatrixFile)
     f
   }
 
   lazy val creator = {
-    val edgeDict = new Dictionary()
-    edgeDict.getIndex("Relation 1")
-    edgeDict.getIndex("Relation 2")
-    val nodeDict = new Dictionary()
-    nodeDict.getIndex("node 1")
-    nodeDict.getIndex("node 2")
-    nodeDict.getIndex("node 3")
+    val config = new PraConfig.Builder().noChecks().build()
+    config.edgeDict.getIndex("Relation 1")
+    config.edgeDict.getIndex("Relation 2")
+    config.nodeDict.getIndex("node 1")
+    config.nodeDict.getIndex("node 2")
+    config.nodeDict.getIndex("node 3")
     val negativesPerSource = 20
-    new RescalPathMatrixCreator(
-      path_types.asJava,
-      Set(1, 2, 3).map(_.asInstanceOf[java.lang.Integer]).toSet.asJava,
+    new RescalMatrixPathFollower(
+      config,
+      path_types,
       "",
-      nodeDict,
-      edgeDict,
+      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
       negativesPerSource,
       fileUtil)
   }
@@ -122,9 +123,10 @@ class RescalPathMatrixCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   "rescal_matrices" should "be constructed correctly" in {
-    creator.rescal_matrices.size should be(2)
-    creator.rescal_matrices(1) should be(rescal_matrices(1))
-    creator.rescal_matrices(2) should be(rescal_matrices(2))
+    val rescal_matrices = creator.getRescalMatrices
+    rescal_matrices.size should be(2)
+    rescal_matrices(1) should be(rescal_matrices(1))
+    rescal_matrices(2) should be(rescal_matrices(2))
   }
 }
 

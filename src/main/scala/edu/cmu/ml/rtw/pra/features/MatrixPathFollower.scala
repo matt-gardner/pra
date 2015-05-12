@@ -16,25 +16,37 @@ import scala.collection.parallel.mutable.{ParSeq => MParSeq}
 import scalax.io.Resource
 import scala.util.control.Breaks._
 
+import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-class PathMatrixCreator(
+// Some of these are vals so that they can be accessed in tests.  That's because they are things
+// that are specified from params.  TODO(matt): change this to take a JValue as input for those
+// params.
+class MatrixPathFollower(
     numNodes: Int,
-    java_path_types: JList[PathType],
-    source_nodes: JSet[Integer],
-    matrix_dir: String,
+    pathTypes: Seq[PathType],
+    val matrixDir: String,
+    data: Dataset,
     edge_dict: Dictionary,
+    allowedTargets: Set[Int],
     edgeExcluder: EdgeExcluder,
-    maxFanOut: Int,
-    normalizeWalkProbabilities: Boolean,
-    fileUtil: FileUtil = new FileUtil) {
+    val maxFanOut: Int,
+    val normalizeWalkProbabilities: Boolean,
+    fileUtil: FileUtil = new FileUtil) extends PathFollower {
 
-  val path_types = java_path_types.asScala
+  override def execute = {}
+  override def shutDown = {}
+  override def usesGraphChi = false
+  override def getFeatureMatrix() = getFeatureMatrix(data.getAllSources, allowedTargets)
+
+  val source_nodes = data.getAllSources
   val sources_matrix = {
+    println(s"num nodes: ${numNodes}")
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
-    for (source <- source_nodes.asScala) {
+    for (source <- source_nodes) {
+      println(s"source: $source")
       builder.add(source, source, 1)
     }
     builder.result
@@ -72,13 +84,15 @@ class PathMatrixCreator(
   }
 
   def getFeatureMatrix(pairs: Seq[(Int, Int)]): FeatureMatrix = {
-    val matrix_rows = pairs.par.map(x => getFeatureMatrixRow(x._1, x._2)).seq.toSeq
+    val path_matrices = getPathMatrices()
+    val matrix_rows = pairs.par.map(x => getFeatureMatrixRow(path_matrices, x._1, x._2)).seq.toSeq
     new FeatureMatrix(matrix_rows.asJava)
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
-    println("Getting feature matrix for input sources");
-    val entries = path_types.zipWithIndex.par.flatMap(path_type_with_index => {
+    val path_matrices = getPathMatrices()
+    println("Getting feature matrix for input sources")
+    val entries = pathTypes.zipWithIndex.par.flatMap(path_type_with_index => {
       for (instance <- path_matrices(path_type_with_index._1).activeIterator
            if sources.contains(instance._1._1);
            if allowed_targets == null || allowed_targets.contains(instance._1._2))
@@ -92,8 +106,8 @@ class PathMatrixCreator(
     new FeatureMatrix(matrix_rows.asJava)
   }
 
-  def getFeatureMatrixRow(source: Int, target: Int): MatrixRow = {
-    val feature_list = path_types.zipWithIndex.par.map(
+  def getFeatureMatrixRow(path_matrices: Map[PathType, CSCMatrix[Double]], source: Int, target: Int) = {
+    val feature_list = pathTypes.zipWithIndex.par.map(
       x => (x._2, path_matrices(x._1)(source, target))).seq.toList.sorted
     createMatrixRow(source, target, feature_list)
   }
@@ -108,17 +122,17 @@ class PathMatrixCreator(
     new MatrixRow(source, target, pathTypes.toArray, values.toArray)
   }
 
-  val path_matrices: Map[PathType, CSCMatrix[Double]] = {
-    println(s"Creating path matrices from the relation matrices in $matrix_dir")
-    val _path_types = path_types.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
+  def getPathMatrices(): Map[PathType, CSCMatrix[Double]] = {
+    println(s"Creating path matrices from the relation matrices in $matrixDir")
+    val _path_types = pathTypes.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = _path_types.flatMap(_.getEdgeTypes).toSet
-    val filenames = fileUtil.listDirectoryContents(matrix_dir).asScala.toSet - "params.json"
+    val filenames = fileUtil.listDirectoryContents(matrixDir).asScala.toSet - "params.json"
     if (filenames.size == 0) {
-      throw new RuntimeException(s"Didn't find any matrix files in ${matrix_dir}...")
+      throw new RuntimeException(s"Didn't find any matrix files in ${matrixDir}...")
     }
     val relations_by_filename = separateRelationsByFile(relations, filenames)
     val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
-        readMatricesFromFile(fileUtil.getBufferedReader(matrix_dir + x._1), x._2)).seq
+        readMatricesFromFile(fileUtil.getBufferedReader(matrixDir + x._1), x._2)).seq
 
     _path_types.par.map(x => (x, createPathMatrix(x, connectivity_matrices))).seq.toMap
   }

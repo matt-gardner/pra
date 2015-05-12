@@ -6,6 +6,7 @@ import java.util.{Set => JavaSet}
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Index
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -38,7 +39,7 @@ class BfsPathFinder(
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
   lazy val graph: Graph = loadGraph(config.graph, config.nodeDict.getNextIndex)
-  var results: Map[(Int, Int), Subgraph] = null
+  var results: Map[Instance, Subgraph] = null
   val factory = new BasicPathTypeFactory
   val pathDict = new Index[PathType](factory)
 
@@ -60,7 +61,7 @@ class BfsPathFinder(
 
   override def getLocalSubgraphs() = {
     results.map(entry => {
-      (Pair.makePair[Integer, Integer](entry._1._1, entry._1._2) -> entry._2)
+      (Pair.makePair[Integer, Integer](entry._1.source, entry._1.target) -> entry._2)
     }).asJava
   }
 
@@ -102,9 +103,7 @@ class BfsPathFinder(
 
   def runBfs(graph: Graph, data: Dataset, unallowedEdges: Set[Int]) = {
     println("Running BFS")
-    val sources = data.getAllSources.asScala.map(_.toInt)
-    val targets = data.getAllTargets.asScala.map(_.toInt)
-    val sourceTargets = sources.zip(targets)
+    val instances = data.instances
     // Note that we're doing two BFS searches for each instance - one from the source, and one from
     // the target.  But that's extra work!, you might say, because if there are duplicate sources
     // or targets across instances, we should only have to do the BFS once!  That's true, unless
@@ -112,9 +111,9 @@ class BfsPathFinder(
     // BFS for each instance holding out just a _single_ edge from the graph - the training edge
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
-    sourceTargets.par.map(sourceTarget => {
-      val source = sourceTarget._1
-      val target = sourceTarget._2
+    instances.par.map(instance => {
+      val source = instance.source
+      val target = instance.target
       val sourceSubgraph = bfsFromNode(source, target, unallowedEdges)
       val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
       val targetSubgraph = bfsFromNode(target, source, unallowedEdges)
@@ -138,7 +137,7 @@ class BfsPathFinder(
         result.getOrElseUpdate(entry._1, new mutable.HashSet[(Int, Int)]).++=(entry._2)
       })
       val subgraph = result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
-      (sourceTarget -> subgraph)
+      (instance -> subgraph)
     }).seq.toMap
   }
 

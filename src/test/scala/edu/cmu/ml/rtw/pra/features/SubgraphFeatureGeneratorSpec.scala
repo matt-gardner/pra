@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -43,9 +44,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     Map((source, target) -> subgraph)
   }
 
-  val positiveSources = Seq(1:Integer).asJava
-  val positiveTargets = Seq(2:Integer).asJava
-  val dataset = new Dataset(positiveSources, positiveTargets, Seq[Integer]().asJava, Seq[Integer]().asJava)
+  val dataset = new Dataset(Seq(Instance(1, 2, true)))
 
   "createTrainingMatrix" should "return extracted features from local subgraphs" in {
     val subgraph = getSubgraph(1, 2)

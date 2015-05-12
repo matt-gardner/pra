@@ -76,8 +76,7 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
     }
     println("Outputting feature weights")
     if (config.outputBase != null) {
-      val javaWeights = weights.map(java.lang.Double.valueOf).asJava
-      config.outputter.outputWeights(config.outputBase + "weights.tsv", javaWeights, featureNames.asJava)
+      config.outputter.outputWeights(config.outputBase + "weights.tsv", weights, featureNames)
     }
     lrWeights = weights.toSeq
   }

@@ -10,6 +10,7 @@ import scala.collection.JavaConverters._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -27,11 +28,8 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
 
-  val positiveSources = Seq(5:Integer).asJava
-  val positiveTargets = Seq(3:Integer).asJava
-  val negativeSources = Seq[Integer]().asJava
-  val negativeTargets = Seq[Integer]().asJava
-  val data = new Dataset(positiveSources, positiveTargets, negativeSources, negativeTargets)
+  val instance = Instance(5, 3, true)
+  val data = new Dataset(Seq(instance))
   val config = new PraConfig.Builder()
     .setUnallowedEdges(Seq(1:Integer).asJava).setGraph(graphFilename).noChecks().build()
   config.nodeDict.getIndex("node1")
@@ -93,7 +91,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))
-    val results53 = finder.results((5, 3)).asScala
+    val results53 = finder.results(instance).asScala
 
     // 6 Source paths
     results53(factory.fromString("-3-")).size should be(1)
@@ -147,11 +145,12 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   }
 
   it should "exclude edges when specified" in {
-    val data = new Dataset(Seq(1:Integer).asJava, positiveTargets, negativeSources, negativeTargets)
+    val instance = Instance(1, 3, true)
+    val data = new Dataset(Seq(instance))
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))
-    val results13 = finder.results((1, 3)).asScala
+    val results13 = finder.results(instance).asScala
     val badPath = factory.fromString("-1-")
     results13(badPath) should not contain(Pair.makePair(1, 3))
   }

@@ -33,8 +33,8 @@ class GraphExplorer(params: JValue, config: PraConfig) {
 
     val finder = new RandomWalkPathFinder(config.graph,
       config.numShards,
-      data.getAllSources(),
-      data.getAllTargets(),
+      data.instances.map(instance => Integer.valueOf(instance.source)).asJava,
+      data.instances.map(instance => Integer.valueOf(instance.target)).asJava,
       new SingleEdgeExcluder(Seq()),
       walksPerSource,
       PathTypePolicy.PAIRED_ONLY,
