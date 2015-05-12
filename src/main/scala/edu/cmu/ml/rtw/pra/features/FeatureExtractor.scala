@@ -110,7 +110,6 @@ class PathBigramsFeatureExtractor(val edgeDict: Dictionary) extends FeatureExtra
 
 class VectorSimilarityFeatureExtractor(
     val edgeDict: Dictionary,
-    val nodeDict: Dictionary,
     val params: JValue,
     praBase: String,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
@@ -148,6 +147,32 @@ class VectorSimilarityFeatureExtractor(
             .encodeAsHumanReadableString(edgeDict)
           edgeTypes(sim._1) = oldEdgeType
           "VECSIM:" + similar
+        }).toSet
+      } else {
+        List[String]()
+      }
+    }).toList.asJava
+  }
+}
+
+class AnyRelFeatureExtractor(val edgeDict: Dictionary) extends FeatureExtractor{
+
+  val anyRel = edgeDict.getIndex("@ANY_REL@")
+
+  override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+    val sourceTarget = new Pair[Integer, Integer](source, target)
+    subgraph.asScala.flatMap(entry => {
+      if (entry._2.contains(sourceTarget)) {
+        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
+        val edgeTypes = pathType.getEdgeTypes()
+        val reverses = pathType.getReverse()
+        (0 until edgeTypes.length).map(i => {
+          val oldEdgeType = edgeTypes(i)
+          edgeTypes(i) = anyRel
+          val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
+            .encodeAsHumanReadableString(edgeDict)
+          edgeTypes(i) = oldEdgeType
+          "ANYREL:" + newPathType
         }).toSet
       } else {
         List[String]()

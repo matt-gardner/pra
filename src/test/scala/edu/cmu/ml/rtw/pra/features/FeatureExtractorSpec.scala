@@ -108,7 +108,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("name" -> "VectorSimilarityFeatureExtractor") ~
       ("matrix name" -> "test") ~
       ("max similar vectors" -> 10)
-    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval, "/", fileUtil)
+    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, jval, "/", fileUtil)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
     println(features)
     features.size should be(6)
@@ -130,7 +130,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("name" -> "VectorSimilarityFeatureExtractor") ~
       ("matrix name" -> "test") ~
       ("max similar vectors" -> 1)
-    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, nodeDict, jval, "/", fileUtil)
+    val extractor = new VectorSimilarityFeatureExtractor(edgeDict, jval, "/", fileUtil)
     val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
     println(features)
     features.size should be(5)
@@ -139,5 +139,16 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("VECSIM:-rel1-rel4-")
     features should contain("VECSIM:-@ANY_REL@-rel3-")
     features should contain("VECSIM:-rel1-@ANY_REL@-")
+  }
+
+  "AnyRelFeatureExtractor" should "replace each index with @ANY_REL@" in {
+    val pathTypes = Seq("-1-3-", "-2-")
+    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
+    val extractor = new AnyRelFeatureExtractor(edgeDict)
+    val features = extractor.extractFeatures(1, 2, getSubgraph(pathTypes, nodePairs)).asScala
+    println(features)
+    features.size should be(2)
+    features should contain("ANYREL:-@ANY_REL@-rel3-")
+    features should contain("ANYREL:-rel1-@ANY_REL@-")
   }
 }

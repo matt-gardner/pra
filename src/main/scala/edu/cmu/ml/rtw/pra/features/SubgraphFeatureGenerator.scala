@@ -118,10 +118,12 @@ class SubgraphFeatureGenerator(
         new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
       case JString("NumericalComparisonFeatureExtractor") =>
         new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
+      case JString("AnyRelFeatureExtractor") =>
+        new AnyRelFeatureExtractor(config.edgeDict)
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
-            new VectorSimilarityFeatureExtractor(config.edgeDict, config.nodeDict, jval, praBase, fileUtil)
+            new VectorSimilarityFeatureExtractor(config.edgeDict, jval, praBase, fileUtil)
           }
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
