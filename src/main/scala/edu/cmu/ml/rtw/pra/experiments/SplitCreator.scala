@@ -37,6 +37,7 @@ class SplitCreator(
     if (splitType != "fixed split") throw new NotImplementedError()
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
       + "relations to run!")
+    println(s"Creating split at $splitDir")
     fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)

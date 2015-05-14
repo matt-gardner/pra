@@ -344,32 +344,55 @@ object ExperimentScorer {
   }
 
   def getPValue(values: List[(Double, Double)]) = {
+    if (values.size < 15) {
+      getExactPValue(values)
+    } else {
+      getSampledPValue(values)
+    }
+  }
+
+  def getExactPValue(values: List[(Double, Double)]) = {
     val diffs = values.map(x => x._1 - x._2)
     val mean_diff = math.abs(diffs.sum) / diffs.length
     var n = 0.0
-    val iters = math.pow(2, diffs.length)
-    var i = 0
-    while (i < iters) {
-      var a = i
-      var index = 1
-      var diff = 0.0
-      while (index <= diffs.length) {
-        if (a % 2 == 1) {
-          diff -= diffs(diffs.length - index)
-        }
-        else {
-          diff += diffs(diffs.length - index)
-        }
-        if (a > 0) {
-          a = a >> 1
-        }
-        index += 1
-      }
-      diff = math.abs(diff / diffs.length)
+    val iters = math.pow(2, diffs.length).toInt
+    for (i <- 1 to iters) {
+      val diff = getDiffForSample(diffs, i)
       if (diff >= mean_diff) n += 1
-      i += 1
     }
     n / iters
+  }
+
+  // Expected p-value: .55567
+  def getSampledPValue(values: List[(Double, Double)]) = {
+    import scala.util.Random
+    val random = new Random
+    val diffs = values.map(x => x._1 - x._2)
+    val mean_diff = math.abs(diffs.sum) / diffs.length
+    var n = 0.0
+    val iters = 10000
+    for (i <- 1 to iters) {
+      val diff = getDiffForSample(diffs, math.abs(random.nextInt))
+      if (diff >= mean_diff) n += 1
+    }
+    n / iters
+  }
+
+  def getDiffForSample(diffs: List[Double], signs: Int) = {
+    var a = signs
+    var diff = 0.0
+    for (index <- 1 to diffs.length) {
+      if (a % 2 == 1) {
+        diff -= diffs(diffs.length - index)
+      }
+      else {
+        diff += diffs(diffs.length - index)
+      }
+      if (a > 0) {
+        a = a >> 1
+      }
+    }
+    math.abs(diff / diffs.length)
   }
 
   def saveMetrics(metrics: ExperimentMetrics, metrics_file: String) {

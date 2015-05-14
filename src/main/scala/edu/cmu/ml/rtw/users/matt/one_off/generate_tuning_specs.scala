@@ -71,13 +71,13 @@ object generate_tuning_specs {
     val vecsim = "{\"name\": \"VectorSimilarityFeatureExtractor\", \"matrix name\": \"" + matrix_name + "\"}"
     val extractors = Seq(
       //(pra, "pra_"),
-      //(Seq(pra, bigrams).mkString, "pra_bigrams_"),
+      //(Seq(pra, bigrams).mkString(", "), "pra_bigrams_"),
       //(Seq(pra, one_sided).mkString(", "), "pra_one_sided_"),
       //(Seq(pra, catcomp).mkString(", "), "pra_catcomp_"),
       //(Seq(pra, one_sided, catcomp).mkString(", "), "pra_one_sided_catcomp_"),
       //(Seq(pra, vecsim).mkString(", "), "pra_vs_"),
-      //(Seq(pra, bigrams, vecsim).mkString, "pra_bigrams_vs_")
-      (Seq(pra, anyrel).mkString, "pra_anyrel_")
+      //(Seq(pra, bigrams, vecsim).mkString(", "), "pra_bigrams_vs_")
+      (Seq(pra, anyrel).mkString(", "), "pra_anyrel_")
     )
 
     val featureSizes = Seq(-1)
