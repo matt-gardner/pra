@@ -29,9 +29,9 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
 
   val instance = Instance(5, 3, true)
-  val data = new Dataset(Seq(instance))
   val config = new PraConfig.Builder()
     .setUnallowedEdges(Seq(1:Integer).asJava).setGraph(graphFilename).noChecks().build()
+  val data = new Dataset(Seq(instance), config, None, fileUtil)
   config.nodeDict.getIndex("node1")
   config.nodeDict.getIndex("node2")
   config.nodeDict.getIndex("node3")
@@ -42,50 +42,6 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
 
   def makeFinder() = new BfsPathFinder(params, config, "/", fileUtil)
-
-  "loadGraph" should "correctly read in a graph" in {
-    val graph = makeFinder().loadGraph(graphFilename, 7)
-    graph.size should be(7)
-    graph(0) should be(Map())
-    graph(1).size should be(4)
-    graph(1)(1)._1.size should be(1)
-    graph(1)(1)._1(0) should be(6)
-    graph(1)(1)._2.size should be(2)
-    graph(1)(1)._2(0) should be(2)
-    graph(1)(1)._2(1) should be(3)
-    graph(1)(2)._1.size should be(0)
-    graph(1)(2)._2.size should be(1)
-    graph(1)(2)._2(0) should be(4)
-    graph(1)(3)._1.size should be(1)
-    graph(1)(3)._1(0) should be(5)
-    graph(1)(3)._2.size should be(0)
-    graph(1)(4)._1.size should be(1)
-    graph(1)(4)._1(0) should be(2)
-    graph(1)(4)._2.size should be(0)
-    graph(2).size should be(2)
-    graph(2)(1)._1.size should be(1)
-    graph(2)(1)._1(0) should be(1)
-    graph(2)(1)._2.size should be(0)
-    graph(2)(4)._1.size should be(0)
-    graph(2)(4)._2.size should be(1)
-    graph(2)(4)._2(0) should be(1)
-    graph(3).size should be(1)
-    graph(3)(1)._1.size should be(1)
-    graph(3)(1)._1(0) should be(1)
-    graph(3)(1)._2.size should be(0)
-    graph(4).size should be(1)
-    graph(4)(2)._1.size should be(1)
-    graph(4)(2)._1(0) should be(1)
-    graph(4)(2)._2.size should be(0)
-    graph(5).size should be(1)
-    graph(5)(3)._1.size should be(0)
-    graph(5)(3)._2.size should be(1)
-    graph(5)(3)._2(0) should be(1)
-    graph(6).size should be(1)
-    graph(6)(1)._1.size should be(0)
-    graph(6)(1)._2.size should be(1)
-    graph(6)(1)._2(0) should be(1)
-  }
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val factory = new BasicPathTypeFactory
@@ -146,7 +102,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   it should "exclude edges when specified" in {
     val instance = Instance(1, 3, true)
-    val data = new Dataset(Seq(instance))
+    val data = new Dataset(Seq(instance), config, None, fileUtil)
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))

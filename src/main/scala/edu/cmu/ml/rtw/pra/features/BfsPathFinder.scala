@@ -7,6 +7,7 @@ import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Index
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -25,7 +26,6 @@ class BfsPathFinder(
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
   type Subgraph = JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]
-  type Graph = Array[Map[Int, (Array[Int], Array[Int])]]
 
   val allowedKeys = Seq("type", "number of steps", "max fan out")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
@@ -38,17 +38,12 @@ class BfsPathFinder(
   // that node.
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
-  lazy val graph: Graph = loadGraph(config.graph, config.nodeDict.getNextIndex)
   var results: Map[Instance, Subgraph] = null
   val factory = new BasicPathTypeFactory
   val pathDict = new Index[PathType](factory)
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
-    // In part I'm just doing this here to make sure that the graph gets loaded before we start
-    // making parallel calls.  I've had issues with bad interactions between par calls and lazy
-    // initialization in the past...
-    println(s"Graph has ${graph.size} nodes")
-    results = runBfs(graph, data, config.unallowedEdges.asScala.map(_.toInt).toSet)
+    results = runBfs(data, config.unallowedEdges.asScala.map(_.toInt).toSet)
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
@@ -67,43 +62,12 @@ class BfsPathFinder(
 
   override def finished() { }
 
-  def loadGraph(graphFile: String, numNodes: Int): Graph = {
-    println(s"Loading graph")
-    type MutableGraphEntry = mutable.HashMap[Int, mutable.HashMap[Boolean, Set[Int]]]
-    val graph = new Array[MutableGraphEntry](numNodes)
-    (0 until numNodes).par.foreach(i => { graph(i) = new MutableGraphEntry })
-    val lines = fileUtil.readLinesFromFile(graphFile).asScala
-    val reader = fileUtil.getBufferedReader(graphFile)
-    var line: String = null
-    while ({ line = reader.readLine; line != null }) {
-      val fields = line.split("\t")
-      val source = fields(0).toInt
-      val target = fields(1).toInt
-      val relation = fields(2).toInt
-      val sourceMap = graph(source).getOrElseUpdate(relation, new mutable.HashMap[Boolean, Set[Int]])
-      sourceMap.update(false, sourceMap.getOrElse(false, Set()) + target)
-      val targetMap = graph(target).getOrElseUpdate(relation, new mutable.HashMap[Boolean, Set[Int]])
-      targetMap.update(true, targetMap.getOrElse(true, Set()) + source)
-    }
-    val finalized = new Array[Map[Int, (Array[Int], Array[Int])]](numNodes)
-    (0 until numNodes).par.foreach(i => {
-      if (graph(i) == null) {
-        finalized(i) = Map()
-      } else {
-        finalized(i) = graph(i).map(entry => {
-          val relation = entry._1
-          val inEdges = entry._2.getOrElse(true, Set()).toList.sorted.toArray
-          val outEdges = entry._2.getOrElse(false, Set()).toList.sorted.toArray
-          (relation -> (inEdges, outEdges))
-        }).toMap
-      }
-    })
-    finalized
-  }
-
-  def runBfs(graph: Graph, data: Dataset, unallowedEdges: Set[Int]) = {
+  def runBfs(data: Dataset, unallowedEdges: Set[Int]) = {
     println("Running BFS")
     val instances = data.instances
+    // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
+    // the data is using a shared graph.
+    data.getGraphForInstance(instances(0))
     // Note that we're doing two BFS searches for each instance - one from the source, and one from
     // the target.  But that's extra work!, you might say, because if there are duplicate sources
     // or targets across instances, we should only have to do the BFS once!  That's true, unless
@@ -112,11 +76,12 @@ class BfsPathFinder(
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
     instances.par.map(instance => {
+      val graph = data.getGraphForInstance(instance)
       val source = instance.source
       val target = instance.target
-      val sourceSubgraph = bfsFromNode(source, target, unallowedEdges)
+      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges)
       val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
-      val targetSubgraph = bfsFromNode(target, source, unallowedEdges)
+      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges)
       val oneSidedTarget = reKeyBfsResults(target, targetSubgraph)
       val intersection = sourceSubgraph.keys.toSet.intersect(targetSubgraph.keys.toSet)
       val twoSided = intersection.flatMap(node => {
@@ -153,14 +118,14 @@ class BfsPathFinder(
     rekeyed.mapValues(_.toSet).toMap
   }
 
-  def bfsFromNode(source: Int, target: Int, unallowedRelations: Set[Int]): Map[Int, Set[Int]] = {
+  def bfsFromNode(graph: Graph, source: Int, target: Int, unallowedRelations: Set[Int]) = {
     var currentNodes = Map((source -> Set(pathDict.getIndex(factory.emptyPathType))))
     val results = new mutable.HashMap[Int, mutable.HashSet[Int]]
     for (i <- 1 to numSteps) {
       currentNodes = currentNodes.flatMap(nodeEntry => {
         val node = nodeEntry._1
         val pathTypes = nodeEntry._2
-        val nodeResults = graph(node).toSeq.flatMap(relationEdges => {
+        val nodeResults = graph.getNode(node).edges.toSeq.flatMap(relationEdges => {
           val relation = relationEdges._1
           val inEdges = relationEdges._2._1
           val outEdges = relationEdges._2._2

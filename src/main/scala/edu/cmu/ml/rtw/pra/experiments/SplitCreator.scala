@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.experiments
 import java.io.FileWriter
 
 import edu.cmu.ml.rtw.pra.config.JsonHelper
+import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -61,7 +62,8 @@ class SplitCreator(
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
       val relation_file = s"${relationMetadata}relations/${fixed}"
-      val all_instances = Dataset.fromFile(relation_file, node_dict, fileUtil)
+      val config = new PraConfig.Builder().setNodeDictionary(node_dict).noChecks().build()
+      val all_instances = Dataset.fromFile(relation_file, config, fileUtil)
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {

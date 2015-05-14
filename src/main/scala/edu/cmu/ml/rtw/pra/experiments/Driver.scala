@@ -212,10 +212,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val data = if (dataToUse == "both") {
       val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
       val trainingData = if (fileUtil.fileExists(trainingFile))
-        Dataset.fromFile(trainingFile, config.nodeDict, fileUtil) else null
+        Dataset.fromFile(trainingFile, config, fileUtil) else null
       val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
       val testingData = if (fileUtil.fileExists(testingFile))
-        Dataset.fromFile(testingFile, config.nodeDict, fileUtil) else null
+        Dataset.fromFile(testingFile, config, fileUtil) else null
       if (trainingData == null && testingData == null) {
         throw new IllegalStateException("Neither training file nor testing file exists for " +
           "relation " + config.relation)
@@ -229,7 +229,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       }
     } else {
       val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      Dataset.fromFile(inputFile, config.nodeDict, fileUtil)
+      Dataset.fromFile(inputFile, config, fileUtil)
     }
 
     val explorer = new GraphExplorer(praParams \ "explore", config)
@@ -569,13 +569,17 @@ object Driver {
       builder: PraConfig.Builder,
       fileUtil: FileUtil = new FileUtil) = {
     val fixed = relation.replace("/", "_")
+    // The Dataset objects need access to the graph information, which is contained in PraConfig.
+    // That's all that Dataset needs from PraConfig, so we can safely call builder.build() here and
+    // keep the PraConfig object.  Not the best solution, but it will work for now.
+    val config = builder.noChecks().build()
     // We look in the splits directory for a fixed split if we don't find one, we do cross
     // validation.
     if (fileUtil.fileExists(splitsDirectory + fixed)) {
       val training = splitsDirectory + fixed + "/training.tsv"
       val testing = splitsDirectory + fixed + "/testing.tsv"
-      builder.setTrainingData(Dataset.fromFile(training, builder.nodeDict, fileUtil))
-      builder.setTestingData(Dataset.fromFile(testing, builder.nodeDict, fileUtil))
+      builder.setTrainingData(Dataset.fromFile(training, config, fileUtil))
+      builder.setTestingData(Dataset.fromFile(testing, config, fileUtil))
       false
     } else {
       if (relationMetadataDirectory == null) {
@@ -583,7 +587,7 @@ object Driver {
           + "have a fixed split!")
       }
       builder.setAllData(
-        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, builder.nodeDict, fileUtil))
+        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config, fileUtil))
       val percent_training_file = splitsDirectory + "percent_training.tsv"
       builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0))
       true
