@@ -53,6 +53,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     createSplitIfNecessary(params \ "split")
 
     val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "learn models")
+    println(s"PRA mode is $mode")
     if (mode == "no op") {
       fileUtil.deleteFile(outputBase)
       return
