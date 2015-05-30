@@ -46,8 +46,8 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   node_dict.getIndex("node1")
   node_dict.getIndex("node2")
 
-  val positiveInstances = Seq(Instance(1, 1, true), Instance(1, 2, true))
-  val negativeInstances = Seq(Instance(2, 2, false), Instance(1, 2, false))
+  val positiveInstances = Seq(new Instance(1, 1, true), new Instance(1, 2, true))
+  val negativeInstances = Seq(new Instance(2, 2, false), new Instance(1, 2, false))
   val goodData = new Dataset(positiveInstances ++ negativeInstances) {
     override def splitData(percent: Double) = {
       println("Splitting fake data")

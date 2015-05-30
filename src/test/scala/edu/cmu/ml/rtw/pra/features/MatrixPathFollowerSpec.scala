@@ -137,7 +137,7 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       numNodes,
       path_types,
       "/matrices/",
-      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
+      new Dataset(Seq(new Instance(1, 1, true), new Instance(2, 1, true), new Instance(3, 1, true))),
       edgeDict,
       Set(),
       new SingleEdgeExcluder(edgesToExclude),

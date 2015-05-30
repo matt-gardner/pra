@@ -52,6 +52,8 @@ public class PraConfig {
   // The number of shards that the graph is (or should be) sharded into.
   public final int numShards;
 
+  // TODO(matt): the dictionaries are stored in the Graph object now, and that's really where they
+  // should stay...  Remove them from here.
   // A Dictionary mapping node names to integers (neither this dictionary nor the one below it are
   // necessary for running the PRA code.  They are just convenient for some use cases, particularly
   // if you want human readable output).

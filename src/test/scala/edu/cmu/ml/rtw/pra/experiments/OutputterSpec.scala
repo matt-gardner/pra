@@ -86,9 +86,9 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "outputScores" should "produce a correct scores file" in {
     val filename = "/scores file"
-    val trainingData = new Dataset(Seq(Instance(1, 2, true), Instance(3, 8, true)))
-    val testingData = new Dataset(Seq(Instance(3, 4, true), Instance(10, 11, true),
-      Instance(5, 6, false), Instance(12, 13, false)))
+    val trainingData = new Dataset(Seq(new Instance(1, 2, true), new Instance(3, 8, true)))
+    val testingData = new Dataset(Seq(new Instance(3, 4, true), new Instance(10, 11, true),
+      new Instance(5, 6, false), new Instance(12, 13, false)))
     val config = new PraConfig.Builder()
         .noChecks()
         .setTrainingData(trainingData)
@@ -120,9 +120,9 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "outputSplitFiles" should "write two correct files" in {
     val baseDir = "/"
-    val trainingData = new Dataset(Seq(Instance(1, 4, true), Instance(2, 5, true),
-      Instance(3, 6, true), Instance(9, 10, false)))
-    val testingData = new Dataset(Seq(Instance(7, 8, true), Instance(1, 2, false)))
+    val trainingData = new Dataset(Seq(new Instance(1, 4, true), new Instance(2, 5, true),
+      new Instance(3, 6, true), new Instance(9, 10, false)))
+    val testingData = new Dataset(Seq(new Instance(7, 8, true), new Instance(1, 2, false)))
 
     val trainingFile = "/training_data.tsv"
     val expectedTrainingFileContents = "1\t4\t1\n2\t5\t1\n3\t6\t1\n9\t10\t-1\n"
@@ -141,7 +141,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
   "outputPathCountMap" should "format data correctly" in {
     val baseDir = "/"
     val filename = "path count map"
-    val data = new Dataset(Seq(Instance(1, 2, true), Instance(3, 4, false)))
+    val data = new Dataset(Seq(new Instance(1, 2, true), new Instance(3, 4, false)))
 
     val pathCountMap = Map(((1, 2) -> Map((factory.fromString("-1-"), 22))))
 

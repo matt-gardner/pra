@@ -28,7 +28,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
 
-  val instance = Instance(5, 3, true)
+  val instance = new Instance(5, 3, true)
   val config = new PraConfig.Builder()
     .setUnallowedEdges(Seq(1:Integer).asJava).setGraph(graphFilename).noChecks().build()
   val data = new Dataset(Seq(instance), config, None, fileUtil)
@@ -101,7 +101,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   }
 
   it should "exclude edges when specified" in {
-    val instance = Instance(1, 3, true)
+    val instance = new Instance(1, 3, true)
     val data = new Dataset(Seq(instance), config, None, fileUtil)
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()

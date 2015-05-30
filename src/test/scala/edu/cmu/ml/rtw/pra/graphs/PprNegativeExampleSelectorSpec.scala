@@ -21,7 +21,7 @@ import org.json4s.native.JsonMethods._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val dataset = new Dataset(Seq(Instance(1, 2, true)))
+  val dataset = new Dataset(Seq(new Instance(1, 2, true)))
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, "", 1) {
@@ -34,9 +34,9 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val withNegatives = selector.selectNegativeExamples(dataset, Set(), Set())
-    withNegatives.getPositiveInstances should be(Seq(Instance(1, 2, true)))
-    withNegatives.getNegativeInstances should be(Seq(Instance(1, 1, false), Instance(2, 2, false),
-      Instance(3, 3, false)))
+    withNegatives.getPositiveInstances should be(Seq(new Instance(1, 2, true)))
+    withNegatives.getNegativeInstances should be(Seq(new Instance(1, 1, false),
+      new Instance(2, 2, false), new Instance(3, 3, false)))
   }
 
   "sampleByPrr" should "get enough negatives per positive" in {

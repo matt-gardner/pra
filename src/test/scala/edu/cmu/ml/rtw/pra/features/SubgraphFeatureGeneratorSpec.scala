@@ -44,7 +44,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     Map((source, target) -> subgraph)
   }
 
-  val dataset = new Dataset(Seq(Instance(1, 2, true)))
+  val dataset = new Dataset(Seq(new Instance(1, 2, true)))
 
   "createTrainingMatrix" should "return extracted features from local subgraphs" in {
     val subgraph = getSubgraph(1, 2)

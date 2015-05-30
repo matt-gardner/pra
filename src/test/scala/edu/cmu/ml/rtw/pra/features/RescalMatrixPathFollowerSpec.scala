@@ -99,7 +99,7 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       config,
       path_types,
       "",
-      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
+      new Dataset(Seq(new Instance(1, 1, true), new Instance(2, 1, true), new Instance(3, 1, true))),
       negativesPerSource,
       fileUtil)
   }

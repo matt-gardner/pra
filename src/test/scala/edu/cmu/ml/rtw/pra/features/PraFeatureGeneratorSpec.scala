@@ -56,8 +56,8 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val node3Index = config.nodeDict.getIndex(node3)
   val node4Index = config.nodeDict.getIndex(node4)
   val dataFile = node1 + "\t" + node2 + "\n" + node3 + "\t" + node4 + "\n"
-  val data = new Dataset(Seq(Instance(node1Index, node2Index, true),
-    Instance(node3Index, node4Index, true)))
+  val data = new Dataset(Seq(new Instance(node1Index, node2Index, true),
+    new Instance(node3Index, node4Index, true)))
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")

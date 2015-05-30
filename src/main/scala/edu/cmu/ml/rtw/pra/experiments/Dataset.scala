@@ -10,7 +10,10 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
 
-case class Instance(source: Int, target: Int, isPositive: Boolean)
+// Not a case class, because we really don't want equality on source/target/isPositive.  We need
+// equality to only look at object identity, because the source and target Ints might be with
+// respect to different dictionaries.
+class Instance(val source: Int, val target: Int, val isPositive: Boolean)
 
 /**
  * A collection of positive and negative (source, target) pairs.
@@ -131,8 +134,15 @@ object Dataset {
    */
   def fromFile(filename: String, config: PraConfig, fileUtil: FileUtil = new FileUtil): Dataset = {
     val lines = fileUtil.readLinesFromFile(filename).asScala
-    val instances = lines.par.map(lineToInstance(config.nodeDict)).seq
-    new Dataset(instances, config)
+    if (lines(0).split("\t").size == 4) {
+      val results = lines.par.map(lineToInstanceAndGraph).seq
+      val instances = results.map(_._1).toSeq
+      val graphs = Some(results.map(_._2).toSeq)
+      new Dataset(instances, config, graphs, fileUtil)
+    } else {
+      val instances = lines.par.map(lineToInstance(config.nodeDict)).seq
+      new Dataset(instances, config, None, fileUtil)
+    }
   }
 
   def lineToInstance(dict: Dictionary)(line: String): Instance = {
@@ -141,6 +151,34 @@ object Dataset {
     val source = if (dict == null) fields(0).toInt else dict.getIndex(fields(0))
     val target = if (dict == null) fields(1).toInt else dict.getIndex(fields(1))
     new Instance(source, target, isPositive)
+  }
+
+  def lineToInstanceAndGraph(line: String): (Instance, Graph) = {
+    val instanceFields = line.split("\t")
+    val instanceSource = instanceFields(0)
+    val instanceTarget = instanceFields(1)
+    val isPositive = instanceFields(2).toInt == 1
+    val graphString = instanceFields(3)
+    val graphBuilder = new GraphBuilder()
+    val graphEdges = graphString.split(" ### ")
+    for (edge <- graphEdges) {
+      val fields = edge.split("\\^,\\^")
+      println(fields.toList)
+      val source = fields(0)
+      val target = fields(1)
+      val relation = fields(2)
+      graphBuilder.addEdge(source, target, relation)
+    }
+    val graph = graphBuilder.build()
+    // This isn't ideal, but the Ints in the Instance object need to be with respect to the graph.
+    // It might be a bit cleaner to have each Instance have a pointer to the graph that it
+    // corresponds to, but that would mean that in the single-graph case, I have to construct the
+    // graph before reading the Dataset, and can't just load it lazily...  It's a bit messy either
+    // way, so I'm going to keep the lazy loading and just grab indices from the instance graph's
+    // nodeDict here.
+    val sourceId = graph.nodeDict.getIndex(instanceSource)
+    val targetId = graph.nodeDict.getIndex(instanceTarget)
+    (new Instance(sourceId, targetId, isPositive), graph)
   }
 
 }
