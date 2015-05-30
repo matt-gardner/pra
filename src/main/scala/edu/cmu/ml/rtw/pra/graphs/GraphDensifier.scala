@@ -118,7 +118,8 @@ class GraphDensifier(
     println(s"Metadata directory: $metadata")
     val inverses = Driver.createInverses(metadata, edge_dict, fileUtil)
     println(s"Inverses size: ${inverses.size}")
-    // TODO(matt): don't I have some common code for reading a split?
+    // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
+    // Dataset.fromFile.  I should use that here.
     val split_dir = s"${praBase}splits/${split_name}/"
     val relations = fileUtil.readLinesFromFile(s"${split_dir}relations_to_run.tsv").asScala
     relations.flatMap(relation => {

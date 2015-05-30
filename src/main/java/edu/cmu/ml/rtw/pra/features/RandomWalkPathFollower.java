@@ -169,13 +169,6 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
       return;
     }
 
-    // TODO(matt): I could probably save a bit of time here by only doing the bit twiddling on each
-    // walk once.  I.e., do one pass over the walks, separating them into pathType, sourceIdx,
-    // hopNum, and whatnot, and sending that information around these methods instead.  It would
-    // require a fair amount of refactoring, though, including in graphchi code.  I'm not certain
-    // it's worth the speed up.  It might be, though, if it decreases the time spend in these inner
-    // loops of the code.
-
     // Some path types normalize things by the edges going out of a vertex, or do other kinds of
     // expensive computation.  Here we allow the path types to prep for that once, before calling
     // nextHop for each walk.

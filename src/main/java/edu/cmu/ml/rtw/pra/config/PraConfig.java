@@ -34,12 +34,12 @@ import edu.cmu.ml.rtw.users.matt.util.Vector;
  *
  * TODO(matt): this has entries both for global-level information and for relation-specific
  * configuration (e.g., the graph is global, over all relations being run, while the allowed
- * targets are per-relation).  These two functions really should be split.  The issue that I really
- * only want to create a FeatureGenerator once for each run of Driver, but FeatureGenerator takes
- * the config as a class parameter, and that's how it gets relation-specific information.  That
- * means that whatever FeatureGenerator has to, it has to do it for each relation, even if some of
- * it is expensive and can be kept between relations (like loading the graph into memory, for
- * instance).
+ * targets are per-relation).  These two functions really should be split.  The issue is that I
+ * really only want to create a FeatureGenerator once for each run of Driver, but FeatureGenerator
+ * takes the config as a class parameter, and that's how it gets relation-specific information.
+ * That means that whatever FeatureGenerator has to do, it has to do it for each relation, even if
+ * some of it is expensive and can be kept between relations (like loading the graph into memory,
+ * for instance).
  */
 public class PraConfig {
   ////////////////////////////////////////////////////////////////////////////////////////////////
