@@ -1,0 +1,14 @@
+load default_pra_parameters
+{
+  "graph": {
+    "name": "synthetic/small/easy",
+    "relation sets": ["load relation_sets/synthetic/small/easy"]
+  },
+  "split": "synthetic/small/easy"
+  "pra parameters": {
+    "path follower": {
+      "name": "rescal matrix multiplication",
+      "rescal dir": "/home/mg1/pra/comparisons/rescal/synthetic/small/easy/"
+    }
+  }
+}

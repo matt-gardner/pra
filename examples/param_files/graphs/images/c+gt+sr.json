@@ -1,0 +1,13 @@
+{
+  "name": "images/c+gt+sr",
+  "relation sets": [
+    "load relation_sets/images/spatial_relationships_train",
+    "load relation_sets/images/spatial_relationships_val",
+    "load relation_sets/images/spatial_relationships_test",
+    "load relation_sets/images/classifier_output_train",
+    "load relation_sets/images/classifier_output_val",
+    "load relation_sets/images/classifier_output_test",
+    "load relation_sets/images/ground_truth_train",
+    "load relation_sets/images/ground_truth_val"
+  ]
+}

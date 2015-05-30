@@ -1,0 +1,5 @@
+{
+  "graph": "nell/kb_svo",
+  "relation metadata": "nell",
+  "split": "nell_with_negatives"
+}

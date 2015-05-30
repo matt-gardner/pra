@@ -1,4 +1,4 @@
 {
-  "relation file": "/path/to/nell/targeted/svo.tsv",
+  "relation file": "/home/mg1/data/svo_triples/partha_smarter_triples/smaller.tsv",
   "is kb": false
 }

@@ -1,0 +1,16 @@
+load new_feature_experiment_base
+load default_subgraph_parameters
+{
+  "pra parameters": {
+    "features": {
+      "feature extractors": [
+      "PraFeatureExtractor", "OneSidedFeatureExtractor"
+      ],
+      "feature size": 10000
+    }
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 10.0
+    }
+  }
+}

@@ -1,0 +1,21 @@
+load new_feature_experiment_base
+{
+  "split": "nell_with_negatives",
+  "pra parameters": {
+    "features": {
+      "type": "subgraphs",
+      "path finder": {
+        "type": "BfsPathFinder",
+        "number of steps": 2
+      },
+      "feature extractors": [
+      "PraFeatureExtractor""PathBigramsFeatureExtractor"{"name": "VectorSimilarityFeatureExtractor", "matrix name": "my_svd/nell/kb-t_svo/similarity_matrix_0.8_3_20_max_10"}
+      ],
+      "feature size": -1
+    }
+    "learning": {
+      "l1 weight": 0.05,
+      "l2 weight": 0.01
+    }
+  }
+}

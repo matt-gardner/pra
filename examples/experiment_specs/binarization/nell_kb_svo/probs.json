@@ -1,0 +1,4 @@
+load base_nell_pra_parameters
+{
+  "graph": "load graphs/nell/kb_svo"
+}

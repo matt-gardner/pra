@@ -1,0 +1,11 @@
+load new_feature_experiment_base
+load default_pra_parameters
+{
+  "pra parameters": {
+    "features": {
+      "path follower": {
+        "matrix accept policy": "paired-targets-only"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+load default_pra_parameters
+{
+  "graph": {
+  "name": "synthetic/small/less_easy",
+  "relation sets": ["load relation_sets/synthetic/small/less_easy"]
+  },
+  "split": "synthetic/small/less_easy"
+  "pra parameters": {
+    "features": {
+      "path follower": {
+        "walks per path": "delete",
+        "matrix accept policy": "paired-targets-only",
+        "name": "rescal matrix multiplication",
+        "rescal dir": "/home/mg1/pra/comparisons/rescal/synthetic/small/less_easy/"
+      }
+    }
+    "learning": {
+      "l1 weight": 0.0,
+      "l2 weight": 10.0
+    }
+  }
+}

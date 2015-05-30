@@ -1,0 +1,21 @@
+load new_feature_experiment_base
+{
+  "split": "nell_with_negatives",
+  "pra parameters": {
+    "features": {
+      "type": "subgraphs",
+      "path finder": {
+        "type": "BfsPathFinder",
+        "number of steps": 2
+      },
+      "feature extractors": [
+        "PraFeatureExtractor"
+        ],
+      "include bias": false
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
+  }
+}

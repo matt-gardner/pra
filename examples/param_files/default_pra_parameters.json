@@ -1,13 +1,23 @@
 {
   "pra parameters": {
-    "pra mode": "standard",
-    "l1 weight": 0.005,
-    "l2 weight": 1,
-    "walks per source": 100,
-    "walks per path": 50,
-    "path finding iterations": 3,
-    "number of paths to keep": 1000,
-    "matrix accept policy": "all-targets",
-    "path accept policy": "paired-only"
+    "mode": "learn models",
+    "features": {
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "all-targets"
+      }
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
   }
 }

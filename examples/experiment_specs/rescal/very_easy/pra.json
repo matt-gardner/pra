@@ -1,0 +1,15 @@
+load default_pra_parameters
+{
+  "graph": {
+    "name": "synthetic/small/very_easy",
+    "relation sets": ["load relation_sets/synthetic/small/very_easy"]
+  },
+  "split": "synthetic/small/very_easy"
+  "pra parameters": {
+    "features": {
+      "path follower": {
+        "matrix accept policy": "paired-targets-only"
+      }
+    }
+  }
+}

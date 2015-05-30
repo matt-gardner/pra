@@ -1,0 +1,16 @@
+{
+  "graph": "nell/kb"
+  "split": {
+    "name":"final_nell_split",
+    "relation metadata":"nell",
+    "graph":"nell/kb",
+    "percent training":0.8,
+    "relations":["concept:riverflowsthroughcity","concept:sportsteampositionforsport","concept:citylocatedincountry","concept:athleteplaysforteam","concept:writerwrotebook","concept:actorstarredinmovie","concept:journalistwritesforpublication","concept:stadiumlocatedincity","concept:statehaslake","concept:teamplaysinleague"],
+    "negative instances":{
+      "negative to positive ratio":10
+    }
+  }
+  "pra parameters": {
+    "mode": "no op"
+  }
+}
