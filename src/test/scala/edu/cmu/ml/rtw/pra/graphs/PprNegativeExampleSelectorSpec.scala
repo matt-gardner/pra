@@ -34,9 +34,18 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val withNegatives = selector.selectNegativeExamples(dataset, Set(), Set())
-    withNegatives.getPositiveInstances should be(Seq(new Instance(1, 2, true)))
-    withNegatives.getNegativeInstances should be(Seq(new Instance(1, 1, false),
-      new Instance(2, 2, false), new Instance(3, 3, false)))
+    withNegatives.getPositiveInstances should be(dataset.getPositiveInstances)
+    val negativeInstances = withNegatives.getNegativeInstances
+    negativeInstances.size should be(3)
+    negativeInstances(0).source should be(1)
+    negativeInstances(0).target should be(1)
+    negativeInstances(0).isPositive should be(false)
+    negativeInstances(1).source should be(2)
+    negativeInstances(1).target should be(2)
+    negativeInstances(1).isPositive should be(false)
+    negativeInstances(2).source should be(3)
+    negativeInstances(2).target should be(3)
+    negativeInstances(2).isPositive should be(false)
   }
 
   "sampleByPrr" should "get enough negatives per positive" in {

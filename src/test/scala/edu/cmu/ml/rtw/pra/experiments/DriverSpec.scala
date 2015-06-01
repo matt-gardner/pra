@@ -88,15 +88,18 @@ class DriverSpec extends FlatSpecLike with Matchers {
 
   "initializeSplit" should "not do cross validation when there's a fixed split" in {
     fileUtil.addExistingFile(splitsDirectory + fixedSplitRelation.replace("/", "_"))
-    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/training.tsv", "")
-    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/testing.tsv", "")
+    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/training.tsv",
+      "1\t1\n")
+    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/testing.tsv",
+      "2\t2\n")
     Driver.initializeSplit(splitsDirectory, kbDirectory, fixedSplitRelation, builder,
       fileUtil) should be(false)
   }
 
   it should "do cross validation when there's no fixed split" in {
     fileUtil.setDoubleList(List(java.lang.Double.valueOf(0.0)).asJava)
-    fileUtil.addFileToBeRead(splitsDirectory + "relations/" + crossValidatedRelation.replace("/", "_"), "")
+    fileUtil.addFileToBeRead(splitsDirectory + "relations/" + crossValidatedRelation.replace("/", "_"),
+      "1\t1\n2\t2\n")
     Driver.initializeSplit(splitsDirectory, kbDirectory, crossValidatedRelation, builder,
       fileUtil) should be(true)
   }
