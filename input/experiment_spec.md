@@ -7,7 +7,8 @@ title: Experiment Spec
 An experiment specification file goes in the directory `experiment_specs/`, and must end with
 `.json`.  As you could probably guess from the required extension, this file should be formatted as
 a json object (with an extension or two; see below).  This file specifies all of the parameters
-that define a PRA experiment, grouped into four chunks:
+that define a PRA experiment, grouped into four chunks (note that each of these bullet points has
+links to further documentation about the set of parameters):
 
 * The [graph]({{ site.baseurl }}/input/graphs.html) to be used in the experiment.  There are a lot
   of possible parameters to put here.  See the [graph page]({{ site.baseurl }}/input/graphs.html)
@@ -39,6 +40,12 @@ defines the [result directory]({{ site.baseurl }}/output/results.html) where the
 output will be put.
 
 ## Examples
+
+There are lots of
+[examples](https://github.com/matt-gardner/pra/tree/master/examples/experiment_specs) in the PRA
+codebase.  Those are the files that I actually used to run the experiments in my recent papers, so
+they should be functional with current code and are a good source to look at when trying to create
+your own.  I've put a few of them here with a little bit of explanation.
 
 ### Simple, with generated data
 
@@ -75,15 +82,25 @@ Here's an example of a fully specified and functional experiment spec:
   },
   "split": "synthetic/very_easy",
   "pra parameters": {
-    "pra mode": "standard",
-    "l1 weight": 0.005,
-    "l2 weight": 1,
-    "walks per source": 100,
-    "walks per path": 50,
-    "path finding iterations": 3,
-    "number of paths to keep": 1000,
-    "matrix accept policy": "all-targets",
-    "path accept policy": "paired-only"
+    "mode": "learn models",
+    "features": {
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "all-targets"
+      }
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
   }
 }
 ```
@@ -105,15 +122,25 @@ specification would work:
   "graph": "test_graph",
   "split": "synthetic_very_easy",
   "pra parameters": {
-    "pra mode": "standard",
-    "l1 weight": 0.005,
-    "l2 weight": 1,
-    "walks per source": 100,
-    "walks per path": 50,
-    "path finding iterations": 3,
-    "number of paths to keep": 1000,
-    "matrix accept policy": "all-targets",
-    "path accept policy": "paired-only"
+    "mode": "learn models",
+    "features": {
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "all-targets"
+      }
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
   }
 }
 ```
@@ -137,15 +164,25 @@ parameters that you tend to reuse:
 
 ```
 {
-  "pra mode": "standard",
-  "l1 weight": 0.005,
-  "l2 weight": 1,
-  "walks per source": 100,
-  "walks per path": 50,
-  "path finding iterations": 3,
-  "number of paths to keep": 1000,
-  "matrix accept policy": "all-targets",
-  "path accept policy": "paired-only"
+  "mode": "learn models",
+  "features": {
+    "path finder": {
+      "walks per source": 100,
+      "path finding iterations": 3,
+      "path accept policy": "paired-only"
+    },
+    "path selector": {
+      "number of paths to keep": 1000
+    },
+    "path follower": {
+      "walks per path": 50,
+      "matrix accept policy": "all-targets"
+    }
+  },
+  "learning": {
+    "l1 weight": 0.005,
+    "l2 weight": 1
+  }
 }
 ```
 
@@ -172,15 +209,25 @@ example, say we change `pra_params.json` to instead look like this:
 ```
 {
   "pra parameters": {
-    "pra mode": "standard",
-    "l1 weight": 0.005,
-    "l2 weight": 1,
-    "walks per source": 100,
-    "walks per path": 50,
-    "path finding iterations": 3,
-    "number of paths to keep": 1000,
-    "matrix accept policy": "all-targets",
-    "path accept policy": "paired-only"
+    "mode": "learn models",
+    "features": {
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "all-targets"
+      }
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
   }
 }
 ```
@@ -205,7 +252,10 @@ differently from my defaults.  This allows for relatively easy specification of 
 experiments, where just one thing changes across the set.
 
 Also note that the files that are loaded with a `load` statement can themselves have `load`
-statements, so you can go as deep with this as you care to.
+statements, so you can go as deep with this as you care to.  And, in a few rare circumstances, you
+may want to delete a parameter that was specificied in something you loaded, instead of just
+overriding it.  You can do that with the `delete` keyword, such as `"matrix accept policy":
+"delete"`.
 
 And that, along with reading the links above on what each of these parameters actually _means_,
 should be enough to get you started using this.  There are some examples of experiment

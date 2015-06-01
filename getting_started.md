@@ -9,18 +9,19 @@ If you have questions that aren't answered, please feel free to ask your questio
 tracker](https://github.com/matt-gardner/pra/issues), and I will update the documentation to answer
 your question.
 
-This documentation is for *version 2.0* of the PRA code.  Earlier versions had a much more
-complicated input structure, and I broke backwards compatibility with that structure with the
-release of verion 2.0.  The good news is that you shouldn't have anything to lose by updating to
-version 2.0.  If you need help converting data or experiment specifications from a previous
-version to the new one, just let me know.
+This documentation is for *version 3.0* of the PRA code.  The parameter specification has changed
+a bit since prior versions of the code, and what you see here _will not match_ what the code
+expects if you're using a prior version.  There's also the possibility that things will change
+(parameters either added, removed, or moved) in the future, so if you want to be certain that
+the code you're using matches the documentation here, be sure to check out the tagged version 3.0
+of the PRA code.
 
 ## Compiling and running the code
 
 This PRA code was originally written in java, using GraphChi-java as the engine for performing
 random walks on a graph.  I have since switched to using scala as my main development language, so
-I expect that most new code in this repository will be written in scala, and parts of the codebase
-are slowly migrating from java to scala.
+I expect that most new code in this repository will be written in scala, and much of the codebase
+has already migrated from java to scala.
 
 Scala uses `sbt` as its main build tool.  You can download `sbt`
 [here](http://www.scala-sbt.org/download.html).  Once you have sbt installed and in your shell's
@@ -47,8 +48,9 @@ properly:
 ```
 
 If you're getting an error, it's possible there's a bug in the most recent code; you could try
-checking out a tagged version (such as v1.1, with `git checkout v1.1`), as tagged versions should
-be relatively stable.
+checking out a tagged version (such as v3.0, with `git checkout v3.0`), as tagged versions should
+be relatively stable.  (One of the tests is also a bit flaky, so if you get just one error in
+SubgraphFeatureGeneratorSpec, just re-run the tests and it should pass.)
 
 If the test succeeds, you can actually run the code using `sbt run`.  There are two different main
 methods in the code, however, so this will give you a list of possible main methods (the order you
