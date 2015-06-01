@@ -78,7 +78,7 @@ class PraFeatureGenerator(
 
     // And finally, we select and output path types.
     val pathTypeSelector = createPathTypeSelector(params \ "path selector", finder)
-    val numPaths = JsonHelper.extractWithDefault(params, "number of paths to keep", 1000)
+    val numPaths = JsonHelper.extractWithDefault(params \ "path selector", "number of paths to keep", 1000)
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
     config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes)
