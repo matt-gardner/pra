@@ -426,8 +426,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   def getGraphDirectory(params: JValue): String = {
     (params \ "graph") match {
       case JString(path) if (path.startsWith("/")) => path
-      case JString(name) => praBase + "/graphs/" + name
-      case jval => praBase + "/graphs/" + (jval \ "name").extract[String]
+      case JString(name) => praBase + "/graphs/" + name + "/"
+      case jval => praBase + "/graphs/" + (jval \ "name").extract[String] + "/"
     }
   }
 }
