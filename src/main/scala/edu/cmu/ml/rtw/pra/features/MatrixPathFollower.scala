@@ -17,6 +17,7 @@ import scalax.io.Resource
 import scala.util.control.Breaks._
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -36,12 +37,14 @@ class MatrixPathFollower(
     val normalizeWalkProbabilities: Boolean,
     fileUtil: FileUtil = new FileUtil) extends PathFollower {
 
+  val source_nodes = data.instances.map(_.source).toSet
+  val positive_source_targets = data.getPositiveInstances.map(i => (i.source, i.target)).toSet
+  val graph = data.instances(0).graph
   override def execute = {}
   override def shutDown = {}
   override def usesGraphChi = false
-  override def getFeatureMatrix() = getFeatureMatrix(data.getAllSources, allowedTargets)
+  override def getFeatureMatrix() = getFeatureMatrix(source_nodes, allowedTargets)
 
-  val source_nodes = data.getAllSources
   val sources_matrix = {
     println(s"num nodes: ${numNodes}")
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
@@ -119,7 +122,12 @@ class MatrixPathFollower(
       pathTypes += feature._1
       values += feature._2
     }
-    new MatrixRow(source, target, pathTypes.toArray, values.toArray)
+    val instance = if (positive_source_targets.contains((source, target))) {
+      new Instance(source, target, true, graph)
+    } else {
+      new Instance(source, target, false, graph)
+    }
+    new MatrixRow(instance, pathTypes.toArray, values.toArray)
   }
 
   def getPathMatrices(): Map[PathType, CSCMatrix[Double]] = {

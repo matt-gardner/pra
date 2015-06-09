@@ -19,20 +19,9 @@ import scala.collection.JavaConverters._
  * @author mgardner
  *
  */
-class Outputter(
-    nodeDict: Dictionary = null,
-    edgeDict: Dictionary = null,
-    nodeNames: Map[String, String] = null,
-    fileUtil: FileUtil = new FileUtil) {
+class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new FileUtil) {
 
-  if (nodeDict == null || edgeDict == null) {
-    println("\n\n\n*************************************************\n\n\n")
-    println("USING OUTPUTTER WITHOUT NODE AND EDGE DICTIONARIES")
-    println("ARE YOU _SURE_ YOU WANT TO DO THIS?")
-    println("\n\n\n*************************************************\n\n\n")
-  }
-
-  def getNode(index: Int): String = {
+  def getNode(index: Int, nodeDict: Dictionary): String = {
     if (nodeDict == null) {
       "" + index
     } else {
@@ -45,7 +34,7 @@ class Outputter(
     }
   }
 
-  def getPathType(pathType: PathType): String = {
+  def getPathType(pathType: PathType, edgeDict: Dictionary): String = {
     if (edgeDict == null) {
       pathType.encodeAsString()
     } else {
@@ -53,60 +42,38 @@ class Outputter(
     }
   }
 
-  /**
-   * Output a file containing the supplied scores.
-   *
-   * We take as input all three source maps (found in the config object), in addition to the source
-   * scores, because they all have useful information for this.
-   *
-   * @param filename Place to write the output file
-   * @param sourceScores The set of scores for each of the sources; these should already be sorted
-   * @param config We use this to get to the training and testing data, so we know which sources
-   *     to score and how well we did on them.
-   */
-  def outputScores(filename: String, sourceScores: Map[Int, Seq[(Int, Double)]], config: PraConfig) = {
-    val writer = fileUtil.getFileWriter(filename)
-    // These first few lines are for finding out if our prediction was _correct_ or not.
-    val trainingSourcesMap = config.trainingData.getPositiveSourceMap()
-    val testingSourcesMap = config.testingData.getPositiveSourceMap()
-    val positiveTestSources = config.testingData.getPositiveInstances.map(_.source)
+  def outputScores(filename: String, scores: Seq[(Instance, Double)], config: PraConfig) {
+    val trainingInstances = config.trainingData.instances.toSet
+    val scoreStrings = scores.map(instanceScore => {
+      val instance = instanceScore._1
+      val score = instanceScore._2
+      val source = getNode(instance.source, instance.graph.nodeDict)
+      val target = getNode(instance.target, instance.graph.nodeDict)
+      val isPositive = instance.isPositive
+      (source, target, isPositive, score, instance)
+    })
 
-    // And this is to know which tuples to _score_ (which might include negative test
-    // instances).
-    val allTestSources = config.testingData.getSourceMap().keys.toList.sorted
-    for (source <- allTestSources) {
-      val sourceStr = getNode(source)
-      sourceScores.get(source) match {
-        case None => {
-          writer.write(sourceStr + "\t\t\t")
-          if (!positiveTestSources.contains(source)) {
-            writer.write("-")
-          }
-          writer.write("\n\n")
+    val writer = fileUtil.getFileWriter(filename)
+
+    scoreStrings.groupBy(_._1).foreach(sourceScores => {
+      val source = sourceScores._1
+      val scores = sourceScores._2.sortBy(-_._4)
+      for (targetScore <- scores) {
+        val target = targetScore._2
+        val isPositive = targetScore._3
+        val score = targetScore._4
+        val instance = targetScore._5
+        writer.write(source + "\t" + target + "\t" + score + "\t")
+        if (isPositive) {
+          writer.write("*")
         }
-        case Some(scores) => {
-          val targetSet = trainingSourcesMap.getOrElse(source, Set()) ++
-            testingSourcesMap.getOrElse(source, Set())
-          val trainingTargetSet = trainingSourcesMap.getOrElse(source, Set())
-          for (targetScore <- scores) {
-            val target = targetScore._1
-            val score = targetScore._2
-            writer.write(sourceStr + "\t" + getNode(target) + "\t" + score + "\t")
-            if (targetSet.contains(target)) {
-              writer.write("*")
-            }
-            if (trainingTargetSet.contains(target)) {
-              writer.write("^")
-            }
-            if (!positiveTestSources.contains(source)) {
-              writer.write("-")
-            }
-            writer.write("\n")
-          }
-          writer.write("\n")
+        if (trainingInstances.contains(instance)) {
+          writer.write("^")
         }
+        writer.write("\n")
       }
-    }
+      writer.write("\n")
+    })
     writer.close()
   }
 
@@ -119,10 +86,8 @@ class Outputter(
 
   def outputSplitFiles(outputBase: String, trainingData: Dataset, testingData: Dataset) {
     if (outputBase != null) {
-      fileUtil.writeLinesToFile(outputBase + "training_data.tsv",
-        trainingData.instancesToStrings(nodeDict).asJava)
-      fileUtil.writeLinesToFile(outputBase + "testing_data.tsv",
-        testingData.instancesToStrings(nodeDict).asJava)
+      fileUtil.writeLinesToFile(outputBase + "training_data.tsv", trainingData.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(outputBase + "testing_data.tsv", testingData.instancesToStrings.asJava)
     }
   }
 
@@ -138,20 +103,21 @@ class Outputter(
   def outputPathCountMap(
       baseDir: String,
       filename: String,
-      pathCountMap: Map[(Int, Int), Map[PathType, Int]],
+      pathCountMap: Map[Instance, Map[PathType, Int]],
       data: Dataset) {
     if (baseDir != null) {
       val writer = fileUtil.getFileWriter(baseDir + filename)
       for (instance <- data.instances) {
-        writer.write(getNode(instance.source) + "\t" + getNode(instance.target) + "\t")
+        writer.write(getNode(instance.source, instance.graph.nodeDict) + "\t"
+          + getNode(instance.target, instance.graph.nodeDict) + "\t")
         if (instance.isPositive) {
           writer.write("+\n")
         } else {
           writer.write("-\n")
         }
-        val pathCounts = pathCountMap.getOrElse((instance.source, instance.target), Map())
+        val pathCounts = pathCountMap.getOrElse(instance, Map())
         pathCounts.toList.sortBy(-_._2).foreach(entry => {
-          writer.write("\t" + getPathType(entry._1) + "\t" + entry._2 + "\n")
+          writer.write("\t" + getPathType(entry._1, instance.graph.edgeDict) + "\t" + entry._2 + "\n")
         })
         writer.write("\n")
       }
@@ -159,18 +125,20 @@ class Outputter(
     }
   }
 
-  def outputPaths(baseDir: String, filename: String, pathTypes: Seq[PathType]) {
+  def outputPaths(baseDir: String, filename: String, pathTypes: Seq[PathType], edgeDict: Dictionary) {
     if (baseDir != null) {
-      fileUtil.writeLinesToFile(baseDir + filename, pathTypes.map(getPathType).asJava)
+      fileUtil.writeLinesToFile(baseDir + filename, pathTypes.map(p => getPathType(p, edgeDict)).asJava)
     }
   }
 
   def outputFeatureMatrix(filename: String, matrix: FeatureMatrix, featureNames: Seq[String]) {
     val writer = fileUtil.getFileWriter(filename)
     for (row <- matrix.getRows().asScala) {
-      writer.write(getNode(row.sourceNode) + "," + getNode(row.targetNode) + "\t")
+      val instance = row.instance
+      writer.write(getNode(instance.source, instance.graph.nodeDict) + "," +
+        getNode(instance.target, instance.graph.nodeDict) + "\t")
       for (i <- 0 until row.columns) {
-        val featureName = featureNames(row.pathTypes(i))
+        val featureName = featureNames(row.featureTypes(i))
         writer.write(featureName + "," + row.values(i))
         if (i < row.columns - 1) {
            writer.write(" -#- ")

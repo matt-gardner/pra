@@ -54,10 +54,11 @@ class PprNegativeExampleSelector(
    */
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
     println("Selecting negative examples by PPR score")
+    val graph = data.instances(0).graph
     val pprValues = computePersonalizedPageRank(data, allowedSources, allowedTargets)
     val negativeExamples = sampleByPrr(data, pprValues)
 
-    val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false)))
+    val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
     data.merge(negativeData)
   }
 

@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 
 import edu.cmu.graphchi.ChiLogger;
 import edu.cmu.graphchi.ChiVertex;
@@ -36,6 +37,8 @@ import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
@@ -58,23 +61,22 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private final int[] sourceIds;
   private final List<Integer> origSources;
   private final List<Integer> origTargets;
+  private final List<Instance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
   private final Object printLock = new Object();
 
   private double resetProbability = 0.35;
 
-  public RandomWalkPathFinder(String baseFilename,
-                              int nShards,
-                              List<Integer> origSources,
-                              List<Integer> origTargets,
+  public RandomWalkPathFinder(GraphOnDisk graph,
+                              List<Instance> instances,
                               EdgeExcluder edgeExcluder,
                               int walksPerSource,
                               PathTypePolicy policy,
                               PathTypeFactory pathTypeFactory) {
     try {
       this.drunkardMobEngine =
-          new DrunkardMobEngine<EmptyType, Integer>(baseFilename, nShards, new Factory());
+          new DrunkardMobEngine<EmptyType, Integer>(graph.graphFile(), graph.numShards(), new Factory());
       this.drunkardMobEngine.setEdataConverter(new IntConverter());
     } catch (IOException e) {
       e.printStackTrace();
@@ -85,8 +87,13 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     edgeExcluder.prepUnallowedWalks(vertexIdTranslate);
     this.pathTypeFactory = pathTypeFactory;
     this.numWalksPerSource = walksPerSource;
-    this.origSources = origSources;
-    this.origTargets = origTargets;
+    this.instances = instances;
+    origSources = Lists.newArrayList();
+    origTargets = Lists.newArrayList();
+    for (Instance instance : instances) {
+      origSources.add(instance.source());
+      origTargets.add(instance.target());
+    }
     this.pathDict = new Index<PathType>(pathTypeFactory, false, new FileUtil());
     // We add these to a set first, so we don't start twice as many walks from a node that shows up
     // twice in the training data.  You could argue that those nodes should have more influence on
@@ -114,7 +121,8 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     List<Integer> sources = new ArrayList<Integer>(allSourceNodes);
     Collections.sort(sources);
     try {
-      companion = new RandomWalkPathFinderCompanion(4,  // numThreads
+      companion = new RandomWalkPathFinderCompanion(graph,
+                                                    4,  // numThreads
                                                     Runtime.getRuntime().maxMemory() / 3,
                                                     vertexIdTranslate,
                                                     pathDict,
@@ -151,12 +159,12 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     return companion.getPathCounts(origSources, origTargets);
   }
 
-  public Map<Pair<Integer, Integer>, Map<PathType, Integer>> getPathCountMap() {
-    return companion.getPathCountMap(origSources, origTargets);
+  public Map<Instance, Map<PathType, Integer>> getPathCountMap() {
+    return companion.getPathCountMap(instances);
   }
 
-  public Map<Pair<Integer, Integer>, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
-    return companion.getLocalSubgraphs(origSources, origTargets);
+  public Map<Instance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
+    return companion.getLocalSubgraphs(instances);
   }
 
   public void shutDown() {

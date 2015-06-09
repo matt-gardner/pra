@@ -112,8 +112,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   def checkMatrixRow(matrix_row: MatrixRow, expectedFeatures: Map[Int, Double]) {
-    matrix_row.pathTypes.toSet should be (expectedFeatures.keySet)
-    for (feature <- matrix_row.pathTypes zip matrix_row.values) {
+    matrix_row.featureTypes.toSet should be (expectedFeatures.keySet)
+    for (feature <- matrix_row.featureTypes zip matrix_row.values) {
       feature._2 should be (expectedFeatures(feature._1))
     }
   }
@@ -137,7 +137,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       numNodes,
       path_types,
       "/matrices/",
-      new Dataset(Seq(new Instance(1, 1, true), new Instance(2, 1, true), new Instance(3, 1, true))),
+      new Dataset(Seq(new Instance(1, 1, true, null), new Instance(2, 1, true, null),
+        new Instance(3, 1, true, null))),
       edgeDict,
       Set(),
       new SingleEdgeExcluder(edgesToExclude),

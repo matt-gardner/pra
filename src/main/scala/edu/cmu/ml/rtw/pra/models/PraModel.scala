@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.models
 
 import cc.mallet.types.Alphabet
 import cc.mallet.types.FeatureVector
-import cc.mallet.types.Instance
+import cc.mallet.types.{Instance => MalletInstance}
 import cc.mallet.types.InstanceList
 
 import org.json4s._
@@ -11,6 +11,7 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 
@@ -39,17 +40,17 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
       featureNames: Seq[String],
       data: InstanceList,
       alphabet: Alphabet) {
-    val knownPositives = dataset.getPositiveInstances.map(x => (x.source, x.target)).toSet
-    val knownNegatives = dataset.getNegativeInstances.map(x => (x.source, x.target)).toSet
 
     println("Separating into positive, negative, unseen")
     val grouped = featureMatrix.getRows().asScala.groupBy(row => {
-      val sourceTarget = (row.sourceNode.toInt, row.targetNode.toInt)
-      if (knownPositives.contains(sourceTarget))
+      if (row.instance.isPositive == true)
         "positive"
-      else if (knownNegatives.contains(sourceTarget))
+      else if (row.instance.isPositive == false)
         "negative"
       else
+        // TODO(matt): I've removed this possibility from the code, migrating towards fixed
+        // training and test sets...  I should add it back in, but that will be later.  The right
+        // way to do that is probably by making isPositive an Option[Boolean]
         "unseen"
     })
     val positiveMatrix = new FeatureMatrix(grouped.getOrElse("positive", Seq()).asJava)
@@ -110,25 +111,21 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
    * @return A map from source node to (target node, score) pairs, where the score is computed
    *     from the features in the feature matrix and the learned weights.
    */
-  def classifyInstances(featureMatrix: FeatureMatrix): Map[Int, Seq[(Int, Double)]] = {
+  def classifyInstances(featureMatrix: FeatureMatrix): Seq[(Instance, Double)] = {
     println("Classifying instances")
-    val sourceScores = new mutable.HashMap[Int, mutable.ArrayBuffer[(Int, Double)]]
-    println("LR Model: size of feature matrix to classify is " + featureMatrix.size())
-    for (row <- featureMatrix.getRows().asScala) {
-      val score = classifyMatrixRow(row)
-      sourceScores.getOrElseUpdate(row.sourceNode, new mutable.ArrayBuffer[(Int, Double)])
-        .append((row.targetNode, score))
-    }
-    sourceScores.mapValues(_.toSeq.sortBy(x => (-x._2, x._1))).toMap
+    featureMatrix.getRows().asScala.map(matrixRow => {
+      val score = classifyMatrixRow(matrixRow)
+      (matrixRow.instance, score)
+    })
   }
 
   protected def classifyMatrixRow(row: MatrixRow): Double
 
-  def matrixRowToInstance(row: MatrixRow, alphabet: Alphabet, positive: Boolean): Instance = {
+  def matrixRowToInstance(row: MatrixRow, alphabet: Alphabet, positive: Boolean): MalletInstance = {
     val value = if (positive) 1.0 else 0.0
     val rowValues = row.values.map(v => if (binarizeFeatures) 1 else v)
-    val feature_vector = new FeatureVector(alphabet, row.pathTypes, rowValues)
-    new Instance(feature_vector, value, row.sourceNode + " " + row.targetNode, null)
+    val feature_vector = new FeatureVector(alphabet, row.featureTypes, rowValues)
+    new MalletInstance(feature_vector, value, row.instance.source + " " + row.instance.target, null)
   }
 }
 

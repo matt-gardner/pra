@@ -21,7 +21,7 @@ import org.json4s.native.JsonMethods._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val dataset = new Dataset(Seq(new Instance(1, 2, true)))
+  val dataset = new Dataset(Seq(new Instance(1, 2, true, null)))
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, "", 1) {
@@ -159,7 +159,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   }
 
   "computePersonalizedPageRank" should "actually work..." in {
-    val selector = new PprNegativeExampleSelector(params, "src/test/resources/edges.tsv", 1)
+    val selector = new PprNegativeExampleSelector(params, "src/test/resources/graph_chi/edges.tsv", 1)
     val pprValues = selector.computePersonalizedPageRank(dataset, Set(4, 7, 10), Set(3, 5))
     pprValues(1).size should be >= 2
     pprValues(1)(4) should be > pprValues(1)(7)

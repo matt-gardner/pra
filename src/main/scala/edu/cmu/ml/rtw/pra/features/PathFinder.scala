@@ -9,6 +9,8 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -28,8 +30,8 @@ trait PathFinder {
   // These look at the paths found during findPaths and output different results.  Behavior is
   // undefined if called before findPaths, and can either crash or give empty results.
   def getPathCounts(): JavaMap[PathType, Integer]
-  def getPathCountMap(): JavaMap[Pair[Integer, Integer], JavaMap[PathType, Integer]]
-  def getLocalSubgraphs(): JavaMap[Pair[Integer, Integer], JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]]
+  def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]]
+  def getLocalSubgraphs(): JavaMap[Instance, JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]]
   def finished()
 }
 
@@ -71,16 +73,15 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
     // methods.
     pathTypeFactory = createPathTypeFactory(params \ "path type factory", config)
     inverses = if (config.relationInverses != null) {
-      config.relationInverses.asScala.map(x => (x._1.toInt, x._2.toInt)).toMap
+      config.relationInverses.map(x => (x._1.toInt, x._2.toInt)).toMap
     } else {
       Map()
     }
 
     // Now we create and run the path finder.
-    finder = new RandomWalkPathFinder(config.graph,
-      config.numShards,
-      data.instances.map(instance => Integer.valueOf(instance.source)).asJava,
-      data.instances.map(instance => Integer.valueOf(instance.target)).asJava,
+    val graph = config.graph.get.asInstanceOf[GraphOnDisk]
+    finder = new RandomWalkPathFinder(graph,
+      data.instances.asJava,
       new SingleEdgeExcluder(edgesToExclude),
       walksPerSource,
       PathTypePolicy.parseFromString(pathAcceptPolicy),
@@ -98,7 +99,7 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
     GraphChiPathFinder.collapseInverses(finder.getPathCounts(), inverses, pathTypeFactory)
   }
 
-  override def getPathCountMap(): JavaMap[Pair[Integer, Integer], JavaMap[PathType, Integer]] = {
+  override def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]] = {
     GraphChiPathFinder.collapseInversesInCountMap(finder.getPathCountMap(), inverses, pathTypeFactory)
   }
 
@@ -135,9 +136,9 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
         List(s"${praBase}embeddings/${name}/embeddings.tsv")
       }
     }
-    val embeddings = readEmbeddingsVectors(embeddingsFiles, config.edgeDict)
+    val embeddings = readEmbeddingsVectors(embeddingsFiles, config.graph.get.edgeDict)
     val javaEmbeddings = embeddings.map(entry => (Integer.valueOf(entry._1), entry._2)).asJava
-    new VectorPathTypeFactory(config.edgeDict, javaEmbeddings, spikiness, resetWeight)
+    new VectorPathTypeFactory(config.graph.get.edgeDict, javaEmbeddings, spikiness, resetWeight)
   }
 
   def readEmbeddingsVectors(embeddingsFiles: Seq[String], edgeDict: Dictionary) = {
@@ -171,7 +172,7 @@ object GraphChiPathFinder {
   }
 
   def collapseInversesInCountMap(
-      pathCountMap: JavaMap[Pair[Integer, Integer], JavaMap[PathType, Integer]],
+      pathCountMap: JavaMap[Instance, JavaMap[PathType, Integer]],
       inverses: Map[Int, Int],
       pathTypeFactory: PathTypeFactory) = {
     pathCountMap.asScala.mapValues(m => collapseInverses(m, inverses, pathTypeFactory)).asJava

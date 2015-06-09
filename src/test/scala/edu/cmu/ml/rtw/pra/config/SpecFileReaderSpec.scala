@@ -1,7 +1,6 @@
 package edu.cmu.ml.rtw.pra.config
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.FakeDatasetFactory
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy
 import edu.cmu.ml.rtw.pra.features.MostFrequentPathTypeSelector

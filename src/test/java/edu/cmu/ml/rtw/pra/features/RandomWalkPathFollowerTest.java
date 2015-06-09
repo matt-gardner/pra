@@ -12,15 +12,18 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.walks.LongWalkArray;
+import edu.cmu.ml.rtw.pra.experiments.Instance;
 import edu.cmu.ml.rtw.pra.features.FakePathTypeFactory.FakePathType;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
 
 public class RandomWalkPathFollowerTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
-    private Map<Integer, Set<Integer>> sourcesMap = Maps.newHashMap();
+    private List<Instance> instances = Lists.newArrayList();
     private List<PathType> paths = Lists.newArrayList();
     private FakeChiVertex chiVertex = new FakeChiVertex(1);
     private Vertex vertex;
@@ -29,20 +32,21 @@ public class RandomWalkPathFollowerTest extends TestCase {
     private FakeDrunkardContext context = new FakeDrunkardContext();
     private Map<Integer, List<Integer>> inEdgeMap = Maps.newHashMap();
     private Map<Integer, List<Integer>> outEdgeMap = Maps.newHashMap();
+    private GraphOnDisk graph;
 
     @Override
     public void setUp() {
         paths.add(new FakePathType("fake"));
         addEdgeToExclude(1, 2, 1, edgesToExclude);
-        MapUtil.addValueToKeySet(sourcesMap, 1, 2);
         chiVertex.addInEdge(3, 3);
         chiVertex.addInEdge(2, 1);
         chiVertex.addOutEdge(1, 1);
         chiVertex.addOutEdge(2, 1);
         vertex = new Vertex(chiVertex);
-        follower = new RandomWalkPathFollower("src/test/resources/edges.tsv",
-                                              1,
-                                              sourcesMap,
+        graph = new GraphOnDisk("src/test/resources/", new FileUtil());
+        instances.add(new Instance(1, 2, true, graph));
+        follower = new RandomWalkPathFollower(graph,
+                                              instances,
                                               Sets.newHashSet(2),
                                               SingleEdgeExcluder.fromJava(edgesToExclude),
                                               paths,
@@ -54,7 +58,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
     @Override
     public void tearDown() {
         edgesToExclude.clear();
-        sourcesMap.clear();
+        instances.clear();
         paths.clear();
         inEdgeMap.clear();
         outEdgeMap.clear();
@@ -125,10 +129,9 @@ public class RandomWalkPathFollowerTest extends TestCase {
     // had to add it to the node dict.  In that case, we should just drop the node, instead of
     // crashing, which is what the code currently does as of writing this test.
     public void testIgnoresNewSources() {
-        MapUtil.addValueToKeySet(sourcesMap, 10000, 20000);
-        follower = new RandomWalkPathFollower("src/test/resources/edges.tsv",
-                                              1,
-                                              sourcesMap,
+        instances.add(new Instance(10000, 20000, true, graph));
+        follower = new RandomWalkPathFollower(graph,
+                                              instances,
                                               Sets.newHashSet(2),
                                               SingleEdgeExcluder.fromJava(edgesToExclude),
                                               paths,

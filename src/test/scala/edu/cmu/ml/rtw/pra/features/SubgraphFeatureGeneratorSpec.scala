@@ -1,9 +1,10 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -22,8 +23,9 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
 
   val params: JValue = ("include bias" -> true)
-  val config = new PraConfig.Builder().noChecks()
-    .setGraph("src/test/resources/edges.tsv").setNumShards(1).build()
+  val graph = new GraphOnDisk("src/test/resources/")
+  val config = new PraConfigBuilder().setNoChecks()
+    .setGraph(graph).build()
   val fakeFileUtil = new FakeFileUtil
 
   val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil)
@@ -31,30 +33,31 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   generator.featureDict.getIndex("feature2")
   generator.featureDict.getIndex("feature3")
 
-  def getSubgraph(source: Int, target: Int) = {
+  def getSubgraph(instance: Instance) = {
     val subgraph = new java.util.HashMap[PathType, java.util.Set[Pair[Integer, Integer]]]
     val pathType1 = new BasicPathTypeFactory().fromString("-1-")
     val pathType2 = new BasicPathTypeFactory().fromString("-2-")
     val nodePairs1 = new java.util.HashSet[Pair[Integer, Integer]]
-    nodePairs1.add(Pair.makePair(Integer.valueOf(source), 1:Integer))
+    nodePairs1.add(Pair.makePair(Integer.valueOf(instance.source), 1:Integer))
     val nodePairs2 = new java.util.HashSet[Pair[Integer, Integer]]
-    nodePairs2.add(Pair.makePair(Integer.valueOf(target), 2:Integer))
+    nodePairs2.add(Pair.makePair(Integer.valueOf(instance.target), 2:Integer))
     subgraph.put(pathType1, nodePairs1)
     subgraph.put(pathType2, nodePairs2)
-    Map((source, target) -> subgraph)
+    Map(instance -> subgraph)
   }
 
-  val dataset = new Dataset(Seq(new Instance(1, 2, true)))
+  val instance = new Instance(1, 2, true, graph)
+  val dataset = new Dataset(Seq(instance))
 
   "createTrainingMatrix" should "return extracted features from local subgraphs" in {
-    val subgraph = getSubgraph(1, 2)
+    val subgraph = getSubgraph(instance)
     val featureMatrix = new FeatureMatrix(List[MatrixRow]().asJava)
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil) {
       override def getLocalSubgraphs(data: Dataset) = {
         if (data != dataset) throw new RuntimeException()
         subgraph
       }
-      override def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]) = {
+      override def extractFeatures(subgraphs: Map[Instance, Subgraph]) = {
         if (subgraphs != subgraph) throw new RuntimeException()
         featureMatrix
       }
@@ -63,21 +66,21 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "createTestMatrix" should "create the same thing as createTrainingMatrix, and output the matrix" in {
-    val subgraph = getSubgraph(1, 2)
-    val matrixRow = new MatrixRow(1, 2, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
+    val subgraph = getSubgraph(instance)
+    val matrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
     val featureMatrix = new FeatureMatrix(List(matrixRow).asJava)
     val nodeDict = new Dictionary()
     nodeDict.getIndex("node1")
     nodeDict.getIndex("node2")
-    val out = new Outputter(nodeDict, null, null, fakeFileUtil)
-    val config = new PraConfig.Builder().setOutputMatrices(true)
-      .setOutputBase("/").setOutputter(out).noChecks().build()
+    val out = new Outputter(null, fakeFileUtil)
+    val config = new PraConfigBuilder().setOutputMatrices(true)
+      .setOutputBase("/").setOutputter(out).setNoChecks().build()
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil) {
       override def getLocalSubgraphs(data: Dataset) = {
         if (data != dataset) throw new RuntimeException()
         subgraph
       }
-      override def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]) = {
+      override def extractFeatures(subgraphs: Map[Instance, Subgraph]) = {
         if (subgraphs != subgraph) throw new RuntimeException()
         featureMatrix
       }
@@ -93,14 +96,14 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "not output the matrix when the output dir is null" in {
-    val subgraph = getSubgraph(1, 2)
+    val subgraph = getSubgraph(instance)
     val featureMatrix = new FeatureMatrix(List[MatrixRow]().asJava)
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil) {
       override def getLocalSubgraphs(data: Dataset) = {
         if (data != dataset) throw new RuntimeException()
         subgraph
       }
-      override def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]) = {
+      override def extractFeatures(subgraphs: Map[Instance, Subgraph]) = {
         if (subgraphs != subgraph) throw new RuntimeException()
         featureMatrix
       }
@@ -124,7 +127,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
     // And we're only checking for one training instance, because that's all there is in the
     // dataset.
-    val subgraph = generator.getLocalSubgraphs(dataset)((1, 2))
+    val subgraph = generator.getLocalSubgraphs(dataset)(instance)
     val factory = new BasicPathTypeFactory
     var pathType = factory.fromString("-1-")
     subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 2:Integer))
@@ -144,19 +147,18 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil) {
       override def createExtractors(params: JValue) = {
         Seq(new FeatureExtractor() {
-          override def extractFeatures(source: Int, target: Int, subgraph: Subgraph) = {
+          override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
             Seq("feature1", "feature2").asJava
           }
         })
       }
     }
-    val subgraph = getSubgraph(1, 2)
+    val subgraph = getSubgraph(instance)
     val featureMatrix = generator.extractFeatures(subgraph)
     featureMatrix.size should be(1)
     val matrixRow = featureMatrix.getRow(0)
-    val expectedMatrixRow = new MatrixRow(1, 2, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
-    matrixRow.sourceNode should be(expectedMatrixRow.sourceNode)
-    matrixRow.targetNode should be(expectedMatrixRow.targetNode)
+    val expectedMatrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
+    matrixRow.instance should be(expectedMatrixRow.instance)
     matrixRow.columns should be(expectedMatrixRow.columns)
     matrixRow.values should be(expectedMatrixRow.values)
   }
@@ -165,17 +167,12 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val params: JValue = ("feature extractors" -> List("PraFeatureExtractor"))
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil)
     generator.featureExtractors(0).getClass should be(classOf[PraFeatureExtractor])
-    val extractor = generator.featureExtractors(0).asInstanceOf[PraFeatureExtractor]
-    extractor.edgeDict should be(config.edgeDict)
   }
 
   it should "create OneSidedFeatureExtractors correctly" in {
     val params: JValue = ("feature extractors" -> List("OneSidedFeatureExtractor"))
     val generator = new SubgraphFeatureGenerator(params, "/", config, fakeFileUtil)
     generator.featureExtractors(0).getClass should be(classOf[OneSidedFeatureExtractor])
-    val extractor = generator.featureExtractors(0).asInstanceOf[OneSidedFeatureExtractor]
-    extractor.edgeDict should be(config.edgeDict)
-    extractor.nodeDict should be(config.nodeDict)
   }
 
   it should "fail on unrecognized feature extractors" in {
@@ -207,10 +204,9 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "createMatrixRow" should "set feature values to 1 and add a bias feature" in {
-    val expected = new MatrixRow(1, 2, Array(0, 3, 2, 1), Array(1.0, 1.0, 1.0, 1.0))
-    val matrixRow = generator.createMatrixRow(1, 2, Seq(3, 2, 1))
-    matrixRow.sourceNode should be(expected.sourceNode)
-    matrixRow.targetNode should be(expected.targetNode)
+    val expected = new MatrixRow(instance, Array(0, 3, 2, 1), Array(1.0, 1.0, 1.0, 1.0))
+    val matrixRow = generator.createMatrixRow(instance, Seq(3, 2, 1))
+    matrixRow.instance should be(expected.instance)
     matrixRow.columns should be(expected.columns)
     matrixRow.values should be(expected.values)
   }

@@ -82,7 +82,7 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
   }
 
   override def classifyMatrixRow(row: MatrixRow) = {
-    val features = row.values.zip(row.pathTypes)
+    val features = row.values.zip(row.featureTypes)
     features.map(f => {
       if (f._2 < lrWeights.size)
         f._1 * lrWeights(f._2)

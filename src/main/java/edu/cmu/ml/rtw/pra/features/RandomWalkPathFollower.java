@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.ChiEdge;
@@ -31,6 +32,8 @@ import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
@@ -48,14 +51,14 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
   private final int numIters;
   private final PathType[] pathTypes;
   private final Map<Integer, Set<Integer>> sourcesMap;
+  private final List<Instance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
   private final RandomWalkPathFollowerCompanion companion;
   private final Object printLock = new Object();
 
-  public RandomWalkPathFollower(String baseFilename,
-                                int numShards,
-                                Map<Integer, Set<Integer>> sourcesMap,
+  public RandomWalkPathFollower(GraphOnDisk graph,
+                                List<Instance> instances,
                                 Set<Integer> allowedTargets,
                                 EdgeExcluder edgeExcluder,
                                 List<PathType> paths,
@@ -63,10 +66,14 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
                                 MatrixRowPolicy companionAcceptPolicy,
                                 boolean normalizeWalkProbabilities) {
     this.numWalksPerPath = walksPerPath;
-    this.sourcesMap = sourcesMap;
+    this.instances = instances;
+    sourcesMap = Maps.newHashMap();
+    for (Instance instance : instances) {
+      MapUtil.addValueToKeySet(sourcesMap, instance.source(), instance.target());
+    }
     try {
       this.drunkardMobEngine =
-          new DrunkardMobEngine<EmptyType, Integer>(baseFilename, numShards, new Factory());
+          new DrunkardMobEngine<EmptyType, Integer>(graph.graphFile(), graph.numShards(), new Factory());
       this.drunkardMobEngine.setEdataConverter(new IntConverter());
     } catch (IOException e) {
       throw new RuntimeException("IOException when creating DrunkardMobEngine", e);
@@ -95,7 +102,8 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
     }
 
     try {
-      companion = new RandomWalkPathFollowerCompanion(4,
+      companion = new RandomWalkPathFollowerCompanion(graph,
+                                                      4,
                                                       Runtime.getRuntime().maxMemory() / 3,
                                                       vertexIdTranslate,
                                                       pathTypes,
@@ -126,7 +134,7 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
 
   @Override
   public FeatureMatrix getFeatureMatrix() {
-    return companion.getFeatureMatrix(sourcesMap);
+    return companion.getFeatureMatrix(instances);
   }
 
   @Override

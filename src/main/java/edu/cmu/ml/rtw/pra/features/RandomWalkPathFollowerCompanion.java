@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.preprocessing.VertexIdTranslate;
@@ -17,6 +18,8 @@ import edu.cmu.graphchi.util.IdCount;
 import edu.cmu.graphchi.util.IntegerBuffer;
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
@@ -29,11 +32,13 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
   private int[] sourceVertexIds;
   private PathType[] pathTypes;
   private final boolean normalizeWalkProbabilities;
+  private final GraphOnDisk graph;
 
   /**
    * Creates the PathFollowerCompanion object
    */
-  public RandomWalkPathFollowerCompanion(int numThreads,
+  public RandomWalkPathFollowerCompanion(GraphOnDisk graph,
+                                         int numThreads,
                                          long maxMemoryBytes,
                                          VertexIdTranslate translate,
                                          PathType[] pathTypes,
@@ -46,6 +51,7 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
     this.acceptPolicy = acceptPolicy;
     this.allowedTargets = allowedTargets;
     this.normalizeWalkProbabilities = normalizeWalkProbabilities;
+    this.graph = graph;
   }
 
   @Override
@@ -129,7 +135,17 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
     throw new RuntimeException("Accept policy not set to something recognizable: " + acceptPolicy);
   }
 
-  public FeatureMatrix getFeatureMatrix(Map<Integer, Set<Integer>> sourcesMap) {
+  public FeatureMatrix getFeatureMatrix(List<Instance> instances) {
+    Set<Pair<Integer, Integer>> positiveSourceTargets = Sets.newHashSet();
+    for (Instance instance : instances) {
+      if (instance.isPositive()) {
+        positiveSourceTargets.add(Pair.makePair(instance.source(), instance.target()));
+      }
+    }
+    Map<Integer, Set<Integer>> sourcesMap = Maps.newHashMap();
+    for (Instance instance : instances) {
+      MapUtil.addValueToKeySet(sourcesMap, instance.source(), instance.target());
+    }
     logger.info("Waiting for execution to finish");
     waitForFinish();
     for (Integer firstKey : buffers.keySet()) {
@@ -192,7 +208,12 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
         pathTypes[i] = feature_list.get(i).getLeft();
         values[i] = feature_list.get(i).getRight();
       }
-      matrix.add(new MatrixRow(sourceNode, targetNode, pathTypes, values));
+      boolean isPositive = false;
+      if (positiveSourceTargets.contains(nodePair)) {
+        isPositive = true;
+      }
+      Instance instance = new Instance(sourceNode, targetNode, isPositive, graph);
+      matrix.add(new MatrixRow(instance, pathTypes, values));
     }
     return new FeatureMatrix(matrix);
   }

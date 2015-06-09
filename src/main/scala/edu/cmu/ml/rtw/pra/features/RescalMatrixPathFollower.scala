@@ -14,6 +14,7 @@ import scala.collection.parallel.ParSeq
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -31,18 +32,21 @@ class RescalMatrixPathFollower(
 
   val allowedTargets =
     if (config.allowedTargets == null) {
-      data.getAllTargets
+      data.instances.map(_.target).toSet
     } else {
-      config.allowedTargets.asScala.map(_.toInt).toSet
+      config.allowedTargets.map(_.toInt).toSet
     }
+  val source_nodes = data.instances.map(_.source).toSet
+  val positive_source_target_pairs = data.getPositiveInstances.map(i => (i.source, i.target)).toSet
+  val graph = config.graph.get
+
   override def execute = {}
   override def shutDown = {}
   override def usesGraphChi = false
-  override def getFeatureMatrix = getFeatureMatrix(data.getAllSources, allowedTargets, false)
+  override def getFeatureMatrix = getFeatureMatrix(source_nodes, allowedTargets, false)
 
-  val source_nodes = data.getAllSources
-  val node_dict = config.nodeDict
-  val edge_dict = config.edgeDict
+  val node_dict = graph.nodeDict
+  val edge_dict = graph.edgeDict
 
   // Now we build up a few data structures that we'll need.  First are the node vectors.
   val node_vectors = fileUtil.readLinesFromFile(rescalDir + "a_matrix.tsv").asScala.map(line => {
@@ -258,6 +262,11 @@ class RescalMatrixPathFollower(
       pathTypes += feature._1
       values += feature._2
     }
-    new MatrixRow(source, target, pathTypes.toArray, values.toArray)
+    val instance = if (positive_source_target_pairs.contains((source, target))) {
+      new Instance(source, target, true, graph)
+    } else {
+      new Instance(source, target, false, graph)
+    }
+    new MatrixRow(instance, pathTypes.toArray, values.toArray)
   }
 }

@@ -11,9 +11,10 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -42,22 +43,22 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val path1 = factory.fromString("-1-2-3-")
   val path2 = factory.fromString("-1-2-3- INVERSE")
-  val unallowedEdges = List(1, 3, 2).map(x => java.lang.Integer.valueOf(x)).asJava
-  val graphFile = "src/test/resources/edges.tsv"
-  val config = new PraConfig.Builder().noChecks()
-    .setGraph(graphFile).setNumShards(1).setUnallowedEdges(unallowedEdges).build()
+  val unallowedEdges = List(1, 3, 2)
+  val graph = new GraphOnDisk("src/test/resources/")
+  val config = new PraConfigBuilder().setNoChecks()
+    .setGraph(graph).setUnallowedEdges(unallowedEdges).build()
 
   val node1 = "node1"
   val node2 = "node2"
   val node3 = "node3"
   val node4 = "node4"
-  val node1Index = config.nodeDict.getIndex(node1)
-  val node2Index = config.nodeDict.getIndex(node2)
-  val node3Index = config.nodeDict.getIndex(node3)
-  val node4Index = config.nodeDict.getIndex(node4)
+  val node1Index = graph.nodeDict.getIndex(node1)
+  val node2Index = graph.nodeDict.getIndex(node2)
+  val node3Index = graph.nodeDict.getIndex(node3)
+  val node4Index = graph.nodeDict.getIndex(node4)
   val dataFile = node1 + "\t" + node2 + "\n" + node3 + "\t" + node4 + "\n"
-  val data = new Dataset(Seq(new Instance(node1Index, node2Index, true),
-    new Instance(node3Index, node4Index, true)))
+  val data = new Dataset(Seq(new Instance(node1Index, node2Index, true, graph),
+    new Instance(node3Index, node4Index, true, graph)))
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")

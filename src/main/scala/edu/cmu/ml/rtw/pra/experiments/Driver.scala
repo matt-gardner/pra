@@ -4,12 +4,14 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator
 import edu.cmu.ml.rtw.pra.features.SubgraphFeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 import edu.cmu.ml.rtw.pra.models.PraModelCreator
@@ -74,7 +76,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val start_time = System.currentTimeMillis
 
-    val baseBuilder = new PraConfig.Builder()
+    val baseBuilder = new PraConfigBuilder()
     var writer = fileUtil.getFileWriter(outputBase + "settings.txt")
     writer.write("Parameters used:\n")
     writer.write(pretty(render(params)))
@@ -89,17 +91,17 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
         fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true).asScala.toMap
       } else null
-    baseBuilder.setOutputter(new Outputter(baseBuilder.nodeDict, baseBuilder.edgeDict, nodeNames))
+    baseBuilder.setOutputter(new Outputter(nodeNames))
     // TODO(matt): move this parameter to the outputter.  That would require moving the outputter
     // to scala, though...
     baseBuilder.setOutputMatrices(JsonHelper.extractWithDefault(params, "output matrices", false))
 
-    val baseConfig = baseBuilder.noChecks().build()
+    val baseConfig = baseBuilder.setNoChecks().build()
 
     val relationsFile = splitsDirectory + "relations_to_run.tsv"
     for (relation <- fileUtil.readLinesFromFile(relationsFile).asScala) {
       val relation_start = System.currentTimeMillis
-      val builder = new PraConfig.Builder(baseConfig)
+      val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
       Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
@@ -111,7 +113,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       if (mode == "learn models") {
         learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
       } else if (mode == "explore graph") {
-        exploreGraph(params, builder.noChecks().build(), splitsDirectory)
+        exploreGraph(params, builder.setNoChecks().build(), splitsDirectory)
       } else {
         throw new IllegalStateException("Unrecognized (or unspecified) mode!")
       }
@@ -155,7 +157,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       splitsDirectory: String,
       metadataDirectory: String,
       relation: String,
-      builder: PraConfig.Builder) {
+      builder: PraConfigBuilder) {
     val doCrossValidation = Driver.initializeSplit(
       splitsDirectory,
       metadataDirectory,
@@ -213,10 +215,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val data = if (dataToUse == "both") {
       val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
       val trainingData = if (fileUtil.fileExists(trainingFile))
-        Dataset.fromFile(trainingFile, config, fileUtil) else null
+        Dataset.fromFile(trainingFile, config.graph, fileUtil) else null
       val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
       val testingData = if (fileUtil.fileExists(testingFile))
-        Dataset.fromFile(testingFile, config, fileUtil) else null
+        Dataset.fromFile(testingFile, config.graph, fileUtil) else null
       if (trainingData == null && testingData == null) {
         throw new IllegalStateException("Neither training file nor testing file exists for " +
           "relation " + config.relation)
@@ -230,7 +232,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       }
     } else {
       val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      Dataset.fromFile(inputFile, config, fileUtil)
+      Dataset.fromFile(inputFile, config.graph, fileUtil)
     }
 
     val explorer = new GraphExplorer(praParams \ "explore", config)
@@ -434,19 +436,11 @@ object Driver {
 
   def initializeGraphParameters(
       graphDirectory: String,
-      config: PraConfig.Builder,
+      config: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil) {
     val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-    config.setGraph(dir + "graph_chi" + java.io.File.separator + "edges.tsv")
-    println(s"Loading node and edge dictionaries from graph directory: $dir")
-    val numShards = fileUtil.readIntegerListFromFile(dir + "num_shards.tsv").get(0)
-    config.setNumShards(numShards)
-    val nodeDict = new Dictionary()
-    nodeDict.setFromReader(fileUtil.getBufferedReader(dir + "node_dict.tsv"))
-    config.setNodeDictionary(nodeDict)
-    val edgeDict = new Dictionary()
-    edgeDict.setFromReader(fileUtil.getBufferedReader(dir + "edge_dict.tsv"))
-    config.setEdgeDictionary(edgeDict)
+    val graph = new GraphOnDisk(graphDirectory)
+    config.setGraph(graph)
   }
 
   /**
@@ -463,11 +457,13 @@ object Driver {
       directory: String,
       relation: String,
       mode: String,
-      builder: PraConfig.Builder,
+      builder: PraConfigBuilder,
       outputBase: String,
       fileUtil: FileUtil = new FileUtil) {
-    val inverses = Driver.createInverses(directory, builder.edgeDict, fileUtil)
-    builder.setRelationInverses(inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava)
+    val edgeDict = builder.graph.get.edgeDict
+    val nodeDict = builder.graph.get.nodeDict
+    val inverses = Driver.createInverses(directory, edgeDict, fileUtil)
+    builder.setRelationInverses(inverses)
 
     val embeddings = {
       if (directory != null && fileUtil.fileExists(directory + "embeddings.tsv")) {
@@ -477,8 +473,8 @@ object Driver {
         null
       }
     }
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder.edgeDict)
-    builder.setUnallowedEdges(unallowedEdges.map(x => Integer.valueOf(x)).asJava)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, edgeDict)
+    builder.setUnallowedEdges(unallowedEdges)
 
     if (directory != null && mode != "explore graph" && fileUtil.fileExists(directory + "ranges.tsv")) {
       val ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv")
@@ -490,7 +486,7 @@ object Driver {
       val fixed = range.replace("/", "_")
       val cat_file = directory + "category_instances/" + fixed
 
-      val allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict)
+      val allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, nodeDict).asScala.map(_.toInt).toSet
       builder.setAllowedTargets(allowedTargets)
     } else {
       val writer = fileUtil.getFileWriter(outputBase + "settings.txt", true)  // true -> append
@@ -567,20 +563,20 @@ object Driver {
       splitsDirectory: String,
       relationMetadataDirectory: String,
       relation: String,
-      builder: PraConfig.Builder,
+      builder: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil) = {
     val fixed = relation.replace("/", "_")
     // The Dataset objects need access to the graph information, which is contained in PraConfig.
     // That's all that Dataset needs from PraConfig, so we can safely call builder.build() here and
     // keep the PraConfig object.  Not the best solution, but it will work for now.
-    val config = builder.noChecks().build()
+    val config = builder.setNoChecks().build()
     // We look in the splits directory for a fixed split if we don't find one, we do cross
     // validation.
     if (fileUtil.fileExists(splitsDirectory + fixed)) {
       val training = splitsDirectory + fixed + "/training.tsv"
       val testing = splitsDirectory + fixed + "/testing.tsv"
-      builder.setTrainingData(Dataset.fromFile(training, config, fileUtil))
-      builder.setTestingData(Dataset.fromFile(testing, config, fileUtil))
+      builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
+      builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
       false
     } else {
       if (relationMetadataDirectory == null) {
@@ -588,7 +584,7 @@ object Driver {
           + "have a fixed split!")
       }
       builder.setAllData(
-        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config, fileUtil))
+        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
       val percent_training_file = splitsDirectory + "percent_training.tsv"
       builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0))
       true

@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
@@ -24,7 +25,8 @@ class DriverSpec extends FlatSpecLike with Matchers {
   val kbDirectory = "/dev/null/"
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
-  val builder = new PraConfig.Builder()
+  val graph = new GraphOnDisk("src/test/resources/")
+  val builder = new PraConfigBuilder().setGraph(graph)
   val fileUtil = new FakeFileUtil()
   val driver = new Driver("/", fileUtil)
 

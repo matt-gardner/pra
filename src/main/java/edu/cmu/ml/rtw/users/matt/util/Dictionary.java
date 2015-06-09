@@ -8,8 +8,16 @@ public class Dictionary extends Index<String> {
     this(false);
   }
 
+  public Dictionary(FileUtil fileUtil) {
+    this(false, fileUtil);
+  }
+
   public Dictionary(boolean verbose) {
-    super(new StringParser(), verbose, new FileUtil());
+    this(verbose, new FileUtil());
+  }
+
+  public Dictionary(boolean verbose, FileUtil fileUtil) {
+    super(new StringParser(), verbose, fileUtil);
   }
 
   /**

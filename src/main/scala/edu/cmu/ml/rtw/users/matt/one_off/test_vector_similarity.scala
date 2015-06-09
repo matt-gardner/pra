@@ -1,6 +1,6 @@
 package edu.cmu.ml.rtw.users.matt.one_off
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollower
 import edu.cmu.ml.rtw.pra.features.PathType
@@ -20,7 +20,7 @@ object test_vector_similarity {
     val node_dict = new Dictionary
     val edge_dict = new Dictionary
     val follower = new RescalMatrixPathFollower(
-      new PraConfig.Builder().noChecks().build(),
+      new PraConfigBuilder().setNoChecks().build(),
       Seq[PathType](),
       rescal_dir,
       new Dataset(Seq()),

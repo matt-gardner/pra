@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -81,24 +82,22 @@ class SubgraphFeatureGenerator(
 
   val featureExtractors = createExtractors(params)
 
-  def getLocalSubgraphs(data: Dataset): Map[(Int, Int), Subgraph] = {
+  def getLocalSubgraphs(data: Dataset): Map[Instance, Subgraph] = {
     println("Finding local subgraphs with " + data.instances.size + " training instances")
 
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
     pathFinder.findPaths(config, data, edgesToExclude)
 
-    pathFinder.getLocalSubgraphs.asScala.map(entry =>
-        ((entry._1.getLeft.toInt, entry._1.getRight.toInt), entry._2)).toMap
+    pathFinder.getLocalSubgraphs.asScala.toMap
   }
 
-  def extractFeatures(subgraphs: Map[(Int, Int), Subgraph]): FeatureMatrix = {
+  def extractFeatures(subgraphs: Map[Instance, Subgraph]): FeatureMatrix = {
     val matrix_rows = subgraphs.par.flatMap(entry => {
-      val source = entry._1._1
-      val target = entry._1._2
+      val instance = entry._1
       val subgraph = entry._2
-      val features = featureExtractors.flatMap(_.extractFeatures(source, target, subgraph).asScala)
+      val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph).asScala)
       if (features.size > 0) {
-        Seq(createMatrixRow(source, target, features.toSet.map(hashFeature).toSeq.sorted))
+        Seq(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
       } else {
         Seq()
       }
@@ -110,20 +109,16 @@ class SubgraphFeatureGenerator(
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
     extractorNames.map(_ match {
-      case JString("PraFeatureExtractor") => new PraFeatureExtractor(config.edgeDict)
-      case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor(config.edgeDict)
-      case JString("OneSidedFeatureExtractor") =>
-        new OneSidedFeatureExtractor(config.edgeDict, config.nodeDict)
-      case JString("CategoricalComparisonFeatureExtractor") =>
-        new CategoricalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case JString("NumericalComparisonFeatureExtractor") =>
-        new NumericalComparisonFeatureExtractor(config.edgeDict, config.nodeDict)
-      case JString("AnyRelFeatureExtractor") =>
-        new AnyRelFeatureExtractor(config.edgeDict)
+      case JString("PraFeatureExtractor") => new PraFeatureExtractor
+      case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
+      case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
+      case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
+      case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
-            new VectorSimilarityFeatureExtractor(config.edgeDict, jval, praBase, fileUtil)
+            new VectorSimilarityFeatureExtractor(jval, praBase, fileUtil)
           }
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
@@ -143,13 +138,13 @@ class SubgraphFeatureGenerator(
     }
   }
 
-  def createMatrixRow(source: Int, target: Int, features: Seq[Int]): MatrixRow = {
+  def createMatrixRow(instance: Instance, features: Seq[Int]): MatrixRow = {
     val size = if (includeBias) features.size + 1 else features.size
     val values = new Array[Double](size)
     for (i <- 0 until size) {
       values(i) = 1
     }
     val featureIndices = if (includeBias) features :+ 0 else features
-    new MatrixRow(source, target, featureIndices.toArray, values)
+    new MatrixRow(instance, featureIndices.toArray, values)
   }
 }

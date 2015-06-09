@@ -8,9 +8,10 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -18,26 +19,34 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
 
-  val graphFilename = "/graph file"
+  val graphFilename = "/graph/graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
       "1\t3\t1\n" +
       "1\t4\t2\n" +
       "2\t1\t4\n" +
       "5\t1\t3\n" +
       "6\t1\t1\n"
+  val nodeDictContents = "1\tnode1\n" +
+      "2\tnode2\n" +
+      "3\tnode3\n" +
+      "4\tnode4\n" +
+      "5\tnode5\n" +
+      "6\tnode6\n"
+  val edgeDictContents = "1\trel1\n" +
+      "2\trel2\n" +
+      "3\trel3\n" +
+      "4\trel4\n" +
+      "5\trel5\n"
 
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
+  fileUtil.addFileToBeRead("/graph/node_dict.tsv", nodeDictContents)
+  fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictContents)
 
-  val instance = new Instance(5, 3, true)
-  val config = new PraConfig.Builder()
-    .setUnallowedEdges(Seq(1:Integer).asJava).setGraph(graphFilename).noChecks().build()
-  val data = new Dataset(Seq(instance), config, None, fileUtil)
-  config.nodeDict.getIndex("node1")
-  config.nodeDict.getIndex("node2")
-  config.nodeDict.getIndex("node3")
-  config.nodeDict.getIndex("node4")
-  config.nodeDict.getIndex("node5")
-  config.nodeDict.getIndex("node6")
+  val graph = new GraphOnDisk("/graph/", fileUtil)
+  val instance = new Instance(5, 3, true, graph)
+  val config = new PraConfigBuilder()
+    .setUnallowedEdges(Seq(1)).setGraph(graph).setNoChecks().build()
+  val data = new Dataset(Seq(instance), fileUtil)
 
   val params: JValue = JNothing
 
@@ -101,8 +110,8 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   }
 
   it should "exclude edges when specified" in {
-    val instance = new Instance(1, 3, true)
-    val data = new Dataset(Seq(instance), config, None, fileUtil)
+    val instance = new Instance(1, 3, true, graph)
+    val data = new Dataset(Seq(instance), fileUtil)
     val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))

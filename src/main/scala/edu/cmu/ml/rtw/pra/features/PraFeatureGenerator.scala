@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -26,6 +27,9 @@ class PraFeatureGenerator(
 
   var pathTypes: Seq[PathType] = null
 
+  // With PraFeatureGenerator, we assume a single shared graph.
+  val graph = config.graph.get.asInstanceOf[GraphOnDisk]
+
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
     pathTypes = selectPathFeatures(data)
     computeFeatureValues(pathTypes, data, null, true)
@@ -43,10 +47,10 @@ class PraFeatureGenerator(
   }
 
   override def getFeatureNames(): Array[String] = {
-    if (config.edgeDict == null) {
+    if (graph.edgeDict == null) {
       pathTypes.map(_.encodeAsString).toArray
     } else {
-      pathTypes.map(_.encodeAsHumanReadableString(config.edgeDict)).toArray
+      pathTypes.map(_.encodeAsHumanReadableString(graph.edgeDict)).toArray
     }
   }
 
@@ -81,7 +85,7 @@ class PraFeatureGenerator(
     val numPaths = JsonHelper.extractWithDefault(params \ "path selector", "number of paths to keep", 1000)
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
-    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes)
+    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes, graph.edgeDict)
     pathTypes
   }
 
@@ -150,11 +154,9 @@ class PraFeatureGenerator(
       val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
       val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
       new RandomWalkPathFollower(
-        config.graph,
-        config.numShards,
-        data.getSourceMap.map(entry => (Integer.valueOf(entry._1) -> entry._2.map(x =>
-            Integer.valueOf(x)).asJava)).asJava,
-        config.allowedTargets,
+        graph,
+        data.instances.asJava,
+        if (config.allowedTargets == null) null else config.allowedTargets.map(x => Integer.valueOf(x)).asJava,
         edgeExcluder,
         pathTypes.asJava,
         walksPerPath,
@@ -167,16 +169,15 @@ class PraFeatureGenerator(
       val max_fan_out = JsonHelper.extractWithDefault(followerParams, "max fan out", 100)
       val matrix_base = JsonHelper.extractWithDefault(followerParams, "matrix dir", "matrices")
       val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
-      val graph_base = new File(config.graph).getParent + "/"
-      val matrix_dir = if (matrix_base.endsWith("/")) graph_base + matrix_base else graph_base +
-        matrix_base + "/"
+      val matrix_dir = if (matrix_base.endsWith("/")) graph.graphDir + matrix_base else
+        graph.graphDir + matrix_base + "/"
       new MatrixPathFollower(
-        config.nodeDict.getNextIndex(),
+        graph.nodeDict.getNextIndex(),
         pathTypes,
         matrix_dir,
         data,
-        config.edgeDict,
-        if (config.allowedTargets == null) null else config.allowedTargets.asScala.map(_.toInt).toSet,
+        graph.edgeDict,
+        if (config.allowedTargets == null) null else config.allowedTargets.toSet,
         edgeExcluder,
         max_fan_out,
         normalize,

@@ -1,13 +1,77 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
+trait Graph {
+  def entries: Array[Node]
+  def nodeDict: Dictionary
+  def edgeDict: Dictionary
+
+  def getNode(i: Int) = entries(i)
+  def getNode(name: String) = entries(nodeDict.getIndex(name))
+}
+
+class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) {
+  def getEdges(edgeLabel: String) = {
+    edges(edgeDict.getIndex(edgeLabel))
+  }
+}
+
+// This Graph implementation is backed by a file on disk, and can either be used with GraphChi or
+// loaded into memory.
+class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) extends Graph {
+  lazy val _entries: Array[Node] = loadGraph()
+  val graphFile = graphDir + "graph_chi/edges.tsv"
+  lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv").asScala(0).toInt
+
+  println("Loading node and edge dictionaries")
+  val _nodeDict = new Dictionary(fileUtil)
+  nodeDict.setFromFile(graphDir + "node_dict.tsv")
+  val _edgeDict = new Dictionary(fileUtil)
+  edgeDict.setFromFile(graphDir + "edge_dict.tsv")
+
+  override def entries = _entries
+  override def nodeDict = _nodeDict
+  override def edgeDict = _edgeDict
+
+  def loadGraph(): Array[Node] = {
+    println(s"Loading graph")
+    val graphBuilder = new GraphBuilder(nodeDict.getNextIndex, nodeDict, edgeDict)
+    val lines = fileUtil.readLinesFromFile(graphFile).asScala
+    val reader = fileUtil.getBufferedReader(graphFile)
+    var line: String = null
+    while ({ line = reader.readLine; line != null }) {
+      val fields = line.split("\t")
+      val source = fields(0).toInt
+      val target = fields(1).toInt
+      val relation = fields(2).toInt
+      graphBuilder.addEdge(source, target, relation)
+    }
+    graphBuilder.build
+  }
+}
+
+// This Graph implementation has no corresponding file on disk, so it cannot be used with GraphChi,
+// and is only kept in memory.  It must be constructed with the Node array, as there is no way to
+// load it lazily.
+class GraphInMemory(_entries: Array[Node], _nodeDict: Dictionary, _edgeDict: Dictionary) extends Graph {
+  override def entries = _entries
+  override def nodeDict = _nodeDict
+  override def edgeDict = _edgeDict
+}
+
+// This class constructs a Node array corresponding to a particular graph.  There's a little bit of
+// funniness with the dictionaries, because GraphOnDisk only needs the Node array created, while
+// GraphInMemory needs the dictionaries too.  So we just make them vals, so the caller can get the
+// dictionaries out if necessary.
 class GraphBuilder(
     initialSize: Int = -1,
-    nodeDict: Dictionary = new Dictionary,
-    edgeDict: Dictionary = new Dictionary) {
+    val nodeDict: Dictionary = new Dictionary,
+    val edgeDict: Dictionary = new Dictionary) {
   type MutableGraphEntry = mutable.HashMap[Int, mutable.HashMap[Boolean, Set[Int]]]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
   (0 until entries.size).par.foreach(i => { entries(i) = new MutableGraphEntry })
@@ -38,7 +102,7 @@ class GraphBuilder(
     entries = newEntries
   }
 
-  def build(): Graph = {
+  def build(): Array[Node] = {
     // If no initial size was provided, we try to trim the size of the resultant array (this should
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
@@ -57,18 +121,6 @@ class GraphBuilder(
         }).toMap, edgeDict)
       }
     })
-    new Graph(finalized, nodeDict, edgeDict)
-  }
-}
-
-class Graph(entries: Array[Node], val nodeDict: Dictionary, val edgeDict: Dictionary) {
-  val size = entries.size
-  def getNode(i: Int) = entries(i)
-  def getNode(name: String) = entries(nodeDict.getIndex(name))
-}
-
-class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) {
-  def getEdges(edgeLabel: String) = {
-    edges(edgeDict.getIndex(edgeLabel))
+    finalized
   }
 }
