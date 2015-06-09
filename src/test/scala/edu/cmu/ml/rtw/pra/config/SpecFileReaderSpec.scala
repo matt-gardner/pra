@@ -8,8 +8,6 @@ import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.VectorClusteringPathTypeSelector
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 import edu.cmu.ml.rtw.users.matt.util.Vector
 
 import org.scalatest._

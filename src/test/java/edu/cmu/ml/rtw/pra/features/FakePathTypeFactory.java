@@ -74,7 +74,7 @@ public class FakePathTypeFactory implements PathTypeFactory {
         }
 
         @Override
-        public String encodeAsHumanReadableString(Dictionary edgeDict) {
+        public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict) {
             return description;
         }
 

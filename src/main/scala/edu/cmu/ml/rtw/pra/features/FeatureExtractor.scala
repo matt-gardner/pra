@@ -23,10 +23,12 @@ trait FeatureExtractor {
 
 class PraFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
+    val nodeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.nodeDict
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        List(entry._1.encodeAsHumanReadableString(instance.graph.edgeDict))
+        List(entry._1.encodeAsHumanReadableString(edgeDict, nodeDict))
       } else {
         List[String]()
       }
@@ -36,9 +38,11 @@ class PraFeatureExtractor extends FeatureExtractor {
 
 class OneSidedFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
+    val nodeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.nodeDict
     subgraph.asScala.flatMap(entry => {
       entry._2.asScala.map(nodePair => {
-        val path = entry._1.encodeAsHumanReadableString(instance.graph.edgeDict)
+        val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
         val endNode = instance.graph.nodeDict.getString(nodePair.getRight)
         if (nodePair.getLeft == instance.source) {
           "SOURCE:" + path + ":" + endNode
@@ -60,9 +64,10 @@ class OneSidedFeatureExtractor extends FeatureExtractor {
 
 class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
+    val nodeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.nodeDict
     subgraph.asScala.flatMap(entry => {
-      val nodeDict = instance.graph.nodeDict
-      val path = entry._1.encodeAsHumanReadableString(instance.graph.edgeDict)
+      val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == instance.source)
       val pairs = for (int1 <- src; int2 <- targ)
         yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight));
@@ -76,7 +81,7 @@ class NumericalComparisonFeatureExtractor extends FeatureExtractor{
     val edgeDict = instance.graph.edgeDict
     val nodeDict = instance.graph.nodeDict
     subgraph.asScala.flatMap(entry => {
-      val path = entry._1.encodeAsHumanReadableString(edgeDict)
+      val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == instance.source)
       val strings = for {int1 <- src; int2 <- targ}
         yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight))
@@ -93,10 +98,11 @@ class NumericalComparisonFeatureExtractor extends FeatureExtractor{
 class PathBigramsFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val edgeDict = instance.graph.edgeDict
+    val nodeDict = instance.graph.nodeDict
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        List(entry._1.encodeAsHumanReadableString(edgeDict))
+        List(entry._1.encodeAsHumanReadableString(edgeDict, nodeDict))
         val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
         val edgeTypes = pathType.getEdgeTypes()
         val reverses = pathType.getReverse()
@@ -135,6 +141,7 @@ class VectorSimilarityFeatureExtractor(
 
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val edgeDict = instance.graph.edgeDict
+    val nodeDict = instance.graph.nodeDict
     val anyRel = edgeDict.getIndex("@ANY_REL@")
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
@@ -152,7 +159,7 @@ class VectorSimilarityFeatureExtractor(
           val oldEdgeType = edgeTypes(sim._1)
           edgeTypes(sim._1) = sim._2
           val similar = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(edgeDict)
+            .encodeAsHumanReadableString(edgeDict, nodeDict)
           edgeTypes(sim._1) = oldEdgeType
           "VECSIM:" + similar
         }).toSet
@@ -167,6 +174,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor{
 
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val edgeDict = instance.graph.edgeDict
+    val nodeDict = instance.graph.nodeDict
     val anyRel = edgeDict.getIndex("@ANY_REL@")
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
@@ -178,7 +186,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor{
           val oldEdgeType = edgeTypes(i)
           edgeTypes(i) = anyRel
           val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(edgeDict)
+            .encodeAsHumanReadableString(edgeDict, nodeDict)
           edgeTypes(i) = oldEdgeType
           "ANYREL:" + newPathType
         }).toSet

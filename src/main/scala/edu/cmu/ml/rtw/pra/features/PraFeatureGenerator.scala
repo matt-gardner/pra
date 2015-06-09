@@ -50,7 +50,7 @@ class PraFeatureGenerator(
     if (graph.edgeDict == null) {
       pathTypes.map(_.encodeAsString).toArray
     } else {
-      pathTypes.map(_.encodeAsHumanReadableString(graph.edgeDict)).toArray
+      pathTypes.map(_.encodeAsHumanReadableString(graph.edgeDict, graph.nodeDict)).toArray
     }
   }
 
@@ -85,7 +85,8 @@ class PraFeatureGenerator(
     val numPaths = JsonHelper.extractWithDefault(params \ "path selector", "number of paths to keep", 1000)
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
-    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes, graph.edgeDict)
+    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes, graph.edgeDict,
+      graph.nodeDict)
     pathTypes
   }
 
@@ -176,7 +177,6 @@ class PraFeatureGenerator(
         pathTypes,
         matrix_dir,
         data,
-        graph.edgeDict,
         if (config.allowedTargets == null) null else config.allowedTargets.toSet,
         edgeExcluder,
         max_fan_out,

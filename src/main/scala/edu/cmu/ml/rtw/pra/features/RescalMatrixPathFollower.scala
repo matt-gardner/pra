@@ -134,7 +134,7 @@ class RescalMatrixPathFollower(
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, DenseMatrix[Double]]): DenseMatrix[Double] = {
-    val str = path_type.encodeAsHumanReadableString(edge_dict)
+    val str = path_type.encodeAsHumanReadableString(edge_dict, node_dict)
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
     if (path_type.getReverse()(0)) {
       result = result.t

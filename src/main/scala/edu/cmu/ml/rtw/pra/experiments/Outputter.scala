@@ -34,11 +34,11 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     }
   }
 
-  def getPathType(pathType: PathType, edgeDict: Dictionary): String = {
+  def getPathType(pathType: PathType, edgeDict: Dictionary, nodeDict: Dictionary): String = {
     if (edgeDict == null) {
       pathType.encodeAsString()
     } else {
-      pathType.encodeAsHumanReadableString(edgeDict)
+      pathType.encodeAsHumanReadableString(edgeDict, nodeDict)
     }
   }
 
@@ -117,7 +117,8 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
         }
         val pathCounts = pathCountMap.getOrElse(instance, Map())
         pathCounts.toList.sortBy(-_._2).foreach(entry => {
-          writer.write("\t" + getPathType(entry._1, instance.graph.edgeDict) + "\t" + entry._2 + "\n")
+          val pathTypeStr = getPathType(entry._1, instance.graph.edgeDict, instance.graph.nodeDict)
+          writer.write("\t" + pathTypeStr + "\t" + entry._2 + "\n")
         })
         writer.write("\n")
       }
@@ -125,9 +126,15 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     }
   }
 
-  def outputPaths(baseDir: String, filename: String, pathTypes: Seq[PathType], edgeDict: Dictionary) {
+  def outputPaths(
+      baseDir: String,
+      filename: String,
+      pathTypes: Seq[PathType],
+      edgeDict: Dictionary,
+      nodeDict: Dictionary) {
     if (baseDir != null) {
-      fileUtil.writeLinesToFile(baseDir + filename, pathTypes.map(p => getPathType(p, edgeDict)).asJava)
+      fileUtil.writeLinesToFile(baseDir + filename,
+        pathTypes.map(p => getPathType(p, edgeDict, nodeDict)).asJava)
     }
   }
 

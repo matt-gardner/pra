@@ -61,12 +61,13 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "getPathType" should "return encoded string with no dictionary" in {
     val pathType = "-1-2-3-"
-    emptyOutputter.getPathType(factory.fromString(pathType), null) should be(pathType)
+    emptyOutputter.getPathType(factory.fromString(pathType), null, null) should be(pathType)
   }
 
   it should "return human readable string with edge dictionary" in {
     val pathType = "-1-2-"
-    emptyOutputter.getPathType(factory.fromString(pathType), graph.edgeDict) should be("-rel1-rel2-")
+    emptyOutputter.getPathType(factory.fromString(pathType),
+      graph.edgeDict, graph.nodeDict) should be("-rel1-rel2-")
   }
 
   "outputWeights" should "sort weights and format them correctly" in {
@@ -197,7 +198,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     fileUtil.onlyAllowExpectedFiles()
     fileUtil.addExpectedFileWritten(pathFile, expectedPathFileContents)
     val outputter = new Outputter(null, fileUtil)
-    outputter.outputPaths(baseDir, filename, pathTypes, graph.edgeDict)
+    outputter.outputPaths(baseDir, filename, pathTypes, graph.edgeDict, graph.nodeDict)
     fileUtil.expectFilesWritten()
   }
 
@@ -225,7 +226,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     outputter.outputSplitFiles(null, null, null)
     outputter.outputPathCounts(null, null, null)
     outputter.outputPathCountMap(null, null, null, null)
-    outputter.outputPaths(null, null, null, null)
+    outputter.outputPaths(null, null, null, null, null)
     fileUtil.expectFilesWritten()
   }
 }

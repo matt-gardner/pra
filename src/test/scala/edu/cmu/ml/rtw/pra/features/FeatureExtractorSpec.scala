@@ -1,8 +1,5 @@
 package edu.cmu.ml.rtw.pra.features
 
-import java.io.BufferedReader
-import java.io.StringReader
-
 import org.scalatest._
 
 import org.json4s._
@@ -11,15 +8,10 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
 class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   val factory = new BasicPathTypeFactory
