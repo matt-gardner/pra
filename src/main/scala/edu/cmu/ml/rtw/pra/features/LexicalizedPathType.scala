@@ -159,6 +159,14 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
     Array(new LexicalizedPathType(path.getEdges, path.getNodes, path.getReverse))
   }
 
+  override def addToPathType(pathType: PathType, relation: Int, node: Int, reverse: Boolean) = {
+    val path = pathType.asInstanceOf[LexicalizedPathType]
+    val edges = (path.edgeTypes.clone.toList :+ relation).toArray
+    val nodes = (path.nodes.clone.toList :+ node).toArray
+    val reverses = (path.reverse.clone.toList :+ reverse).toArray
+    new LexicalizedPathType(edges, nodes, reverses)
+  }
+
   override def concatenatePathTypes(pathFromSource: PathType, pathFromTarget: PathType): PathType = {
     val source = pathFromSource.asInstanceOf[LexicalizedPathType]
     val target = pathFromTarget.asInstanceOf[LexicalizedPathType]

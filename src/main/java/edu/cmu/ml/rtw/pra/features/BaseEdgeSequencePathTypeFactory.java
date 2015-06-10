@@ -61,6 +61,20 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
     return newInstance(combinedEdgeTypes, combinedReverse);
   }
 
+  @Override
+  public PathType addToPathType(PathType pathType, int relation, int node, boolean reverse) {
+    BaseEdgeSequencePathType path = (BaseEdgeSequencePathType) pathType;
+    int totalHops = path.numHops + 1;
+    int[] combinedEdgeTypes = new int[totalHops];
+    boolean[] combinedReverse = new boolean[totalHops];
+    System.arraycopy(path.edgeTypes, 0, combinedEdgeTypes, 0, path.numHops);
+    System.arraycopy(path.reverse, 0, combinedReverse, 0, path.numHops);
+
+    combinedEdgeTypes[totalHops - 1] = relation;
+    combinedReverse[totalHops - 1] = reverse;
+    return newInstance(combinedEdgeTypes, combinedReverse);
+  }
+
   /**
    * We don't try to handle this by default, because it can cause problems if the graph isn't
    * constructed in a specific way.  But you can subclass this and change that, if you want.

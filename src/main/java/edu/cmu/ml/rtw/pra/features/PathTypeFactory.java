@@ -35,10 +35,17 @@ public interface PathTypeFactory extends ObjectParser<PathType> {
   public PathType emptyPathType();
 
   /**
+   * Combines two path types that meet at an intermediate node.  The path from the target node is
+   * reverses and inverted, then concatenated to the end of the path from the source node.  Given
+   * that addToPathType now exists, this could probably use a more distinguishing name.
+   */
+  public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget);
+
+  /**
    * For use in the PathFinderCompanion, where we need to combine paths from two nodes that met at
    * an intermediate node.  pathFromTarget should be reversed, then appended to pathToSource.
    */
-  public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget);
+  public PathType addToPathType(PathType pathType, int relation, int node, boolean reverse);
 
   /**
    * Given a PathType that may have redundantly encoded edge types, collapse the inverses into a

@@ -29,7 +29,7 @@ class BfsPathFinder(
   implicit val formats = DefaultFormats
   type Subgraph = JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]
 
-  val allowedKeys = Seq("type", "number of steps", "max fan out")
+  val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.
@@ -41,9 +41,8 @@ class BfsPathFinder(
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
   var results: Map[Instance, Subgraph] = null
-  // TODO(matt): allow for configuring this.  On small instance-specific graphs, you might want to
-  // lexicalize the nodes in the graph.
-  val factory = new BasicPathTypeFactory
+
+  val factory = createPathTypeFactory(params \ "path type factory")
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
     results = runBfs(data, config.unallowedEdges.map(_.toInt).toSet)
@@ -82,6 +81,7 @@ class BfsPathFinder(
       val graph = instance.graph
       val source = instance.source
       val target = instance.target
+      try {
       val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, pathDict)
       val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
       val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, pathDict)
@@ -106,6 +106,16 @@ class BfsPathFinder(
       })
       val subgraph = result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
       (instance -> subgraph)
+      } catch {
+        case e: Exception => {
+          println("ERROR!!")
+          println(s"Instance: ${graph.nodeDict.getString(source)}, ${graph.nodeDict.getString(target)}")
+          println(s"Graph size: ${graph.entries.size}")
+          println(s"Node dict size: ${graph.nodeDict.getNextIndex}")
+          println(s"Edge dict size: ${graph.edgeDict.getNextIndex}")
+          throw e
+        }
+      }
     }).seq.toMap
   }
 
@@ -121,6 +131,10 @@ class BfsPathFinder(
     rekeyed.mapValues(_.toSet).toMap
   }
 
+  // TODO(matt): I'm not doing anything to detect cycles in here.  Maybe I should...  But, if you
+  // get to the same node with different path types, we want to keep both of them.  So you can't do
+  // the typical thing of keeping a set of seen nodes; you need to have a much more complicated
+  // data structure to get this right.  Maybe it's worth it, maybe it's not.
   def bfsFromNode(
       graph: Graph,
       source: Int,
@@ -144,9 +158,11 @@ class BfsPathFinder(
             inEdges.foreach(nextNode => {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
-                  val newPathType = addToPathType(pathType, relation, true, pathDict)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
+                  val newPathType = factory.addToPathType(
+                    pathDict.getKey(pathType), relation, nextNode, true)
+                  val newIndex = pathDict.getIndex(newPathType)
+                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
+                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
                   newPathType
                 })
               }
@@ -154,9 +170,11 @@ class BfsPathFinder(
             outEdges.foreach(nextNode => {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
-                  val newPathType = addToPathType(pathType, relation, false, pathDict)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
+                  val newPathType = factory.addToPathType(
+                    pathDict.getKey(pathType), relation, nextNode, false)
+                  val newIndex = pathDict.getIndex(newPathType)
+                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
+                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
                   newPathType
                 })
               }
@@ -194,5 +212,14 @@ class BfsPathFinder(
 
   def convertToPair(entry: (Int, Int)): Pair[Integer, Integer] = {
     Pair.makePair(entry._1, entry._2)
+  }
+
+  def createPathTypeFactory(params: JValue) = {
+    params match {
+      case JNothing => new BasicPathTypeFactory
+      case JString("BasicPathTypeFactory") => new BasicPathTypeFactory
+      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory
+      case other => throw new IllegalStateException("Unrecognized path type factory specification")
+    }
   }
 }
