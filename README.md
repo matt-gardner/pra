@@ -15,6 +15,18 @@ following papers:
 See [the github.io page](http://matt-gardner.github.io/pra/) for code documentation.  Please feel
 free to file bugs, feature requests, or send pull requests.
 
+# NOTE
+
+This code generally takes quite a bit of memory.  That's probably a byproduct of how it was
+developed; I typically use a machine that has 400GB of RAM, so I don't need to worry too much about
+how much memory the code is using.  That means I probably do some things that are memory
+inefficient; on NELL graphs, the code can easily use upwards of 40GB.  On larger graphs, and with
+various parameter settings, it can easily use much more than that.  With small graphs, though, I
+can successfully run the code on a machine that only has 8GB of RAM.  This needs some work to be
+made more memory efficient on larger graphs.  It should be straightforward to implement a
+stochastic gradient training regime, for instance, that would allow for much more memory-efficient
+computation.
+
 # License
 
 This code makes use of a number of other libraries that are distributed under various open source
@@ -25,6 +37,36 @@ that license).  You can find the text of that license
 [here](http://www.gnu.org/licenses/gpl-3.0.txt).
 
 # Changelog
+
+Version 3.0 (released on 5/30/2015):
+
+- More refinement on the parameter specification (hence the larger version bump, as the parameter
+  files are not compatible with previous versions).  This nests parameters in the specification
+file according to how they are used in the code, and makes some things in the code _way_ simpler.
+I think the specification is also conceptually cleaner, but maybe someone else would just think
+it's more verbose...
+
+- A lot of code moved to scala, and in the process some of it became more configurable.
+
+- It could still use some more versatility, but there are some improvements to how the graph
+  works - there's a setting where you can keep the graph in memory, for instance, instead of using
+GraphChi to do random walks over the graph on disk.  You can also make instance-specific graphs,
+so that each training and testing instance has its own graph to use.  These need to be pretty
+small for this to make sense, though.
+
+- There is a new mechanism for selecting negative examples, using personalized page rank to select
+  them instead of PRA's random walks.  It turns out that it doesn't affect PRA's performance at
+all, really, but it allows for a better test scenario, and it allows for comparing methods on the
+same training data, where some other method isn't capable of selecting its own negative examples.
+
+- Allowed for other learning algorithms to use PRA's feature matrix.  We tried using SVMs with
+  various kernels, and it turns out that logistic regression is better, at least on the metrics we
+used.  And the code is set up to allow you to (relatively) easily experiment with other
+algorithms, if you want to.
+
+- Implemented a new way of creating a feature matrix over node pairs in the graph, which is
+  simpler and easier than PRA; it's similar to just doing the first step of PRA and extracting a
+feature matrix from the resulting subgraphs.  It's faster and works quite a bit better.
 
 Version 2.0 (released on 3/4/2015):
 
@@ -40,9 +82,8 @@ read the documentation if you want to upgrade to this version.
   paper.  This is at least done in theory.  I haven't gotten the performance to be quite as good
 yet, but the mechanism for doing it is in the code.
 
-- Better handling of JVM exit (version 1.1 and earlier tend to spit out InterruptedExceptions at 
-  you when it terminates, and most of the time won't give you back the sbt console).  (This is 
-fixed in the master branch now.)
+- Better handling of JVM exit (version 1.1 and earlier tend to spit out InterruptedExceptions at
+  you when it terminates, and most of the time won't give you back the sbt console).
 
 Version 1.1 (released on 12/20/2014):
 
@@ -67,38 +108,3 @@ soon.
 - Started work on synthetic data generation, but it's not done yet (well, you can generate some
   data, but learning from it doesn't turn out as I expect.  Something is up...).  A final release
 of working synthetic data generation will have to wait until version 1.2.
-
-# Desired improvements
-
-In rough order of priority.  I will probably do the top two things in the relatively near future.
-The rest are kind of, "this would be nice, but I probably won't get to it any time soon".
-
-- Better feature selection.  The first step of PRA is selecting a set of path types that will be
-  used as features in the rest of the algorithm.  That is currently done by using random walks to
-find frequently seen path types.  It would be pretty simple to select features by some measure of
-specificity, instead of simply by count, so that you have some hope of getting more useful features
-out.
-
-- Allow for in-memory graphs when the graph is small or the machine is large.  Also allow for
-  using GraphLab as a backend, instead of GraphChi, so that a cluster could be used for very large
-graphs.
-
-- Better negative example selection.  The main code path here is to specify only positive examples
-  as the training data, and let the algorithm find negative examples using a closed-world
-assumption.  It would be nice to have a better way of finding negative examples, then input them
-as explicitly as negative examples, not bothering with any kind of closed world assumption.  Note
-that if you have negative examples, the functionality for specifying negative examples and only
-keeping specified rows in the feature matrix is already there.  There just isn't any kind of smart
-technique for picking those negative examples.
-
-- Single-sided features.  This is something that Ni Lao had in his implementation of PRA that I
-  haven't done.  These act like biases on certain target or source nodes; for instance, this could
-encode the fact that `Gender(X, Female)` has a very high negative weight for the relation
-`FatherOf(X, Y)`.
-
-- Allow for weighted edges.  The random walks I currently do cannot handle any kind of weights on
-  the edges of the graph.  They might be useful in some circumstances.
-
-- Better training methods.  Maximum likelihood estimation of a log-linear model might not be the
-  best model we can use; it might be nice to have the option to use other loss functions or
-training methods, like a ranking loss, or something.

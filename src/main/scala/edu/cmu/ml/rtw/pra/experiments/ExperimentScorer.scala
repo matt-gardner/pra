@@ -68,11 +68,11 @@ object ExperimentScorer {
   def scoreExperiments(
       pra_base: String,
       experiment_filters: Seq[String],
-      displayMetrics: List[(String, String)],
-      sortResultsBy: List[String],
-      metricComputers: List[MetricComputer],
-      significanceTests: List[String],
-      relationMetrics: List[String]) {
+      displayMetrics: Seq[(String, String)],
+      sortResultsBy: Seq[String],
+      metricComputers: Seq[MetricComputer],
+      significanceTests: Seq[String],
+      relationMetrics: Seq[String]) {
     val results_dir = pra_base + RESULTS_DIR
     val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir),
       """settings.txt|params.json|log.txt""".r)
@@ -122,10 +122,10 @@ object ExperimentScorer {
 
   def displayExperiments(
       metrics: ExperimentMetrics,
-      displayMetrics: List[(String, String)],
-      sortResultsBy: List[String],
-      significanceTests: List[String],
-      relationMetrics: List[String]) {
+      displayMetrics: Seq[(String, String)],
+      sortResultsBy: Seq[String],
+      significanceTests: Seq[String],
+      relationMetrics: Seq[String]) {
     println()
     val experiment_title = "Experiment"
     val sortKeyFunction = getSortKey(sortResultsBy) _
@@ -155,7 +155,7 @@ object ExperimentScorer {
     for (metric <- significanceTests) {
       displaySignificanceTests(metrics, experiments, metric)
     }
-    for (metric <- significanceTests) {
+    for (metric <- relationMetrics) {
       displayRelationMetrics(metrics, experiments, metric)
     }
   }
@@ -208,7 +208,7 @@ object ExperimentScorer {
       experiment_dir: String,
       displayNameSplit: String,
       saved_metrics: Option[MutableRelationMetrics],
-      metricComputers: List[MetricComputer]): MutableRelationMetrics = {
+      metricComputers: Seq[MetricComputer]): MutableRelationMetrics = {
     println(s"Getting metrics for experiment $experiment_dir")
     val metrics = EmptyRelationMetricsWithDefaults
     // Getting the split dir and relations first.
@@ -282,7 +282,7 @@ object ExperimentScorer {
     metrics
   }
 
-  def getSortKey(keys: List[String])(metrics: RelationMetrics) = {
+  def getSortKey(keys: Seq[String])(metrics: RelationMetrics) = {
     val entries = new mutable.ListBuffer[Double]
     for (key <- keys) {
       try {
@@ -306,7 +306,7 @@ object ExperimentScorer {
 
   def displaySignificanceTests(
       metrics: ExperimentMetrics,
-      experiments: List[String],
+      experiments: Seq[String],
       metric: String) {
     println(s"\nSignificance tests for metric $metric")
     print("   ")
@@ -336,7 +336,7 @@ object ExperimentScorer {
 
   def displayRelationMetrics(
       metrics: ExperimentMetrics,
-      experiments: List[String],
+      experiments: Seq[String],
       metric: String) {
     val relations = new mutable.HashSet[String]
     for (experiment <- experiments;
@@ -381,7 +381,7 @@ object ExperimentScorer {
     }
   }
 
-  def getPValue(values: List[(Double, Double)]) = {
+  def getPValue(values: Seq[(Double, Double)]) = {
     if (values.size < 15) {
       getExactPValue(values)
     } else {
@@ -389,7 +389,7 @@ object ExperimentScorer {
     }
   }
 
-  def getExactPValue(values: List[(Double, Double)]) = {
+  def getExactPValue(values: Seq[(Double, Double)]) = {
     val diffs = values.map(x => x._1 - x._2)
     val mean_diff = math.abs(diffs.sum) / diffs.length
     var n = 0.0
@@ -402,7 +402,7 @@ object ExperimentScorer {
   }
 
   // Expected p-value: .55567
-  def getSampledPValue(values: List[(Double, Double)]) = {
+  def getSampledPValue(values: Seq[(Double, Double)]) = {
     import scala.util.Random
     val random = new Random
     val diffs = values.map(x => x._1 - x._2)
@@ -416,7 +416,7 @@ object ExperimentScorer {
     n / iters
   }
 
-  def getDiffForSample(diffs: List[Double], signs: Int) = {
+  def getDiffForSample(diffs: Seq[Double], signs: Int) = {
     var a = signs
     var diff = 0.0
     for (index <- 1 to diffs.length) {

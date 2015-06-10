@@ -1,5 +1,7 @@
 {
   "pra parameters": {
-    "path follower": "matrix multiplication"
+    "path follower": {
+      "name": "matrix multiplication"
+    }
   }
 }

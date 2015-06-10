@@ -10,7 +10,10 @@ import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
 
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
@@ -19,15 +22,18 @@ public class RandomWalkPathFinderTest extends TestCase {
   private FakePathTypeFactory factory = new FakePathTypeFactory();
   private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
   private RandomWalkPathFinder finder;
+  private GraphOnDisk graph;
+  private List<Instance> instances;
 
   @Override
   public void setUp() {
     edgesToExclude = Lists.newArrayList();
     addEdgeToExclude(1, 2, 1, edgesToExclude);
-    finder = new RandomWalkPathFinder("src/test/resources/edges.tsv",
-                                      1,
-                                      Arrays.asList(1),
-                                      Arrays.asList(2),
+    graph = new GraphOnDisk("src/test/resources/", new FileUtil());
+    instances = Lists.newArrayList();
+    instances.add(new Instance(1, 2, true, graph));
+    finder = new RandomWalkPathFinder(graph,
+                                      instances,
                                       SingleEdgeExcluder.fromJava(edgesToExclude),
                                       10,
                                       PathTypePolicy.EVERYTHING,
@@ -243,10 +249,10 @@ public class RandomWalkPathFinderTest extends TestCase {
   // had to add it to the node dict.  In that case, we should just drop the node, instead of
   // crashing, which is what the code currently does as of writing this test.
   public void testIgnoresNewSources() {
-    finder = new RandomWalkPathFinder("src/test/resources/edges.tsv",
-                                      1,
-                                      Arrays.asList(10000),
-                                      Arrays.asList(20000),
+    instances.clear();
+    instances.add(new Instance(10000, 20000, true, graph));
+    finder = new RandomWalkPathFinder(graph,
+                                      instances,
                                       SingleEdgeExcluder.fromJava(edgesToExclude),
                                       10,
                                       PathTypePolicy.EVERYTHING,

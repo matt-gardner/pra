@@ -1,0 +1,4 @@
+load base_nell_pra_parameters
+{
+  "graph": "/home/mg1/pra/graphs/nell/kb_svo_single_relation/"
+}

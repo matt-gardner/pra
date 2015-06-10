@@ -4,74 +4,27 @@ import java.io.FileWriter
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.graphs.Graph
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
 
-case class Instance(source: Int, target: Int, isPositive: Boolean)
+// Not a case class, because we really don't want equality on source/target/isPositive.  We need
+// equality to only look at object identity, because the source and target Ints might be with
+// respect to different dictionaries.
+class Instance(val source: Int, val target: Int, val isPositive: Boolean, val graph: Graph)
 
 /**
  * A collection of positive and negative (source, target) pairs.
  */
 class Dataset(
     val instances: Seq[Instance],
-    val config: PraConfig = null,
-    val instanceGraphs: Option[Seq[Graph]] = None,
     val fileUtil: FileUtil = new FileUtil) {
   def getPosAndNeg() = instances.partition(_.isPositive)
   def getPositiveInstances() = instances.filter(_.isPositive)
   def getNegativeInstances() = instances.filter(!_.isPositive)
-  def getAllSources() = instances.map(_.source).toSet
-  def getAllTargets() = instances.map(_.target).toSet
-
-  def getSourceMap() = _getSourceMap(instances)
-  def getPositiveSourceMap() = _getSourceMap(getPositiveInstances)
-  def getNegativeSourceMap() = _getSourceMap(getNegativeInstances)
-
-  def _getSourceMap(instance_list: Seq[Instance]) = instance_list.groupBy(_.source)
-    .mapValues(_.map(_.target).toSet)
-
-  def getGraphForInstance(instance: Instance): Graph = {
-    val index = instances.indexOf(instance)
-    getGraphForInstance(index)
-  }
-
-  lazy val sharedGraph: Graph = {
-    if (config == null) {
-      throw new IllegalStateException("If you want to use getGraphForInstance with a shared graph,"
-        + " you need to create the dataset with a PraConfig!")
-    }
-    loadGraph(config.graph, config.nodeDict.getNextIndex)
-  }
-
-  def loadGraph(graphFile: String, numNodes: Int): Graph = {
-    println(s"Loading graph")
-    val graphBuilder = new GraphBuilder(numNodes)
-    val lines = fileUtil.readLinesFromFile(graphFile).asScala
-    val reader = fileUtil.getBufferedReader(graphFile)
-    var line: String = null
-    while ({ line = reader.readLine; line != null }) {
-      val fields = line.split("\t")
-      val source = fields(0).toInt
-      val target = fields(1).toInt
-      val relation = fields(2).toInt
-      graphBuilder.addEdge(source, target, relation)
-    }
-    graphBuilder.build
-  }
-
-  def getGraphForInstance(index: Int): Graph = {
-    instanceGraphs match {
-      case None => {
-        sharedGraph
-      }
-      case Some(graphs) => {
-        graphs(index)
-      }
-    }
-  }
 
   /**
    * Takes the examples in this dataset and splits it into two datasets, where the first has
@@ -91,17 +44,18 @@ class Dataset(
     random.shuffle(negativeInstances)
     val (trainingNegative, testingNegative) = negativeInstances.splitAt(numNegativeTraining)
 
-    val training = new Dataset(trainingPositive ++ trainingNegative, config)
-    val testing = new Dataset(testingPositive ++ testingNegative, config)
+    val training = new Dataset(trainingPositive ++ trainingNegative)
+    val testing = new Dataset(testingPositive ++ testingNegative)
     (training, testing)
   }
 
-  def instancesToStrings(nodeDict: Dictionary): Seq[String] = {
-    instances.map(instanceToString(nodeDict))
+  def instancesToStrings(): Seq[String] = {
+    instances.map(instanceToString)
   }
 
-  def instanceToString(nodeDict: Dictionary)(instance: Instance): String = {
+  def instanceToString(instance: Instance): String = {
     val pos = if (instance.isPositive) 1 else -1
+    val nodeDict = instance.graph.nodeDict
     if (nodeDict == null) {
       s"${instance.source}\t${instance.target}\t$pos"
     } else {
@@ -109,7 +63,7 @@ class Dataset(
     }
   }
 
-  def merge(other: Dataset) = new Dataset(instances ++ other.instances, config)
+  def merge(other: Dataset) = new Dataset(instances ++ other.instances)
 }
 
 object Dataset {
@@ -129,18 +83,64 @@ object Dataset {
    * strings to integers, or integers that will be parsed.  The logic here doesn't check if the
    * entry is an integer, it just checks if the dictionary is null or not.
    */
-  def fromFile(filename: String, config: PraConfig, fileUtil: FileUtil = new FileUtil): Dataset = {
+  def fromFile(filename: String, graph: Option[Graph], fileUtil: FileUtil = new FileUtil): Dataset = {
     val lines = fileUtil.readLinesFromFile(filename).asScala
-    val instances = lines.par.map(lineToInstance(config.nodeDict)).seq
-    new Dataset(instances, config)
+    if (lines(0).split("\t").size == 4) {
+      graph match {
+        case Some(g) => throw new IllegalStateException(
+          "You already specified a graph, but dataset has its own graphs!")
+        case None => {
+          val instances = lines.par.map(lineToInstanceAndGraph).seq
+          new Dataset(instances, fileUtil)
+        }
+      }
+    } else {
+      val instances = lines.par.map(lineToInstance(graph.get)).seq
+      new Dataset(instances, fileUtil)
+    }
   }
 
-  def lineToInstance(dict: Dictionary)(line: String): Instance = {
+  def lineToInstance(graph: Graph)(line: String): Instance = {
+    val dict = graph.nodeDict
     val fields = line.split("\t")
-    val isPositive = if (fields.size == 2) true else fields(2).toInt == 1
+    val isPositive =
+      try {
+        if (fields.size == 2) true else fields(2).toInt == 1
+      } catch {
+        case e: NumberFormatException =>
+          throw new IllegalStateException("Dataset not formatted correctly!")
+      }
     val source = if (dict == null) fields(0).toInt else dict.getIndex(fields(0))
     val target = if (dict == null) fields(1).toInt else dict.getIndex(fields(1))
-    new Instance(source, target, isPositive)
+    new Instance(source, target, isPositive, graph)
   }
 
+  def lineToInstanceAndGraph(line: String): Instance = {
+    val instanceFields = line.split("\t")
+    val instanceSource = instanceFields(0)
+    val instanceTarget = instanceFields(1)
+    val isPositive = instanceFields(2).toInt == 1
+    val graphString = instanceFields(3)
+    val graphBuilder = new GraphBuilder()
+    val graphEdges = graphString.split(" ### ")
+    for (edge <- graphEdges) {
+      val fields = edge.split("\\^,\\^")
+      println(fields.toList)
+      val source = fields(0)
+      val target = fields(1)
+      val relation = fields(2)
+      graphBuilder.addEdge(source, target, relation)
+    }
+    val entries = graphBuilder.build()
+    val graph = new GraphInMemory(entries, graphBuilder.nodeDict, graphBuilder.edgeDict)
+    // This isn't ideal, but the Ints in the Instance object need to be with respect to the graph.
+    // It might be a bit cleaner to have each Instance have a pointer to the graph that it
+    // corresponds to, but that would mean that in the single-graph case, I have to construct the
+    // graph before reading the Dataset, and can't just load it lazily...  It's a bit messy either
+    // way, so I'm going to keep the lazy loading and just grab indices from the instance graph's
+    // nodeDict here.
+    val sourceId = graph.nodeDict.getIndex(instanceSource)
+    val targetId = graph.nodeDict.getIndex(instanceTarget)
+    new Instance(sourceId, targetId, isPositive, graph)
+  }
 }

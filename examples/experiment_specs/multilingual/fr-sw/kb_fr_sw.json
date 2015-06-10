@@ -1,0 +1,17 @@
+load default_pra_parameters
+{
+  "split": "multilingual/fr_sw",
+  "graph": {
+    "name": "multilingual/fb_fr_sw",
+    "relation sets": [
+      "load relation_sets/freebase/kb",
+      "load relation_sets/multilingual/french",
+      "load relation_sets/multilingual/french_contains_alias",
+      "load relation_sets/multilingual/swahili",
+      "load relation_sets/multilingual/swahili_contains_alias"
+      ],
+    "create matrices": false
+    "deduplicate edges": true
+  }
+  "relation metadata": "freebase"
+}

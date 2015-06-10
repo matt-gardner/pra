@@ -34,7 +34,7 @@ public class FeatureMatrix {
    */
   public MatrixRow getSourceTargetRow(int source, int target) {
     for (MatrixRow row : rows) {
-      if (row.sourceNode == source && row.targetNode == target) return row;
+      if (row.instance.source() == source && row.instance.target() == target) return row;
     }
     return null;
   }

@@ -37,7 +37,7 @@ trait FeatureGenerator {
    */
   def getFeatureNames(): Array[String]
 
-  def createEdgesToExclude(data: Dataset, unallowedEdges: java.util.List[Integer]): Seq[((Int, Int), Int)] = {
+  def createEdgesToExclude(data: Dataset, unallowedEdges: Seq[Int]): Seq[((Int, Int), Int)] = {
     // If there was no input data (e.g., if we are actually trying to predict new edges, not
     // just hide edges from ourselves to try to recover), then there aren't any edges to
     // exclude.  So return an empty list.
@@ -45,7 +45,7 @@ trait FeatureGenerator {
       return Seq()
     }
     data.instances.flatMap(instance => {
-      unallowedEdges.asScala.map(edge => {
+      unallowedEdges.map(edge => {
         ((instance.source, instance.target), edge.toInt)
       })
     })

@@ -115,6 +115,6 @@ public class BasicPathTypeFactoryTest extends TestCase {
         edgeDict.getIndex("r2");
         edgeDict.getIndex("r3");
         String humanReadable = "-r1-_r2-r3-";
-        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(edgeDict));
+        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(edgeDict, null));
     }
 }

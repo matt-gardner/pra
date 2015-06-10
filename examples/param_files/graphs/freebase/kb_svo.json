@@ -1,0 +1,7 @@
+{
+  "name": "freebase/kb_svo",
+  "relation sets": [
+    "load relation_sets/freebase/kb",
+    "load relation_sets/freebase/svo"
+  ]
+}

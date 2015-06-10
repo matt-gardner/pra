@@ -1,0 +1,33 @@
+load default_pra_parameters
+{
+  "split": "multilingual/all_languages",
+  "graph": {
+    "name": "multilingual/all_svo",
+    "relation sets": [
+      "load relation_sets/freebase/kb_aliases_only",
+      "load relation_sets/multilingual/arabic",
+      "load relation_sets/multilingual/arabic_contains_alias",
+      "load relation_sets/multilingual/chinese",
+      "load relation_sets/multilingual/chinese_contains_alias",
+      "load relation_sets/multilingual/french",
+      "load relation_sets/multilingual/french_contains_alias",
+      "load relation_sets/multilingual/georgian",
+      "load relation_sets/multilingual/georgian_contains_alias",
+      "load relation_sets/multilingual/hindi",
+      "load relation_sets/multilingual/hindi_contains_alias",
+      "load relation_sets/multilingual/indonesian",
+      "load relation_sets/multilingual/indonesian_contains_alias",
+      "load relation_sets/multilingual/latvian",
+      "load relation_sets/multilingual/latvian_contains_alias",
+      "load relation_sets/multilingual/russian",
+      "load relation_sets/multilingual/russian_contains_alias",
+      "load relation_sets/multilingual/swahili",
+      "load relation_sets/multilingual/swahili_contains_alias",
+      "load relation_sets/multilingual/tagalog",
+      "load relation_sets/multilingual/tagalog_contains_alias"
+      ],
+    "create matrices": false
+    "deduplicate edges": true
+  }
+  "relation metadata": "freebase"
+}

@@ -1,0 +1,69 @@
+{
+  "graph": {
+    "name": "test_graph",
+    "relation sets": [
+      {
+        "type": "generated",
+        "generation params": {
+          "name": "synthetic/very_easy",
+          "num_entities": 10000,
+          "num_base_relations": 20,
+          "num_base_relation_training_duplicates": 5,
+          "num_base_relation_testing_duplicates": 0,
+          "num_base_relation_overlapping_instances": 500,
+          "num_base_relation_noise_instances": 100,
+          "num_pra_relations": 2,
+          "num_pra_relation_training_instances": 200,
+          "num_pra_relation_testing_instances": 50,
+          "num_rules": 5,
+          "min_rule_length": 1,
+          "max_rule_length": 4,
+          "rule_prob_mean": 0.6,
+          "rule_prob_stddev": 0.2,
+          "num_noise_relations": 2,
+          "num_noise_relation_instances": 100
+        }
+      }
+    ],
+    "denser matrices": [
+      {
+        "name": "low_threshold_denser_matrix",
+        "similarity matrix": {
+          "name": "similarity_matrix_0.8_2_1",
+          "embeddings": {
+            "name": "test_graph",
+            "graph": "test_graph",
+            "dims": 50
+          }
+          "threshold": 0.8,
+          "num_hashes": 2,
+          "hash_size": 1
+        }
+      }
+    ]},
+  "split": "synthetic/very_easy",
+  "pra parameters": {
+    "mode": "learn models",
+    "features": {
+	   "type": "subgraphs",
+	   "path finder": {
+		    "walks per source": 100,
+		    "path finding iterations": 3
+	   },
+	   "feature extractors": [
+		   "PraFeatureExtractor",
+		   "OneSidedFeatureExtractor",
+		   "CategoricalComparisonFeatureExtractor",
+		   "NumericalComparisonFeatureExtractor",
+		   {
+			"name" : "VectorSimilarityFeatureExtractor",
+			"matrix name" : "test_graph/similarity_matrix_0.8_2_1"
+		   } 
+		   ]
+    },
+    "learning": {
+		"type": "svm",
+		"kernel": "rbf"
+    }
+  }
+}

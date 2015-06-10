@@ -17,6 +17,7 @@ import scalax.io.Resource
 import scala.util.control.Breaks._
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -29,19 +30,22 @@ class MatrixPathFollower(
     pathTypes: Seq[PathType],
     val matrixDir: String,
     data: Dataset,
-    edge_dict: Dictionary,
     allowedTargets: Set[Int],
     edgeExcluder: EdgeExcluder,
     val maxFanOut: Int,
     val normalizeWalkProbabilities: Boolean,
     fileUtil: FileUtil = new FileUtil) extends PathFollower {
 
+  val source_nodes = data.instances.map(_.source).toSet
+  val positive_source_targets = data.getPositiveInstances.map(i => (i.source, i.target)).toSet
+  val graph = data.instances(0).graph
+  val edgeDict = graph.edgeDict
+  val nodeDict = graph.nodeDict
   override def execute = {}
   override def shutDown = {}
   override def usesGraphChi = false
-  override def getFeatureMatrix() = getFeatureMatrix(data.getAllSources, allowedTargets)
+  override def getFeatureMatrix() = getFeatureMatrix(source_nodes, allowedTargets)
 
-  val source_nodes = data.getAllSources
   val sources_matrix = {
     println(s"num nodes: ${numNodes}")
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
@@ -119,7 +123,12 @@ class MatrixPathFollower(
       pathTypes += feature._1
       values += feature._2
     }
-    new MatrixRow(source, target, pathTypes.toArray, values.toArray)
+    val instance = if (positive_source_targets.contains((source, target))) {
+      new Instance(source, target, true, graph)
+    } else {
+      new Instance(source, target, false, graph)
+    }
+    new MatrixRow(instance, pathTypes.toArray, values.toArray)
   }
 
   def getPathMatrices(): Map[PathType, CSCMatrix[Double]] = {
@@ -140,7 +149,7 @@ class MatrixPathFollower(
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, CSCMatrix[Double]]): CSCMatrix[Double] = {
-    val str = path_type.encodeAsHumanReadableString(edge_dict)
+    val str = path_type.encodeAsHumanReadableString(edgeDict, nodeDict)
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
     if (path_type.getReverse()(0)) {
       result = result.t

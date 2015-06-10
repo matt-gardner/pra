@@ -1,0 +1,13 @@
+{
+  "graph": "hoffmann_freebase",
+  "relation metadata": "freebase",
+  "split": "hoffmann_freebase",
+  "pra parameters": {
+    "mode": "explore graph",
+    "explore": {
+      "walks per source": 200,
+      "path finding iterations": 3
+    }
+    "data": "both"
+  }
+}

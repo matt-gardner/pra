@@ -1,0 +1,16 @@
+{
+  "pra parameters": {
+    "mode": "learn models",
+    "features": {
+      "type": "subgraphs",
+      "path finder": {
+        "walks per source": 200,
+        "path finding iterations": 3
+      }
+    },
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1
+    }
+  }
+}

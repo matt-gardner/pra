@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -41,13 +42,10 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   fakeFileUtil.addFileToBeRead("/graphs/nell/edge_dict.tsv", "1\trel/1\n")
   fakeFileUtil.onlyAllowExpectedFiles()
   val splitCreator = new SplitCreator(params, praBase, splitDir, fakeFileUtil)
+  val graph = new GraphOnDisk("/graphs/nell/", fakeFileUtil)
 
-  val node_dict = new Dictionary
-  node_dict.getIndex("node1")
-  node_dict.getIndex("node2")
-
-  val positiveInstances = Seq(Instance(1, 1, true), Instance(1, 2, true))
-  val negativeInstances = Seq(Instance(2, 2, false), Instance(1, 2, false))
+  val positiveInstances = Seq(new Instance(1, 1, true, graph), new Instance(1, 2, true, graph))
+  val negativeInstances = Seq(new Instance(2, 2, false, graph), new Instance(1, 2, false, graph))
   val goodData = new Dataset(positiveInstances ++ negativeInstances) {
     override def splitData(percent: Double) = {
       println("Splitting fake data")
@@ -74,27 +72,27 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     val domains = Map(relation -> "c1")
     val ranges = Map(relation -> "c2")
     var creator = splitCreatorWithFakeNegativeSelector(Set(1), Set(2))
-    creator.addNegativeExamples(goodData, relation, domains, ranges, node_dict) should be(goodData)
+    creator.addNegativeExamples(goodData, relation, domains, ranges, graph.nodeDict) should be(goodData)
     // Adding a test with the wrong sources and targets, just to be sure the test is really // working.
     creator = splitCreatorWithFakeNegativeSelector(Set(2), Set(1))
-    creator.addNegativeExamples(goodData, relation, domains, ranges, node_dict) should be(badData)
+    creator.addNegativeExamples(goodData, relation, domains, ranges, graph.nodeDict) should be(badData)
   }
 
   it should "handle null domains and ranges" in {
     val creator = splitCreatorWithFakeNegativeSelector(null, null)
-    creator.addNegativeExamples(goodData, "rel1", null, null, node_dict) should be(goodData)
+    creator.addNegativeExamples(goodData, "rel1", null, null, graph.nodeDict) should be(goodData)
   }
 
   it should "throw an error if the relation is missing from domain or range" in {
     val creator = splitCreatorWithFakeNegativeSelector(null, null)
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, "rel1", Map(), null, node_dict) should be(goodData)
+        creator.addNegativeExamples(goodData, "rel1", Map(), null, graph.nodeDict) should be(goodData)
       }
     })
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, "rel1", null, Map(), node_dict) should be(goodData)
+        creator.addNegativeExamples(goodData, "rel1", null, Map(), graph.nodeDict) should be(goodData)
       }
     })
   }

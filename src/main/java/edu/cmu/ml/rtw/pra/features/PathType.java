@@ -30,10 +30,9 @@ public interface PathType {
   /**
    * Creates a human-digestable representation of the PathType.  To make it human readable, we need
    * to convert the integers that show up in the path type into their string representations, using
-   * the provided dictionaries (currently that's only the edge dictionary, but it could expand as
-   * need dictates).
+   * the provided dictionaries.
    */
-  public String encodeAsHumanReadableString(Dictionary edgeDict);
+  public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict);
 
   /**
    * Given the hop number and information about the current vertex, pick an edge to follow.

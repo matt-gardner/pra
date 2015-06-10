@@ -1,0 +1,6 @@
+{
+  "relation file": "/home/mg1/pra/relation_metadata/freebase/labeled_edges.tsv",
+  "is kb": true,
+  "alias file": "/home/mg1/data/freebase/freebase-just-relation-triples.aliases",
+  "alias file format": "freebase"
+}

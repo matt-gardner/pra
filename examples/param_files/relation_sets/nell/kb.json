@@ -1,6 +1,6 @@
 {
-  "relation file": "/path/to/nell/relation/file.tsv",
+  "relation file": "/home/mg1/pra/relation_metadata/nell/labeled_edges.tsv",
   "is kb": true,
-  "alias file": "/path/to/nell/alias/file.tsv",
+  "alias file": "/home/mg1/data/NELL_dumps/concepts_to_nps_728.tsv",
   "alias file format": "nell"
 }

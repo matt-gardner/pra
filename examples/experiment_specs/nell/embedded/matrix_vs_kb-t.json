@@ -1,0 +1,29 @@
+load base_nell_pra_parameters
+load matrix_multiplication
+{
+  "graph": {
+    "name": "nell/kb-t",
+    "relation sets": ["load relation_sets/nell/kb_no_types"],
+    "denser matrices": [
+      {
+        "name": "med_threshold_denser_matrix_nell_split",
+        "split": "nell",
+        "relation metadata": "nell",
+        "similarity matrix": {
+          "name": "similarity_matrix_0.5_3_5",
+          "embeddings": {
+            "name": "my_svd/nell/kb-t",
+            "graph": "nell/kb-t",
+            "dims": 50
+          }
+          "threshold": 0.5,
+          "num_hashes": 3,
+          "hash_size": 2
+        }
+      }
+    ]
+  },
+  "pra parameters": {
+    "matrix dir": "med_threshold_denser_matrix_nell_split"
+  }
+}

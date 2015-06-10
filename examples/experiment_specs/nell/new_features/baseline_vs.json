@@ -1,0 +1,17 @@
+load new_feature_experiment_base
+load default_pra_parameters
+load vector_space_walks
+{
+  "pra parameters": {
+    "features": {
+      "path finder": {
+        "path type factory": {
+          "embeddings": "pca_svo"
+        }
+      }
+      "path follower": {
+        "matrix accept policy": "paired-targets-only"
+      }
+    }
+  }
+}

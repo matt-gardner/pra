@@ -1,0 +1,20 @@
+load default_pra_parameters
+load vector_space_walks
+{
+  "graph": "multilingual/all_svo",
+  "split": "multilingual/french_test",
+  "relation metadata": "freebase",
+  "pra parameters": {
+    "features": {
+      "path finder": {
+        "path type factory": {
+          "embeddings": {
+            "name": "my_svd/multilingual/all_svo",
+            "graph": "multilingual/all_svo",
+            "dims": 50
+          }
+        }
+      }
+    }
+  }
+}

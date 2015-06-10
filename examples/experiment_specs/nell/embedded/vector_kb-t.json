@@ -1,0 +1,14 @@
+load base_nell_pra_parameters
+load vector_space_walks
+{
+  "graph": "load graphs/nell/kb-t"
+  "pra parameters": {
+    "path type factory": {
+      "embeddings": {
+        "name": "my_svd/nell/kb-t",
+        "graph": "nell/kb-t",
+        "dims": 50
+      }
+    }
+  }
+}

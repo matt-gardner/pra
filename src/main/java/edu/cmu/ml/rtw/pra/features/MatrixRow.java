@@ -2,19 +2,19 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.util.Arrays;
 
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+
 public class MatrixRow {
-  final public int sourceNode;
-  final public int targetNode;
-  final public int[] pathTypes;
+  final public Instance instance;
+  final public int[] featureTypes;
   final public double[] values;
   final public int columns;
 
-  public MatrixRow(int sourceNode, int targetNode, int[] pathTypes, double[] values) {
-    this.sourceNode = sourceNode;
-    this.targetNode = targetNode;
-    this.pathTypes = pathTypes;
+  public MatrixRow(Instance instance, int[] featureTypes, double[] values) {
+    this.instance = instance;
+    this.featureTypes = featureTypes;
     this.values = values;
-    columns = pathTypes.length;
+    columns = featureTypes.length;
   }
 
   @Override
@@ -22,9 +22,8 @@ public class MatrixRow {
     final int prime = 31;
     int result = 1;
     result = prime * result + columns;
-    result = prime * result + Arrays.hashCode(pathTypes);
-    result = prime * result + sourceNode;
-    result = prime * result + targetNode;
+    result = prime * result + Arrays.hashCode(featureTypes);
+    result = prime * result + instance.hashCode();
     result = prime * result + Arrays.hashCode(values);
     return result;
   }
@@ -40,11 +39,9 @@ public class MatrixRow {
     MatrixRow other = (MatrixRow) obj;
     if (columns != other.columns)
       return false;
-    if (!Arrays.equals(pathTypes, other.pathTypes))
+    if (!Arrays.equals(featureTypes, other.featureTypes))
       return false;
-    if (sourceNode != other.sourceNode)
-      return false;
-    if (targetNode != other.targetNode)
+    if (instance != other.instance)
       return false;
     if (!Arrays.equals(values, other.values))
       return false;

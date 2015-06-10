@@ -19,6 +19,7 @@ import com.google.common.collect.Sets
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -112,8 +113,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   def checkMatrixRow(matrix_row: MatrixRow, expectedFeatures: Map[Int, Double]) {
-    matrix_row.pathTypes.toSet should be (expectedFeatures.keySet)
-    for (feature <- matrix_row.pathTypes zip matrix_row.values) {
+    matrix_row.featureTypes.toSet should be (expectedFeatures.keySet)
+    for (feature <- matrix_row.featureTypes zip matrix_row.values) {
       feature._2 should be (expectedFeatures(feature._1))
     }
   }
@@ -122,12 +123,10 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     val fileUtil = new FakeFileUtil()
     val matrixFile = relation1File + relation2File + relation3File + relation4File
     fileUtil.addFileToBeRead("/matrices/1-4", matrixFile)
+    fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\t1\n")
+    fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
     val edgesToExclude = Seq[((Int, Int), Int)](((4, 2), 4), ((1, 4), 4))
-    val edgeDict = new Dictionary()
-    edgeDict.getIndex("1")
-    edgeDict.getIndex("2")
-    edgeDict.getIndex("3")
-    edgeDict.getIndex("4")
+    val graph = new GraphOnDisk("/graph/", fileUtil)
     val path_types = seqAsJavaList(Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
@@ -137,8 +136,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       numNodes,
       path_types,
       "/matrices/",
-      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
-      edgeDict,
+      new Dataset(Seq(new Instance(1, 1, true, graph), new Instance(2, 1, true, graph),
+        new Instance(3, 1, true, graph))),
       Set(),
       new SingleEdgeExcluder(edgesToExclude),
       3,

@@ -2,14 +2,18 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.rmi.RemoteException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import junit.framework.TestCase;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
+import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
@@ -35,6 +39,9 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private Pair<Integer, Integer> sourceTargetPair =
       new Pair<Integer, Integer>(sourceNode, targetNode);
   private int intermediateNode = 3;
+  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", new FileUtil());
+  private Instance instance = new Instance(sourceNode, targetNode, true, graph);
+  private List<Instance> instances = Lists.newArrayList();
 
   private void setDistributionsForTest(RandomWalkPathFinderCompanion companion) {
     // We'll have one source, one target, and one intermediate node in this test.
@@ -60,7 +67,7 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
 
   public void testGetPathCounts() throws RemoteException {
     RandomWalkPathFinderCompanion companion = new RandomWalkPathFinderCompanion(
-        1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
+        graph, 1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
     setDistributionsForTest(companion);
     Map<PathType, Integer> pathCounts = companion.getPathCounts(Arrays.asList(sourceNode),
                                                                 Arrays.asList(targetNode));
@@ -72,20 +79,20 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
 
   public void testGetPathCountMap() throws RemoteException {
     RandomWalkPathFinderCompanion companion = new RandomWalkPathFinderCompanion(
-        1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
+        graph, 1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
     setDistributionsForTest(companion);
-    Map<Pair<Integer, Integer>, Map<PathType, Integer>> pathCountMap =
-        companion.getPathCountMap(Arrays.asList(sourceNode), Arrays.asList(targetNode));
+    Map<Instance, Map<PathType, Integer>> pathCountMap =
+        companion.getPathCountMap(Arrays.asList(instance));
     assertEquals(1, pathCountMap.size());
-    assertEquals(4, pathCountMap.get(sourceTargetPair).get(type1).intValue());
-    assertEquals(4, pathCountMap.get(sourceTargetPair).get(type2).intValue());
-    assertEquals(4, pathCountMap.get(sourceTargetPair).get(type23).intValue());
+    assertEquals(4, pathCountMap.get(instance).get(type1).intValue());
+    assertEquals(4, pathCountMap.get(instance).get(type2).intValue());
+    assertEquals(4, pathCountMap.get(instance).get(type23).intValue());
   }
 
   public void testIncrementCounts() throws RemoteException {
     // First the simple case where we just have two strings and a count.
     RandomWalkPathFinderCompanion companion = new RandomWalkPathFinderCompanion(
-        1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
+        graph, 1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
 
     Map<PathType, Integer> pathCounts = Maps.newHashMap();
     companion.incrementCounts(pathCounts, type1, type_2, 2);

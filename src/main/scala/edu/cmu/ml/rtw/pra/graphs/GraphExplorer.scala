@@ -3,8 +3,10 @@ package edu.cmu.ml.rtw.pra.graphs
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
+import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluder
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -26,15 +28,13 @@ class GraphExplorer(params: JValue, config: PraConfig) {
   val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 100)
   val numIters = JsonHelper.extractWithDefault(params, "path finding iterations", 3)
 
-  def findConnectingPaths(data: Dataset) = {
+  def findConnectingPaths(data: Dataset): Map[Instance, Map[PathType, Int]] = {
     println("Finding connecting paths")
 
     val pathTypeFactory = new BasicPathTypeFactory()
 
-    val finder = new RandomWalkPathFinder(config.graph,
-      config.numShards,
-      data.instances.map(instance => Integer.valueOf(instance.source)).asJava,
-      data.instances.map(instance => Integer.valueOf(instance.target)).asJava,
+    val finder = new RandomWalkPathFinder(config.graph.get.asInstanceOf[GraphOnDisk],
+      data.instances.asJava,
       new SingleEdgeExcluder(Seq()),
       walksPerSource,
       PathTypePolicy.PAIRED_ONLY,
@@ -45,11 +45,9 @@ class GraphExplorer(params: JValue, config: PraConfig) {
     // reason I don't understand.
     Thread.sleep(500)
 
-    val pathCountMap = finder.getPathCountMap().asScala.map(entry => {
-      val key = (entry._1.getLeft().toInt, entry._1.getRight().toInt)
-      val value = entry._2.asScala.mapValues(_.toInt).toMap
-      (key, value)
-    }).toMap
+    val pathCountMap = finder.getPathCountMap().asScala.mapValues(
+      _.asScala.mapValues(_.toInt).toMap
+    ).toMap
     finder.shutDown()
     pathCountMap
   }

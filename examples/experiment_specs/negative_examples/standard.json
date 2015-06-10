@@ -1,0 +1,15 @@
+load base_nell_pra_parameters
+{
+  "graph": "load graphs/nell/kb_svo",
+  "split": "nell_with_negatives_at_test",
+  "output matrices": true,
+  "pra parameters": {
+    "features": {
+      "path follower": {
+        "matrix accept policy": "delete",
+        "matrix accept policy: training": "all-targets",
+        "matrix accept policy: test": "paired-targets-only"
+      }
+    }
+  }
+}

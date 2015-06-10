@@ -1,0 +1,26 @@
+load new_feature_experiment_base
+{
+  "split": "nell_with_negatives",
+  "pra parameters": {
+    "mode": "learn models",
+    "features": {
+      "path finder": {
+        
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "paired-targets-only"
+      }
+    }
+    "learning": {
+      "l1 weight": 0.5,
+      "l2 weight": 1.0
+    }
+  }
+}

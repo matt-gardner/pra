@@ -73,7 +73,7 @@ public abstract class BaseEdgeSequencePathType implements PathType {
   }
 
   @Override
-  public String encodeAsHumanReadableString(Dictionary edgeDict) {
+  public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict) {
     return stringDescription(edgeDict);
   }
 

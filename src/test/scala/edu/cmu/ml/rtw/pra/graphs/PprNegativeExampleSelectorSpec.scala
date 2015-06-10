@@ -21,7 +21,7 @@ import org.json4s.native.JsonMethods._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val dataset = new Dataset(Seq(Instance(1, 2, true)))
+  val dataset = new Dataset(Seq(new Instance(1, 2, true, null)))
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, "", 1) {
@@ -34,9 +34,18 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val withNegatives = selector.selectNegativeExamples(dataset, Set(), Set())
-    withNegatives.getPositiveInstances should be(Seq(Instance(1, 2, true)))
-    withNegatives.getNegativeInstances should be(Seq(Instance(1, 1, false), Instance(2, 2, false),
-      Instance(3, 3, false)))
+    withNegatives.getPositiveInstances should be(dataset.getPositiveInstances)
+    val negativeInstances = withNegatives.getNegativeInstances
+    negativeInstances.size should be(3)
+    negativeInstances(0).source should be(1)
+    negativeInstances(0).target should be(1)
+    negativeInstances(0).isPositive should be(false)
+    negativeInstances(1).source should be(2)
+    negativeInstances(1).target should be(2)
+    negativeInstances(1).isPositive should be(false)
+    negativeInstances(2).source should be(3)
+    negativeInstances(2).target should be(3)
+    negativeInstances(2).isPositive should be(false)
   }
 
   "sampleByPrr" should "get enough negatives per positive" in {
@@ -150,7 +159,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   }
 
   "computePersonalizedPageRank" should "actually work..." in {
-    val selector = new PprNegativeExampleSelector(params, "src/test/resources/edges.tsv", 1)
+    val selector = new PprNegativeExampleSelector(params, "src/test/resources/graph_chi/edges.tsv", 1)
     val pprValues = selector.computePersonalizedPageRank(dataset, Set(4, 7, 10), Set(3, 5))
     pprValues(1).size should be >= 2
     pprValues(1)(4) should be > pprValues(1)(7)

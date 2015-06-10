@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.experiments
 import java.io.FileWriter
 
 import edu.cmu.ml.rtw.pra.config.JsonHelper
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -57,10 +57,7 @@ class SplitCreator(
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val node_dict = new Dictionary()
-    node_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "node_dict.tsv"))
-    val edge_dict = new Dictionary()
-    edge_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "edge_dict.tsv"))
+    val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file).asScala else null
@@ -76,19 +73,18 @@ class SplitCreator(
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
       val relation_file = s"${relationMetadata}relations/${fixed}"
-      val config = new PraConfig.Builder().setNodeDictionary(node_dict).noChecks().build()
-      val all_instances = Dataset.fromFile(relation_file, config, fileUtil)
+      val all_instances = Dataset.fromFile(relation_file, Some(graph), fileUtil)
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {
-        addNegativeExamples(all_instances, relation, domains.toMap, ranges.toMap, node_dict)
+        addNegativeExamples(all_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       }
       println("Splitting data")
       val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", training.instancesToStrings(node_dict).asJava)
-      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", testing.instancesToStrings(node_dict).asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", training.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", testing.instancesToStrings.asJava)
     }
     fileUtil.deleteFile(inProgressFile)
   }

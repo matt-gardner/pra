@@ -1,8 +1,0 @@
-load default_pra_parameters
-{
-  "graph": {
-    "name": "synthetic/hard",
-    "relation sets": ["load relation_sets/synthetic/hard"]
-  },
-  "split": "synthetic/hard"
-}

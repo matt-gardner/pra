@@ -8,6 +8,8 @@ import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.graphs.Graph
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Index
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -39,26 +41,23 @@ class BfsPathFinder(
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
   var results: Map[Instance, Subgraph] = null
+  // TODO(matt): allow for configuring this.  On small instance-specific graphs, you might want to
+  // lexicalize the nodes in the graph.
   val factory = new BasicPathTypeFactory
-  val pathDict = new Index[PathType](factory)
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
-    results = runBfs(data, config.unallowedEdges.asScala.map(_.toInt).toSet)
+    results = runBfs(data, config.unallowedEdges.map(_.toInt).toSet)
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
     throw new NotImplementedError
   }
 
-  override def getPathCountMap(): JavaMap[Pair[Integer, Integer], JavaMap[PathType, Integer]] = {
+  override def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]] = {
     throw new NotImplementedError
   }
 
-  override def getLocalSubgraphs() = {
-    results.map(entry => {
-      (Pair.makePair[Integer, Integer](entry._1.source, entry._1.target) -> entry._2)
-    }).asJava
-  }
+  override def getLocalSubgraphs() = results.asJava
 
   override def finished() { }
 
@@ -67,7 +66,10 @@ class BfsPathFinder(
     val instances = data.instances
     // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
     // the data is using a shared graph.
-    data.getGraphForInstance(instances(0))
+    instances(0).graph match {
+      case onDisk: GraphOnDisk => { onDisk.entries.size }
+      case inMemory: GraphInMemory => {}
+    }
     // Note that we're doing two BFS searches for each instance - one from the source, and one from
     // the target.  But that's extra work!, you might say, because if there are duplicate sources
     // or targets across instances, we should only have to do the BFS once!  That's true, unless
@@ -76,12 +78,13 @@ class BfsPathFinder(
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
     instances.par.map(instance => {
-      val graph = data.getGraphForInstance(instance)
+      val pathDict = new Index[PathType](factory)
+      val graph = instance.graph
       val source = instance.source
       val target = instance.target
-      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges)
+      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, pathDict)
       val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
-      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges)
+      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, pathDict)
       val oneSidedTarget = reKeyBfsResults(target, targetSubgraph)
       val intersection = sourceSubgraph.keys.toSet.intersect(targetSubgraph.keys.toSet)
       val twoSided = intersection.flatMap(node => {
@@ -118,7 +121,12 @@ class BfsPathFinder(
     rekeyed.mapValues(_.toSet).toMap
   }
 
-  def bfsFromNode(graph: Graph, source: Int, target: Int, unallowedRelations: Set[Int]) = {
+  def bfsFromNode(
+      graph: Graph,
+      source: Int,
+      target: Int,
+      unallowedRelations: Set[Int],
+      pathDict: Index[PathType]) = {
     var currentNodes = Map((source -> Set(pathDict.getIndex(factory.emptyPathType))))
     val results = new mutable.HashMap[Int, mutable.HashSet[Int]]
     for (i <- 1 to numSteps) {
@@ -136,7 +144,7 @@ class BfsPathFinder(
             inEdges.foreach(nextNode => {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
-                  val newPathType = addToPathType(pathType, relation, true)
+                  val newPathType = addToPathType(pathType, relation, true, pathDict)
                   results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   newPathType
@@ -146,7 +154,7 @@ class BfsPathFinder(
             outEdges.foreach(nextNode => {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 pathTypes.foreach(pathType => {
-                  val newPathType = addToPathType(pathType, relation, false)
+                  val newPathType = addToPathType(pathType, relation, false, pathDict)
                   results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newPathType)
                   newPathType
@@ -171,7 +179,7 @@ class BfsPathFinder(
       false
   }
 
-  def addToPathType(pathType: Int, relation: Int, isReverse: Boolean): Int = {
+  def addToPathType(pathType: Int, relation: Int, isReverse: Boolean, pathDict: Index[PathType]): Int = {
     try {
       val prevString = pathDict.getKey(pathType).encodeAsString()
       val newString = if (isReverse) prevString + "_" + relation + "-" else prevString + relation + "-"

@@ -8,9 +8,10 @@ import scala.util.Random
 
 import breeze.linalg._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -74,8 +75,8 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   def checkMatrixRow(matrix_row: MatrixRow, expectedFeatures: Map[Int, Double]) {
-    matrix_row.pathTypes.toSet should be (expectedFeatures.keySet)
-    for (feature <- matrix_row.pathTypes zip matrix_row.values) {
+    matrix_row.featureTypes.toSet should be (expectedFeatures.keySet)
+    for (feature <- matrix_row.featureTypes zip matrix_row.values) {
       feature._2 should be (expectedFeatures(feature._1))
     }
   }
@@ -84,27 +85,27 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     val f = new FakeFileUtil()
     f.addFileToBeRead("/r_matrix.tsv", rMatrixFile)
     f.addFileToBeRead("a_matrix.tsv", aMatrixFile)
+    f.addFileToBeRead("/graph/node_dict.tsv", "1\tnode 1\n2\tnode 2\n3\tnode 3\n")
+    f.addFileToBeRead("/graph/edge_dict.tsv", "1\tRelation 1\n2\tRelation 2\n")
     f
   }
 
   lazy val creator = {
-    val config = new PraConfig.Builder().noChecks().build()
-    config.edgeDict.getIndex("Relation 1")
-    config.edgeDict.getIndex("Relation 2")
-    config.nodeDict.getIndex("node 1")
-    config.nodeDict.getIndex("node 2")
-    config.nodeDict.getIndex("node 3")
+    val graph = new GraphOnDisk("/graph/", fileUtil)
+    val config = new PraConfigBuilder().setGraph(graph).setNoChecks().build()
     val negativesPerSource = 20
     new RescalMatrixPathFollower(
       config,
       path_types,
       "",
-      new Dataset(Seq(Instance(1, 1, true), Instance(2, 1, true), Instance(3, 1, true))),
+      new Dataset(Seq(new Instance(1, 1, true, graph), new Instance(2, 1, true, graph),
+        new Instance(3, 1, true, graph))),
       negativesPerSource,
       fileUtil)
   }
 
   "node_vectors" should "be constructed correctly" in {
+    println(creator.node_vectors)
     creator.node_vectors.size should be(3)
     creator.node_vectors(1) should be(node_vectors(1))
     creator.node_vectors(2) should be(node_vectors(2))
