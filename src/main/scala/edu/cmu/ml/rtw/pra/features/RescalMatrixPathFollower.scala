@@ -27,6 +27,7 @@ class RescalMatrixPathFollower(
     val rescalDir: String,
     data: Dataset,
     val negativesPerSource: Int,
+    val matrixAcceptPolicy: MatrixRowPolicy,
     fileUtil: FileUtil = new FileUtil) extends PathFollower {
 
   val allowedTargets =
@@ -38,7 +39,11 @@ class RescalMatrixPathFollower(
   override def execute = {}
   override def shutDown = {}
   override def usesGraphChi = false
-  override def getFeatureMatrix = getFeatureMatrix(data.getAllSources, allowedTargets, false)
+  override def getFeatureMatrix = matrixAcceptPolicy match {
+    case MatrixRowPolicy.ALL_TARGETS => getFeatureMatrix(data.getAllSources, allowedTargets, false)
+    case MatrixRowPolicy.PAIRED_TARGETS_ONLY => getFeatureMatrix(data)
+    case MatrixRowPolicy.EVERYTHING => getFeatureMatrix(data.getAllSources, allowedTargets, false)
+  }
 
   val source_nodes = data.getAllSources
   val node_dict = config.nodeDict
@@ -160,6 +165,10 @@ class RescalMatrixPathFollower(
       }
     }
     m
+  }
+
+  def getFeatureMatrix(data: Dataset): FeatureMatrix = {
+    getFeatureMatrix(data.instances.map(instance => (instance.source, instance.target)))
   }
 
   def getFeatureMatrix(pairs: Seq[(Int, Int)]): FeatureMatrix = {

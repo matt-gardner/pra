@@ -5,6 +5,7 @@ logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger('Example Kinships')
 
 import numpy as np
+from collections import defaultdict
 from scipy.sparse import dok_matrix
 from rescal import rescal_als
 
@@ -134,14 +135,7 @@ def create_test_tensor():
 
     return T, node_dict, edge_dict
 
-
-if __name__ == '__main__':
-    graph_dir = '/home/mg1/pra/graphs/synthetic/small/easy/'
-    split_name = "synthetic/small/easy/"
-    split_dir = '/home/mg1/pra/splits/' + split_name
-    out_dir = '/home/mg1/pra/comparisons/rescal/synthetic/small/easy/'
-    results_dir = '/home/mg1/pra/results/synthetic/small/rescal_easy/'
-
+def run_rescal(graph_dir, out_dir):
     try_makedirs(out_dir)
 
     T, node_dict, edge_dict = read_tensor_from_graph(graph_dir)
@@ -175,7 +169,7 @@ if __name__ == '__main__':
             init='nvecs',
             conv=conv,
             lambda_A=lambda_A,
-            lambda_R=lambda_A,
+            lambda_R=lambda_R,
             maxIter=maxIter,
             )
 
@@ -208,7 +202,10 @@ if __name__ == '__main__':
             out.write('\n')
         out.write('\n')
     out.close()
+    return A, R, rank, edge_dict, node_dict
 
+
+def evaluate_results(A, R, rank, edge_dict, node_dict):
     print 'Computing output on test split'
     try_makedirs(results_dir)
     settings_file = open(results_dir + "settings.txt", 'w')
@@ -223,35 +220,60 @@ if __name__ == '__main__':
         test_instances = []
         for line in open(split_dir + relation + '/testing.tsv'):
             test_instances.append(line.strip().split('\t'))
+
         sources = list(set([node_dict.getIndex(x[0])-1 for x in test_instances]))
         sources.sort()
         S = np.zeros((len(sources), rank))
         for (i, source) in enumerate(sources):
             S[i, :] = A[source]
-        prediction_matrix = np.dot(np.dot(S, R_r), A.T)
+
+        targets = list(set([node_dict.getIndex(x[1])-1 for x in test_instances]))
+        targets.sort()
+        T = np.zeros((len(targets), rank))
+        for (i, target) in enumerate(targets):
+            T[i, :] = A[target]
+
+        prediction_matrix = np.dot(np.dot(S, R_r), T.T)
+        source_scores = defaultdict(list)
         for instance in test_instances:
             source_index = sources.index(node_dict.getIndex(instance[0]) - 1)
-            target_index = node_dict.getIndex(instance[1]) - 1
-            try:
-                preds = prediction_matrix[source_index, :]
-            except IndexError:
-                print instance, source_index, prediction_matrix.shape
-                raise
-            preds = [(x, i) for (i, x) in enumerate(preds)]
+            target_index = targets.index(node_dict.getIndex(instance[1]) - 1)
+            score = prediction_matrix[source_index, target_index]
+            if instance[2] == '1':
+                correct = True
+            else:
+                correct = False
+            source_scores[source_index].append((score, target_index, correct))
+
+
+        for source_index in source_scores:
+            source = sources[source_index]
+            preds = source_scores[source_index]
             preds.sort(reverse=True)
-            for (value, target) in preds:
-                score_file.write(instance[0])
+            for (value, target_index, correct) in preds:
+                target = targets[target_index]
+                score_file.write(node_dict.getString(source + 1))
                 score_file.write("\t")
                 score_file.write(node_dict.getString(target + 1))
                 score_file.write("\t")
                 score_file.write(str(value))
                 score_file.write("\t")
-                if (target == target_index):
+                if (correct):
                     score_file.write("*\n")
                     break
                 score_file.write("\n")
             score_file.write("\n")
         score_file.close()
+
+
+if __name__ == '__main__':
+    graph_dir = '/home/mg1/pra/graphs/synthetic/small/less_easy/'
+    split_name = "synthetic/small/less_easy/"
+    split_dir = '/home/mg1/pra/splits/' + split_name
+    out_dir = '/home/mg1/pra/comparisons/rescal/synthetic/small/less_easy/'
+    results_dir = '/home/mg1/pra/results/rescal/less_easy/rescal/'
+    A, R, rank, edge_dict, node_dict = run_rescal(graph_dir, out_dir)
+    evaluate_results(A, R, rank, edge_dict, node_dict)
 
 
 
