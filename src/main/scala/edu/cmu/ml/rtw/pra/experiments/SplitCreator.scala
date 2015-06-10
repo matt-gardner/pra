@@ -97,10 +97,7 @@ class SplitCreator(
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val node_dict = new Dictionary()
-    node_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "node_dict.tsv"))
-    val edge_dict = new Dictionary()
-    edge_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "edge_dict.tsv"))
+    val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file).asScala else null
@@ -119,17 +116,16 @@ class SplitCreator(
       val fixed = relation.replace("/", "_")
       val training_file = s"${fromSplitDir}${fixed}/training.tsv"
       val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
-      val config = new PraConfig.Builder().setNodeDictionary(node_dict).noChecks().build()
-      val training_instances = Dataset.fromFile(training_file, config, fileUtil)
+      val training_instances = Dataset.fromFile(training_file, Some(graph), fileUtil)
       val new_training_instances =
-        addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, node_dict)
-      val testing_instances = Dataset.fromFile(testing_file, config, fileUtil)
+        addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+      val testing_instances = Dataset.fromFile(testing_file, Some(graph), fileUtil)
       val new_testing_instances =
-        addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, node_dict)
+        addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings(node_dict).asJava)
-      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings(node_dict).asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings.asJava)
     }
     fileUtil.deleteFile(inProgressFile)
   }

@@ -101,6 +101,7 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       new Dataset(Seq(new Instance(1, 1, true, graph), new Instance(2, 1, true, graph),
         new Instance(3, 1, true, graph))),
       negativesPerSource,
+      MatrixRowPolicy.PAIRED_TARGETS_ONLY,
       fileUtil)
   }
 

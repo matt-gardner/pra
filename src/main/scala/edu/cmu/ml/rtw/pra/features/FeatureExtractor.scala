@@ -24,7 +24,7 @@ trait FeatureExtractor {
 class PraFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.edgeDict
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
@@ -39,7 +39,7 @@ class PraFeatureExtractor extends FeatureExtractor {
 class OneSidedFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.edgeDict
     subgraph.asScala.flatMap(entry => {
       entry._2.asScala.map(nodePair => {
         val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
@@ -65,7 +65,7 @@ class OneSidedFeatureExtractor extends FeatureExtractor {
 class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.nodeDict
+    val edgeDict = instance.graph.edgeDict
     subgraph.asScala.flatMap(entry => {
       val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == instance.source)
