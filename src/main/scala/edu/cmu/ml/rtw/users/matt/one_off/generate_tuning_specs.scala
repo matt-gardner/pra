@@ -59,6 +59,31 @@ object generate_tuning_specs {
     |}""".stripMargin
   }
 
+  def fillRescalTemplate(params: (Double, Double)): String = {
+    s"""load default_pra_parameters
+    |{
+    |  "graph": {
+    |  "name": "synthetic/small/less_easy",
+    |  "relation sets": ["load relation_sets/synthetic/small/less_easy"]
+    |  },
+    |  "split": "synthetic/small/less_easy"
+    |  "pra parameters": {
+    |    "features": {
+    |      "path follower": {
+    |        "walks per path": "delete",
+    |        "matrix accept policy": "paired-targets-only",
+    |        "name": "rescal matrix multiplication",
+    |        "rescal dir": "/home/mg1/pra/comparisons/rescal/synthetic/small/less_easy/"
+    |      }
+    |    }
+    |    "learning": {
+    |      "l1 weight": ${params._1},
+    |      "l2 weight": ${params._2}
+    |    }
+    |  }
+    |}""".stripMargin
+  }
+
   def createBfsTuningSpecs() {
     val base = "/home/mg1/pra/experiment_specs/nell/new_features/bfs/tuning/"
     fileUtil.mkdirs(base)
@@ -129,7 +154,23 @@ object generate_tuning_specs {
     }
   }
 
+  def createRescalTuningSpecs() {
+    val base = "/home/mg1/pra/experiment_specs/rescal/less_easy/"
+    fileUtil.mkdirs(base)
+    val l1Values = Seq(0.0, 0.05)
+    val l2Values = Seq(0.0, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0)
+
+    for (l1Value <- l1Values;
+         l2Value <- l2Values) {
+      val contents = fillRescalTemplate((l1Value, l2Value))
+      val filename = s"rescal_pra_l1-${l1Value}_l2-${l2Value}.json"
+      val writer = fileUtil.getFileWriter(base + filename)
+      writer.write(contents)
+      writer.close()
+    }
+  }
+
   def main(args: Array[String]) {
-    createStandardTuningSpecs()
+    createRescalTuningSpecs()
   }
 }

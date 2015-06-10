@@ -134,6 +134,8 @@ class PraFeatureGenerator(
     PathFinderCreator.create(params \ "path finder", config, praBase)
   }
 
+  // TODO(matt): this code should move to a PathFollower static object, and most of the params
+  // should be passed directly to be handled by the PathFollower subclasses.
   def createPathFollower(
       followerParams: JValue,
       pathTypes: Seq[PathType],
@@ -182,13 +184,14 @@ class PraFeatureGenerator(
         normalize,
         fileUtil)
     } else if (name.equals("rescal matrix multiplication")) {
-      val followerParamKeys = Seq("name", "rescal dir", "negatives per source")
+      val followerParamKeys = Seq("name", "rescal dir", "negatives per source", "matrix accept policy")
       JsonHelper.ensureNoExtras(
         followerParams, "pra parameters -> features -> path follower", followerParamKeys)
       val dir = (followerParams \ "rescal dir").extract[String]
       val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
+      val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
       val negativesPerSource = JsonHelper.extractWithDefault(followerParams, "negatives per source", 15)
-      new RescalMatrixPathFollower(config, pathTypes, rescal_dir, data, negativesPerSource, fileUtil)
+      new RescalMatrixPathFollower(config, pathTypes, rescal_dir, data, negativesPerSource, acceptPolicy, fileUtil)
     } else {
       throw new IllegalStateException("Unrecognized path follower")
     }

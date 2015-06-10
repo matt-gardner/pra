@@ -2,8 +2,9 @@ package edu.cmu.ml.rtw.users.matt.one_off
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollower
+import edu.cmu.ml.rtw.pra.features.MatrixRowPolicy
 import edu.cmu.ml.rtw.pra.features.PathType
+import edu.cmu.ml.rtw.pra.features.RescalMatrixPathFollower
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -24,7 +25,8 @@ object test_vector_similarity {
       Seq[PathType](),
       rescal_dir,
       new Dataset(Seq()),
-      0)
+      0,
+      MatrixRowPolicy.PAIRED_TARGETS_ONLY)
 
     val edge_index = edge_dict.getIndex("base_01_training_01")
     val rescal_matrices = follower.getRescalMatrices

@@ -99,6 +99,12 @@ public class FileUtil {
     writer.close();
   }
 
+  public void writeContentsToFile(String filename, String contents) throws IOException {
+    FileWriter writer = getFileWriter(filename);
+    writer.write(contents);
+    writer.close();
+  }
+
   public BufferedReader getBZ2BufferedReader(String filename) throws IOException {
     return new BufferedReader(new InputStreamReader(
         new BZip2CompressorInputStream(new FileInputStream(filename))));

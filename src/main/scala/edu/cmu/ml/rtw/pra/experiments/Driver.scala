@@ -75,10 +75,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val start_time = System.currentTimeMillis
 
     val baseBuilder = new PraConfig.Builder()
-    var writer = fileUtil.getFileWriter(outputBase + "settings.txt")
-    writer.write("Parameters used:\n")
+    var writer = fileUtil.getFileWriter(outputBase + "params.json")
     writer.write(pretty(render(params)))
-    writer.write("\n")
     writer.close()
 
     // This takes care of setting everything in the config builder that is consistent across
@@ -120,7 +118,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       var seconds = (millis / 1000).toInt
       val minutes = seconds / 60
       seconds = seconds - minutes * 60
-      writer = fileUtil.getFileWriter(outputBase + "settings.txt", true)  // true -> append to the file.
+      writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append to the file.
       writer.write(s"Time for relation $relation: $minutes minutes and $seconds seconds\n")
       writer.close()
     }
@@ -129,7 +127,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     var seconds = (millis / 1000).toInt
     val minutes = seconds / 60
     seconds = seconds - minutes * 60
-    writer = fileUtil.getFileWriter(outputBase + "settings.txt", true)  // true -> append to the file.
+    writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append to the file.
     writer.write("PRA appears to have finished all relations successfully\n")
     writer.write(s"Total time: $minutes minutes and $seconds seconds\n")
     writer.close()
@@ -404,6 +402,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val in_progress_file = SplitCreator.inProgressFile(split_dir)
       val param_file = SplitCreator.paramFile(split_dir)
       if (fileUtil.fileExists(split_dir)) {
+        println(s"Split found in ${split_dir}")
         fileUtil.blockOnFileDeletion(in_progress_file)
         if (fileUtil.fileExists(param_file)) {
           val current_params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
@@ -415,6 +414,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           }
         }
       } else {
+        println(s"Split not found at ${split_dir}; creating it...")
         val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
         creator.createSplit()
       }
@@ -493,7 +493,7 @@ object Driver {
       val allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, builder.nodeDict)
       builder.setAllowedTargets(allowedTargets)
     } else {
-      val writer = fileUtil.getFileWriter(outputBase + "settings.txt", true)  // true -> append
+      val writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append
       writer.write("No range file found! I hope your accept policy is as you want it...\n")
       println("No range file found!")
       writer.close()

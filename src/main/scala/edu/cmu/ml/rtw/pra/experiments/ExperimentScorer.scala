@@ -8,10 +8,15 @@ import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
 import scalax.io.Resource
 
+import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
+import org.json4s._
+import org.json4s.native.JsonMethods.{pretty,render,parse}
+
 object ExperimentScorer {
+  implicit val formats = DefaultFormats
   val fileUtil = new FileUtil
 
   val DATASET_RELATION = "__DATASET__"
@@ -69,8 +74,9 @@ object ExperimentScorer {
       significanceTests: List[String],
       relationMetrics: List[String]) {
     val results_dir = pra_base + RESULTS_DIR
-    val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir), """settings.txt""".r)
-      .map(_.getParentFile)
+    val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir),
+      """settings.txt|params.json|log.txt""".r)
+      .map(_.getParentFile).toSet
       .filter(shouldKeepFile(experiment_filters))
 
     var greatest_common_path = experiment_dirs.last.getParentFile
@@ -154,12 +160,46 @@ object ExperimentScorer {
     }
   }
 
-  def readSplitDirFromSettings(pra_base: String, settings_file: String) = {
-    val split = fileUtil.readLinesFromFile(settings_file).asScala
-      .filter(_.contains("\"split\":")).map(_.split(":\"")(1).split("\"")(0)).toList(0)
-    split match {
-      case path if path.startsWith("/") => path
-      case name => s"$pra_base/splits/$name/"
+  def getExperimentParams(experiment_dir: String): Option[JValue] = {
+    val param_file = s"$experiment_dir/params.json"
+    val settings_file = s"$experiment_dir/settings.txt"
+    if (fileUtil.fileExists(param_file)) {
+      val params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
+      Some(params)
+    } else if (fileUtil.fileExists(settings_file)) {
+      val lines = fileUtil.readLinesFromFile(settings_file).asScala
+      val start = lines.indexOf("{")
+      val end = lines.indexOf("}") + 1
+      val param_str = lines.slice(start, end).mkString("\n")
+      val params = parse(param_str)
+      Some(params)
+    } else {
+      None
+    }
+  }
+
+  def findSplitDir(pra_base: String, experiment_dir: String): String = {
+    val params = getExperimentParams(experiment_dir)
+    params match {
+      case Some(p) => {
+        // Newer files should all go through this code path.
+        (p \ "split") match {
+          case JString(path) if path.startsWith("/") => path
+          case JString(name) => s"$pra_base/splits/$name/"
+          case jval => pra_base + "/splits/" + (jval \ "name").extract[String] + "/"
+        }
+      }
+      case None => {
+        // Some older files were formatted in a way that should hopefully make this work...  This
+        // is attempting to allow for some backwards compatibility.
+        val settings_file = s"$experiment_dir/settings.txt"
+        val split = fileUtil.readLinesFromFile(settings_file).asScala
+          .filter(_.contains("\"split\":")).map(_.split(":\"")(1).split("\"")(0)).toList(0)
+        split match {
+          case path if path.startsWith("/") => path
+          case name => s"$pra_base/splits/$name/"
+        }
+      }
     }
   }
 
@@ -172,9 +212,7 @@ object ExperimentScorer {
     println(s"Getting metrics for experiment $experiment_dir")
     val metrics = EmptyRelationMetricsWithDefaults
     // Getting the split dir and relations first.
-    val settings_file = s"$experiment_dir/settings.txt"
-    if (!(new File(settings_file).exists())) return metrics
-    val split_dir = readSplitDirFromSettings(pra_base, settings_file)
+    val split_dir = findSplitDir(pra_base, experiment_dir)
     val relations_to_run = s"${split_dir}relations_to_run.tsv"
     val relations = fileUtil.readLinesFromFile(relations_to_run).asScala
 

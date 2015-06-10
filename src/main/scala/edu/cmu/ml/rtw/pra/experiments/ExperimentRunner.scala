@@ -6,6 +6,8 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import java.io.File
 
+import scala.util.Random
+
 import org.json4s.{JNothing,JString}
 
 object ExperimentRunner {
@@ -37,10 +39,12 @@ object ExperimentRunner {
   }
 
   def runPra(pra_base: String, experiment_filters: Seq[String]) {
+    val random = new Random
     val experiment_spec_dir = s"${pra_base}/experiment_specs/"
     val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
-    experiment_specs.filter(shouldKeepFile(experiment_filters))
-      .map(runPraFromSpec(pra_base) _)
+    val filtered = experiment_specs.filter(shouldKeepFile(experiment_filters))
+    val shuffled = random.shuffle(filtered)
+    shuffled.map(runPraFromSpec(pra_base) _)
   }
 
   def runPraFromSpec(pra_base: String)(spec_file: File) {
