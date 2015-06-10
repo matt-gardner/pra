@@ -20,24 +20,37 @@ class SplitCreator(
     splitDir: String,
     fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
+  // TODO(matt): now that I've added another type, I should clean this up a bit...  And the graph
+  // parameter should go under negative instances.
   val paramKeys = Seq("name", "type", "relation metadata", "graph", "percent training",
-    "negative instances", "relations")
+    "negative instances", "from split", "relations")
   JsonHelper.ensureNoExtras(params, "split", paramKeys)
 
   val inProgressFile = SplitCreator.inProgressFile(splitDir)
   val paramFile = SplitCreator.paramFile(splitDir)
-  val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split")
+  val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split from relation metadata")
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
   val percentTraining = (params \ "percent training").extract[Double]
-  val relations = (params \ "relations").extract[List[String]]
   val negativeExampleSelector = createNegativeExampleSelector(params \ "negative instances")
 
   def createSplit() {
-    if (splitType != "fixed split") throw new NotImplementedError()
+    splitType match {
+      case "fixed split from relation metadata" => {
+        createSplitFromMetadata()
+      }
+      case "add negatives to split" => {
+        addNegativeToSplit()
+      }
+      case other => throw new IllegalStateException("Unrecognized split type!")
+    }
+  }
+
+  def createSplitFromMetadata() {
+    println(s"Creating split at $splitDir")
+    val relations = (params \ "relations").extract[List[String]]
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
       + "relations to run!")
-    println(s"Creating split at $splitDir")
     fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)
@@ -80,6 +93,51 @@ class SplitCreator(
     fileUtil.deleteFile(inProgressFile)
   }
 
+  def addNegativeToSplit() {
+    println(s"Creating split at $splitDir")
+    fileUtil.mkdirOrDie(splitDir)
+    fileUtil.touchFile(inProgressFile)
+    val params_out = fileUtil.getFileWriter(paramFile)
+    params_out.write(pretty(render(params)))
+    params_out.close
+
+    val node_dict = new Dictionary()
+    node_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "node_dict.tsv"))
+    val edge_dict = new Dictionary()
+    edge_dict.setFromReader(fileUtil.getBufferedReader(graphDir + "edge_dict.tsv"))
+
+    val range_file = s"${relationMetadata}ranges.tsv"
+    val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file).asScala else null
+    val domain_file = s"${relationMetadata}domains.tsv"
+    val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file).asScala else null
+
+    val fromSplitDir = praBase + "splits/" + (params \ "from split").extract[String] + "/"
+    val relations = fileUtil.readLinesFromFile(fromSplitDir + "relations_to_run.tsv").asScala
+    val relations_to_run = fileUtil.getFileWriter(s"${splitDir}relations_to_run.tsv")
+    for (relation <- relations) {
+      relations_to_run.write(s"${relation}\n")
+    }
+    relations_to_run.close()
+
+    for (relation <- relations) {
+      val fixed = relation.replace("/", "_")
+      val training_file = s"${fromSplitDir}${fixed}/training.tsv"
+      val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
+      val config = new PraConfig.Builder().setNodeDictionary(node_dict).noChecks().build()
+      val training_instances = Dataset.fromFile(training_file, config, fileUtil)
+      val new_training_instances =
+        addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, node_dict)
+      val testing_instances = Dataset.fromFile(testing_file, config, fileUtil)
+      val new_testing_instances =
+        addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, node_dict)
+      val rel_dir = s"${splitDir}${fixed}/"
+      fileUtil.mkdirs(rel_dir)
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings(node_dict).asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings(node_dict).asJava)
+    }
+    fileUtil.deleteFile(inProgressFile)
+  }
+
   def addNegativeExamples(
       data: Dataset,
       relation: String,
@@ -88,12 +146,14 @@ class SplitCreator(
       node_dict: Dictionary): Dataset = {
     val domain = if (domains == null) null else domains(relation)
     val allowedSources = if (domain == null) null else {
-      val domain_file = s"${relationMetadata}category_instances/${domain}"
+      val fixed = domain.replace("/", "_")
+      val domain_file = s"${relationMetadata}category_instances/${fixed}"
       fileUtil.readIntegerSetFromFile(domain_file, node_dict).asScala.map(_.toInt).toSet
     }
     val range = if (ranges == null) null else ranges(relation)
     val allowedTargets = if (range == null) null else {
-      val range_file = s"${relationMetadata}category_instances/${range}"
+      val fixed = range.replace("/", "_")
+      val range_file = s"${relationMetadata}category_instances/${fixed}"
       fileUtil.readIntegerSetFromFile(range_file, node_dict).asScala.map(_.toInt).toSet
     }
     negativeExampleSelector.selectNegativeExamples(data, allowedSources, allowedTargets)
