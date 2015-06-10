@@ -102,7 +102,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
-      Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
+      if (metadataDirectory != null) {
+        Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
+      }
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
@@ -244,6 +246,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
     // just use the path as is.  Otherwise, we have some processing to do.
     params match {
+      case JNothing => {}
       case JString(path) if (path.startsWith("/")) => {
         if (!fileUtil.fileExists(path)) {
           throw new IllegalStateException("Specified path to graph does not exist!")
@@ -425,6 +428,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
   def getGraphDirectory(params: JValue): String = {
     (params \ "graph") match {
+      case JNothing => null
       case JString(path) if (path.startsWith("/")) => path
       case JString(name) => praBase + "/graphs/" + name + "/"
       case jval => praBase + "/graphs/" + (jval \ "name").extract[String] + "/"
@@ -438,9 +442,11 @@ object Driver {
       graphDirectory: String,
       config: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil) {
-    val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-    val graph = new GraphOnDisk(graphDirectory)
-    config.setGraph(graph)
+    if (graphDirectory != null) {
+      val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
+      val graph = new GraphOnDisk(graphDirectory)
+      config.setGraph(graph)
+    }
   }
 
   /**

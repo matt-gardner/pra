@@ -125,7 +125,6 @@ object Dataset {
     val graphEdges = graphString.split(" ### ")
     for (edge <- graphEdges) {
       val fields = edge.split("\\^,\\^")
-      println(fields.toList)
       val source = fields(0)
       val target = fields(1)
       val relation = fields(2)

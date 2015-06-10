@@ -128,7 +128,7 @@ class PraConfigBuilder(config: PraConfig = null) {
   var trainingData: Dataset = if (config != null) config.trainingData else null
   var testingData: Dataset = if (config != null) config.testingData else null
   var allowedTargets: Set[Int] = if (config != null) config.allowedTargets else null
-  var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else null
+  var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else Seq()
   var relationInverses: Map[Int, Int] = if (config != null) config.relationInverses else null
   var outputBase: String = if (config != null) config.outputBase else null
   var outputMatrices: Boolean = if (config != null) config.outputMatrices else false
