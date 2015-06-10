@@ -24,7 +24,6 @@ object multilingual_svo_experiments {
     "/music/album/artist",
     "/film/film/country",
     "/location/administrative_division/country",
-    "/cvg/computer_videogame/versions",
     "/book/written_work/subjects",
     "/tv/tv_program/country_of_origin",
     "/biology/organism_classification/higher_classification",
@@ -33,10 +32,12 @@ object multilingual_svo_experiments {
     "/people/ethnicity/languages_spoken"
   )
   val split_base = "/home/mg1/pra/splits/multilingual/all_languages/"
+  val better_split_base = "/home/mg1/pra/splits/multilingual/better/"
   val french_split_base = "/home/mg1/pra/splits/multilingual/french_test/"
   val percent_training = .8
+  val experiment_spec_base = "/home/mg1/pra/experiment_specs/multilingual/better/"
 
-  def NOT_main(args: Array[String]) {
+  def main(args: Array[String]) {
     //println("Reformatting SVO data")
     //reformat_all_languages()
     //println("Finding aliases in the SVO data")
@@ -49,10 +50,11 @@ object multilingual_svo_experiments {
     //create_split()
     //create_french_test_split()
 
-    create_relation_sets()
+    //create_relation_sets()
 
     //filter_aliases()
     //count_aliases()
+    create_better_split()
   }
 
   def reformat_all_languages() {
@@ -279,6 +281,143 @@ object multilingual_svo_experiments {
     })
   }
 
+  def create_better_split() {
+    val random = new scala.util.Random()
+    val language_instances = languages.par.map(language => {
+      val relation_instances = relations.map(relation => {
+        val fixed = relation.replace("/", "_")
+        val mid_file = s"${base}${language}_mids/${fixed}"
+        if (fileUtil.fileExists(mid_file)) {
+          val instances = fileUtil.readLinesFromFile(mid_file).asScala
+          val shuffled = random.shuffle(instances.toList).take(2000)
+          val num_training = (shuffled.size * percent_training).toInt
+          val training = shuffled.take(num_training)
+          val testing = shuffled.drop(num_training)
+          (relation -> (training, testing))
+        }
+        else {
+          (relation -> (Seq(), Seq()))
+        }
+      }).toMap
+      (language -> relation_instances)
+    }).seq.toMap
+    val all_training = relations.par.map(relation => {
+      val instances = languages.flatMap(language => {
+        language_instances(language)(relation)._1
+      })
+      (relation -> instances)
+    }).toMap
+    language_instances.par.foreach(entry => {
+      val language = entry._1
+      val single_language_split_base = better_split_base + language + "/single_language/"
+      fileUtil.mkdirs(single_language_split_base)
+      fileUtil.writeLinesToFile(s"${single_language_split_base}relations_to_run.tsv", relations.asJava)
+      entry._2.foreach(relation_instances => {
+        val relation = relation_instances._1
+        val training = relation_instances._2._1
+        val testing = relation_instances._2._2
+        val relation_dir = single_language_split_base + relation.replace("/", "_") + "/"
+        fileUtil.mkdirs(relation_dir)
+        fileUtil.writeLinesToFile(s"${relation_dir}training.tsv", training.asJava)
+        fileUtil.writeLinesToFile(s"${relation_dir}testing.tsv", testing.asJava)
+      })
+      create_spec_file("svo", language, "single_language")
+      create_spec_file("kb", language, "single_language")
+      create_spec_file("kb_svo", language, "single_language")
+      create_spec_file("all_svo", language, "single_language")
+      create_spec_file("kb_all_svo", language, "single_language")
+      val all_language_split_base = better_split_base + language + "/all_languages/"
+      fileUtil.mkdirs(all_language_split_base)
+      fileUtil.writeLinesToFile(s"${all_language_split_base}relations_to_run.tsv", relations.asJava)
+      entry._2.foreach(relation_instances => {
+        val relation = relation_instances._1
+        val testing = relation_instances._2._2
+        val training = (all_training(relation).toSet -- testing).toList
+        val relation_dir = all_language_split_base + relation.replace("/", "_") + "/"
+        fileUtil.mkdirs(relation_dir)
+        fileUtil.writeLinesToFile(s"${relation_dir}training.tsv", training.asJava)
+        fileUtil.writeLinesToFile(s"${relation_dir}testing.tsv", testing.asJava)
+      })
+      create_spec_file("svo", language, "all_languages")
+      create_spec_file("kb", language, "all_languages")
+      create_spec_file("kb_svo", language, "all_languages")
+      create_spec_file("all_svo", language, "all_languages")
+      create_spec_file("kb_all_svo", language, "all_languages")
+    })
+  }
+
+  def get_language_relation_sets(language: String) = {
+    s""""load relation_sets/multilingual/${language}", "load relation_sets/multilingual/${language}_contains_alias""""
+  }
+
+  def get_all_language_relation_sets() = {
+    languages.map(get_language_relation_sets).mkString(",\n")
+  }
+
+  def get_split_spec(language: String, split_name: String) = {
+    s"""{
+    |    "name": "multilingual/better/$language/${split_name}_with_negatives",
+    |    "type": "add negatives to split",
+    |    "relation metadata": "freebase",
+    |    "graph": "multilingual/better/kb_all_svo",
+    |    "percent training": 0.8,
+    |    "from split": "multilingual/better/$language/${split_name}",
+    |    "negative instances": {
+    |       "negative to positive ratio": 4
+    |    }
+    |  }""".stripMargin
+  }
+
+  def create_spec_file(name: String, language: String, split: String) = {
+    val spec_file_dir = experiment_spec_base + language + "/" + split + "/"
+    fileUtil.mkdirs(spec_file_dir)
+    val spec_file_name = experiment_spec_base + language + "/" + split + "/" + name + ".json"
+    val relation_sets = name match {
+      case "kb" => "" // relation_sets isn't read in this case.
+      case "svo" => "\"load relation_sets/freebase/kb_aliases_only\",\n" + get_language_relation_sets(language)
+      case "kb_svo" => "\"load relation_sets/freebase/kb\",\n" + get_language_relation_sets(language)
+      case "all_svo" => "\"load relation_sets/freebase/kb_aliases_only\",\n" + get_all_language_relation_sets()
+      case "kb_all_svo" => "\"load relation_sets/freebase/kb\",\n" + get_all_language_relation_sets()
+    }
+    val graph_params = name match {
+      case "kb" => "\"freebase/kb\","
+      case all if all.contains("all") =>
+        s"""{
+        |    "name": "multilingual/better/$name",
+        |    "relation sets": [
+        |      $relation_sets
+        |    ],
+        |    "create matrices": false,
+        |    "deduplicateEdges": true
+        |  },""".stripMargin
+      case other => {
+        s"""{
+        |    "name": "multilingual/better/$language/$name",
+        |    "relation sets": [
+        |      $relation_sets
+        |    ],
+        |    "create matrices": false,
+        |    "deduplicateEdges": true
+        |  },""".stripMargin
+      }
+    }
+    val split_spec = get_split_spec(language, split)
+    val spec_contents = s"""load default_pra_parameters
+      |{
+      |  "graph": $graph_params
+      |  "relation metadata": "freebase",
+      |  "split": $split_spec,
+      |  "pra parameters": {
+      |    "features": {
+      |      "path follower": {
+      |        "matrix accept policy": "paired-targets-only"
+      |      }
+      |    }
+      |  }
+      |}""".stripMargin
+    fileUtil.writeContentsToFile(spec_file_name, spec_contents)
+  }
+
   def create_french_test_split() {
     val relation_not_french_instances = relations.par.map(relation => {
       val fixed = relation.replace("/", "_")
@@ -368,22 +507,22 @@ object multilingual_svo_experiments {
     val alias = fields.last
     if (stopWordAliases.contains(alias)) return false
     val np = fields(0)
-    val index = np.indexOf(alias)
-    if (index > 0 && np(index - 1) != ' ') return false
-    if (index + alias.size < np.size && np(index + alias.size) != ' ') return false
-    return true
+  val index = np.indexOf(alias)
+  if (index > 0 && np(index - 1) != ' ') return false
+  if (index + alias.size < np.size && np(index + alias.size) != ' ') return false
+  return true
   }
 
   def create_relation_sets() {
     val file_types = Seq(
       ("%s_contains_alias.json", "found_aliases_%s.tsv"),
-      ("%s.json", "%s_svo.tsv")
-      )
+    ("%s.json", "%s_svo.tsv")
+  )
     val relset_base = "/home/mg1/pra/param_files/relation_sets/multilingual/"
     val template = """{
       |  "relation file": "%s",
       |  "is kb": false
-      |}""".stripMargin
+    |}""".stripMargin
     for (language <- languages) {
       for (file_type <- file_types) {
         val relset_file = relset_base + file_type._1.format(language)
@@ -397,7 +536,7 @@ object multilingual_svo_experiments {
       |  "relation file": "%s",
       |  "is kb": false,
       |  "replace relations with": "@SVO@"
-      |}""".stripMargin
+    |}""".stripMargin
     for (language <- languages) {
       val file_type = ("%s_single_relation.json", "%s_svo.tsv")
       val relset_file = relset_base + file_type._1.format(language)
@@ -417,7 +556,7 @@ object multilingual_svo_experiments {
       "french-tagalog.txt",
       "indonesian-swahili.txt",
       "ru-zh.tsv"
-      )
+    )
     for (pair <- language_pairs) {
       val relset_file = relset_base + pair + ".json"
       val relation_file = translationBase + pair
