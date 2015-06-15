@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -34,6 +33,11 @@ public class FakePathTypeFactory implements PathTypeFactory {
     @Override
     public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget) {
         return new FakePathType(pathToSource.encodeAsString() + pathFromTarget.encodeAsString());
+    }
+
+    @Override
+    public PathType addToPathType(PathType pathToSource, int relation, int node, boolean reverse) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

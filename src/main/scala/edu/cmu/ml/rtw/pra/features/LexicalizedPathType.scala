@@ -1,17 +1,24 @@
 package edu.cmu.ml.rtw.pra.features
 
+import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 
 import java.util.Random
 
+import org.json4s._
+import org.json4s.native.JsonMethods._
+
 class LexicalizedPathType(
     val edgeTypes: Array[Int],
     val nodes: Array[Int],
-    val reverse: Array[Boolean]) extends PathType {
+    val reverse: Array[Boolean],
+    val params: JValue) extends PathType {
+  implicit val formats = DefaultFormats
+
   val numHops = edgeTypes.size
 
-  // TODO(matt): make this configurable somehow!  Probably by adding a parameter to the Factory.
-  val removeColon = true
+  val removeColon = JsonHelper.extractWithDefault(params, "remove colon", "filter")
+  val removeColonErrorMessage = "With remove colon: filter, second column must be KEEP or REMOVE"
 
   override def recommendedIters() = {
     throw new UnsupportedOperationException("LexicalizedPathTypes can't be followed at the moment")
@@ -59,10 +66,21 @@ class LexicalizedPathType(
           builder.append(nodes(i))
         } else {
           val nodeStr = nodeDict.getString(nodes(i))
-          if (removeColon) {
-            builder.append(nodeStr.split(":").last)
-          } else {
-            builder.append(nodeStr)
+          removeColon match {
+            case "no" => builder.append(nodeStr)
+            case "yes" => builder.append(nodeStr.split(":").last)
+            case "filter" => {
+              if (nodeStr.contains(":")) {
+                val parts = nodeStr.split(":")
+                parts(1) match {
+                  case "KEEP" => builder.append(parts.last)
+                  case "REMOVE" => { }
+                  case _ => throw new IllegalStateException(removeColonErrorMessage)
+                }
+              } else {
+                builder.append(nodeStr)
+              }
+            }
           }
         }
       }
@@ -106,7 +124,7 @@ class LexicalizedPathType(
   }
 }
 
-class LexicalizedPathTypeFactory extends PathTypeFactory {
+class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
 
   private def parseRelation(relation: String) = {
     if (relation(0) == '_') {
@@ -117,7 +135,7 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
   }
 
   override def emptyPathType() = {
-    new LexicalizedPathType(Array[Int](), Array[Int](), Array[Boolean]())
+    new LexicalizedPathType(Array[Int](), Array[Int](), Array[Boolean](), params)
   }
 
   override def fromString(string: String) = {
@@ -160,11 +178,11 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
         Seq(part.split("-")(0).toInt)
       }
     }).toArray
-    new LexicalizedPathType(edges, nodes, reverse)
+    new LexicalizedPathType(edges, nodes, reverse, params)
   }
 
   override def encode(path: Path) = {
-    Array(new LexicalizedPathType(path.getEdges, path.getNodes, path.getReverse))
+    Array(new LexicalizedPathType(path.getEdges, path.getNodes, path.getReverse, params))
   }
 
   override def addToPathType(pathType: PathType, relation: Int, node: Int, reverse: Boolean) = {
@@ -172,7 +190,7 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
     val edges = (path.edgeTypes.clone.toList :+ relation).toArray
     val nodes = (path.nodes.clone.toList :+ node).toArray
     val reverses = (path.reverse.clone.toList :+ reverse).toArray
-    new LexicalizedPathType(edges, nodes, reverses)
+    new LexicalizedPathType(edges, nodes, reverses, params)
   }
 
   override def concatenatePathTypes(pathFromSource: PathType, pathFromTarget: PathType): PathType = {
@@ -185,7 +203,7 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
       val edges = source.edgeTypes.clone
       val nodes = source.nodes.clone.dropRight(1)
       val reverse = source.reverse.clone
-      return new LexicalizedPathType(edges, nodes, reverse)
+      return new LexicalizedPathType(edges, nodes, reverse, params)
     }
 
     // Now, if the path from the source isn't empty, we need to be sure that the last nodes on each
@@ -222,7 +240,7 @@ class LexicalizedPathTypeFactory extends PathTypeFactory {
       i -= 1
       j += 1
     }
-    new LexicalizedPathType(combinedEdgeTypes, combinedNodes, combinedReverse)
+    new LexicalizedPathType(combinedEdgeTypes, combinedNodes, combinedReverse, params)
   }
 
   /**

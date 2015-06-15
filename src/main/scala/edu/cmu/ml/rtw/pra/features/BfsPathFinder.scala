@@ -207,7 +207,8 @@ class BfsPathFinder(
     params match {
       case JNothing => new BasicPathTypeFactory
       case JString("BasicPathTypeFactory") => new BasicPathTypeFactory
-      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory
+      // TODO(matt): allow for configuring this parameter in the spec.
+      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory(JNothing)
       case other => throw new IllegalStateException("Unrecognized path type factory specification")
     }
   }
