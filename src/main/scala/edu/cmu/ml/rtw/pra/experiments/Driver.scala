@@ -90,8 +90,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true).asScala.toMap
       } else null
     baseBuilder.setOutputter(new Outputter(nodeNames))
-    // TODO(matt): move this parameter to the outputter.  That would require moving the outputter
-    // to scala, though...
+    // TODO(matt): move this parameter to the outputter.
     baseBuilder.setOutputMatrices(JsonHelper.extractWithDefault(params, "output matrices", false))
 
     val baseConfig = baseBuilder.setNoChecks().build()

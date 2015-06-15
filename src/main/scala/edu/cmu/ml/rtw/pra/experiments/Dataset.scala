@@ -126,8 +126,8 @@ object Dataset {
     for (edge <- graphEdges) {
       val fields = edge.split("\\^,\\^")
       val source = fields(0)
-      val target = fields(1)
-      val relation = fields(2)
+      val relation = fields(1)
+      val target = fields(2)
       graphBuilder.addEdge(source, target, relation)
     }
     val entries = graphBuilder.build()

@@ -10,6 +10,9 @@ class LexicalizedPathType(
     val reverse: Array[Boolean]) extends PathType {
   val numHops = edgeTypes.size
 
+  // TODO(matt): make this configurable somehow!  Probably by adding a parameter to the Factory.
+  val removeColon = true
+
   override def recommendedIters() = {
     throw new UnsupportedOperationException("LexicalizedPathTypes can't be followed at the moment")
   }
@@ -55,7 +58,12 @@ class LexicalizedPathType(
         if (nodeDict == null) {
           builder.append(nodes(i))
         } else {
-          builder.append(nodeDict.getString(nodes(i)))
+          val nodeStr = nodeDict.getString(nodes(i))
+          if (removeColon) {
+            builder.append(nodeStr.split(":").last)
+          } else {
+            builder.append(nodeStr)
+          }
         }
       }
     }

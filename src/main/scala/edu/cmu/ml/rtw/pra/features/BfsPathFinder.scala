@@ -81,7 +81,6 @@ class BfsPathFinder(
       val graph = instance.graph
       val source = instance.source
       val target = instance.target
-      try {
       val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, pathDict)
       val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
       val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, pathDict)
@@ -106,16 +105,6 @@ class BfsPathFinder(
       })
       val subgraph = result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
       (instance -> subgraph)
-      } catch {
-        case e: Exception => {
-          println("ERROR!!")
-          println(s"Instance: ${graph.nodeDict.getString(source)}, ${graph.nodeDict.getString(target)}")
-          println(s"Graph size: ${graph.entries.size}")
-          println(s"Node dict size: ${graph.nodeDict.getNextIndex}")
-          println(s"Edge dict size: ${graph.edgeDict.getNextIndex}")
-          throw e
-        }
-      }
     }).seq.toMap
   }
 
