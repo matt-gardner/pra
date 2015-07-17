@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
@@ -487,8 +486,11 @@ object Driver {
       val fixed = range.replace("/", "_")
       val cat_file = directory + "category_instances/" + fixed
 
-      val nodeDict = builder.graph.get.nodeDict
-      val allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, nodeDict).asScala.map(_.toInt).toSet
+      val allowedTargets = {
+        val lines = fileUtil.readLinesFromFile(cat_file).asScala
+        val graph = builder.graph.get
+        lines.map(line => graph.getNodeIndex(line)).toSet
+      }
       builder.setAllowedTargets(allowedTargets)
     } else {
       val writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append
@@ -514,17 +516,18 @@ object Driver {
       }
       case _ => { }
     }
-    val edgeDict = builder.graph.get.edgeDict
+    val graph = builder.graph.get
 
     // The relation itself is an unallowed edge type.
-    val relIndex = edgeDict.getIndex(relation)
+    val relIndex = graph.getEdgeIndex(relation)
     unallowedEdges += relIndex
 
-    // If the relation has an inverse, it's an unallowed edge type.
-    inverses.get(relIndex).map(index => unallowedEdges += index)
-
     val inverse = inverses.get(relIndex) match {
-      case Some(index) => edgeDict.getString(index)
+      case Some(index) => {
+        // If the relation has an inverse, it's an unallowed edge type.
+        unallowedEdges += index
+        graph.getEdgeName(index)
+      }
       case _ => null
     }
 
@@ -532,11 +535,11 @@ object Driver {
     // added to the unallowed edge type list.
     if (embeddings != null) {
       for (embedded <- embeddings.getOrElse(relation, Nil)) {
-        unallowedEdges += edgeDict.getIndex(embedded)
+        unallowedEdges += graph.getEdgeIndex(embedded)
       }
       if (inverse != null) {
         for (embedded <- embeddings.getOrElse(inverse, Nil)) {
-          unallowedEdges += edgeDict.getIndex(embedded)
+          unallowedEdges += graph.getEdgeIndex(embedded)
         }
       }
     }
@@ -555,15 +558,15 @@ object Driver {
     if (directory == null) {
       inverses.toMap
     } else {
-      val dict = builder.graph.get.edgeDict
+      val graph = builder.graph.get
       val filename = directory + "inverses.tsv"
       if (!fileUtil.fileExists(filename)) {
         inverses.toMap
       } else {
         for (line <- fileUtil.readLinesFromFile(filename).asScala) {
           val parts = line.split("\t")
-          val rel1 = dict.getIndex(parts(0))
-          val rel2 = dict.getIndex(parts(1))
+          val rel1 = graph.getEdgeIndex(parts(0))
+          val rel2 = graph.getEdgeIndex(parts(1))
           inverses.put(rel1, rel2)
           // Just for good measure, in case the file only lists each relation once.
           inverses.put(rel2, rel1)

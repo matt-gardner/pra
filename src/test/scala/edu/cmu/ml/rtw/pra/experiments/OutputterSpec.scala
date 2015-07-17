@@ -44,30 +44,20 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     new GraphOnDisk("/graph/", fileUtil)
   }
 
-  "getNode" should "return index with no dictionary" in {
-    emptyOutputter.getNode(1, null) should be("1")
-  }
-
-  it should "return node string with dictionary" in {
-    emptyOutputter.getNode(1, graph.nodeDict) should be("node1")
+  "getNode" should "return node string" in {
+    emptyOutputter.getNode(1, graph) should be("node1")
   }
 
   it should "return node name when present" in {
     val nodeNames = Map("node1" -> "node1name")
     val outputter = new Outputter(nodeNames)
-    outputter.getNode(1, graph.nodeDict) should be("node1name")
-    outputter.getNode(2, graph.nodeDict) should be("node2")
+    outputter.getNode(1, graph) should be("node1name")
+    outputter.getNode(2, graph) should be("node2")
   }
 
-  "getPathType" should "return encoded string with no dictionary" in {
-    val pathType = "-1-2-3-"
-    emptyOutputter.getPathType(factory.fromString(pathType), null, null) should be(pathType)
-  }
-
-  it should "return human readable string with edge dictionary" in {
+  "getPathType" should "return human readable string" in {
     val pathType = "-1-2-"
-    emptyOutputter.getPathType(factory.fromString(pathType),
-      graph.edgeDict, graph.nodeDict) should be("-rel1-rel2-")
+    emptyOutputter.getPathType(factory.fromString(pathType), graph) should be("-rel1-rel2-")
   }
 
   "outputWeights" should "sort weights and format them correctly" in {
@@ -198,7 +188,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     fileUtil.onlyAllowExpectedFiles()
     fileUtil.addExpectedFileWritten(pathFile, expectedPathFileContents)
     val outputter = new Outputter(null, fileUtil)
-    outputter.outputPaths(baseDir, filename, pathTypes, graph.edgeDict, graph.nodeDict)
+    outputter.outputPaths(baseDir, filename, pathTypes, graph)
     fileUtil.expectFilesWritten()
   }
 
@@ -226,7 +216,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     outputter.outputSplitFiles(null, null, null)
     outputter.outputPathCounts(null, null, null)
     outputter.outputPathCountMap(null, null, null, null)
-    outputter.outputPaths(null, null, null, null, null)
+    outputter.outputPaths(null, null, null, null)
     fileUtil.expectFilesWritten()
   }
 }

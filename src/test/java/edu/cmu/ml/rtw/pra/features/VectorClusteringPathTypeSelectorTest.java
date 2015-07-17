@@ -10,6 +10,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
+import edu.cmu.ml.rtw.pra.graphs.Node;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
@@ -17,8 +19,9 @@ import edu.cmu.ml.rtw.users.matt.util.Vector;
 
 public class VectorClusteringPathTypeSelectorTest extends TestCase {
     private Dictionary edgeDict = new Dictionary();
+    private GraphInMemory graph = new GraphInMemory(new Node[0], null, edgeDict);
     private Map<Integer, Vector> embeddings = Maps.newHashMap();
-    private VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, .5);
+    private VectorPathTypeFactory factory = new VectorPathTypeFactory(graph, embeddings, 1, .5);
     private VectorClusteringPathTypeSelector selector =
             new VectorClusteringPathTypeSelector(factory, .75);
 

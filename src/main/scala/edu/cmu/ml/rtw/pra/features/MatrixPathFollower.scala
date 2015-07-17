@@ -18,7 +18,6 @@ import scala.util.control.Breaks._
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -39,8 +38,6 @@ class MatrixPathFollower(
   val source_nodes = data.instances.map(_.source).toSet
   val positive_source_targets = data.getPositiveInstances.map(i => (i.source, i.target)).toSet
   val graph = data.instances(0).graph
-  val edgeDict = graph.edgeDict
-  val nodeDict = graph.nodeDict
   override def execute = {}
   override def shutDown = {}
   override def usesGraphChi = false
@@ -149,7 +146,7 @@ class MatrixPathFollower(
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, CSCMatrix[Double]]): CSCMatrix[Double] = {
-    val str = path_type.encodeAsHumanReadableString(edgeDict, nodeDict)
+    val str = path_type.encodeAsHumanReadableString(graph)
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
     if (path_type.getReverse()(0)) {
       result = result.t

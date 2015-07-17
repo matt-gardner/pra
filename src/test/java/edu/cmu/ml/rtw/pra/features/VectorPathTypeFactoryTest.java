@@ -7,6 +7,8 @@ import junit.framework.TestCase;
 import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
+import edu.cmu.ml.rtw.pra.graphs.Node;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
@@ -17,6 +19,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
     private Vector vector3 = new Vector(new double[]{1,3,3});
     private Map<Integer, Vector> embeddings = Maps.newHashMap();
     private Dictionary edgeDict = new Dictionary();
+    private GraphInMemory graph = new GraphInMemory(new Node[0], null, edgeDict);
 
     @Override
     public void setUp() {
@@ -30,7 +33,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
     }
 
     public void testEmptyPathType() {
-        VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        VectorPathTypeFactory factory = new VectorPathTypeFactory(graph, embeddings, 1, 0.5);
         PathType type12 = factory.fromString("-1-2-");
         assertEquals(factory.emptyPathType(), factory.emptyPathType());
         assertFalse(type12.equals(factory.emptyPathType()));
@@ -41,7 +44,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
         chiVertex.addOutEdge(1, 1);
         chiVertex.addOutEdge(2, 2);
         Vertex vertex = new Vertex(chiVertex);
-        VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        VectorPathTypeFactory factory = new VectorPathTypeFactory(graph, embeddings, 1, 0.5);
         VectorPathType pathType = (VectorPathType) factory.fromString("-1-2-");
         assertNull(pathType.cacheVertexInformation(vertex, 1000));
     }
@@ -49,7 +52,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
     public void testGetNextEdgeTypeWorksCorrectly() {
         embeddings.put(1, vector1);
         embeddings.put(2, vector2);
-        VectorPathTypeFactory factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        VectorPathTypeFactory factory = new VectorPathTypeFactory(graph, embeddings, 1, 0.5);
         VectorPathType pathType = (VectorPathType) factory.fromString("-1-2-");
 
         FakeChiVertex chiVertex = new FakeChiVertex(1);
@@ -75,7 +78,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
 
         // If there is no embedding for the path type, we return the path type index itself.
         embeddings.clear();
-        factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        factory = new VectorPathTypeFactory(graph, embeddings, 1, 0.5);
         pathType = (VectorPathType) factory.fromString("-1-2-");
         cache = pathType.cacheVertexInformation(vertex, hopNum);
         assertEquals(1, pathType.getNextEdgeType(hopNum, vertex, random, cache));
@@ -85,7 +88,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
         embeddings.put(1, vector1);
         embeddings.put(2, vector3);
         cache = pathType.cacheVertexInformation(vertex, hopNum);
-        factory = new VectorPathTypeFactory(edgeDict, embeddings, 1, 0.5);
+        factory = new VectorPathTypeFactory(graph, embeddings, 1, 0.5);
         pathType = (VectorPathType) factory.fromString("-_1-2-");
 
         chiVertex = new FakeChiVertex(1);

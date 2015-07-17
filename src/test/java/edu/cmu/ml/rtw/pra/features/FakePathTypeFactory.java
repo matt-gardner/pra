@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.features;
 import java.util.Map;
 import java.util.Random;
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.pra.graphs.Graph;
 
 public class FakePathTypeFactory implements PathTypeFactory {
 
@@ -78,7 +78,7 @@ public class FakePathTypeFactory implements PathTypeFactory {
         }
 
         @Override
-        public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict) {
+        public String encodeAsHumanReadableString(Graph graph) {
             return description;
         }
 

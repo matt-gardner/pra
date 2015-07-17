@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.pra.graphs.Graph
 
 import java.util.Random
 
@@ -42,44 +42,40 @@ class LexicalizedPathType(
     throw new UnsupportedOperationException("LexicalizedPathTypes can't be followed at the moment")
   }
 
-  override def encodeAsString() = stringDescription(null, null)
+  override def encodeAsString() = stringDescription(null)
 
-  override def encodeAsHumanReadableString(edgeDict: Dictionary, nodeDict: Dictionary) = {
-    stringDescription(edgeDict, nodeDict)
+  override def encodeAsHumanReadableString(graph: Graph) = {
+    stringDescription(graph)
   }
 
-  def stringDescription(edgeDict: Dictionary, nodeDict: Dictionary) = {
+  def stringDescription(graph: Graph) = {
     val builder = new StringBuilder()
     for (i <- 0 until numHops) {
       builder.append("-")
       if (reverse(i)) {
         builder.append("_")
       }
-      if (edgeDict == null) {
+      if (graph == null) {
         builder.append(edgeTypes(i))
       } else {
-        builder.append(edgeDict.getString(edgeTypes(i)))
+        builder.append(graph.getEdgeName(edgeTypes(i)))
       }
       builder.append("->")
       if (i < nodes.size) {
-        if (nodeDict == null) {
-          builder.append(nodes(i))
-        } else {
-          val nodeStr = nodeDict.getString(nodes(i))
-          removeColon match {
-            case "no" => builder.append(nodeStr)
-            case "yes" => builder.append(nodeStr.split(":").last)
-            case "filter" => {
-              if (nodeStr.contains(":")) {
-                val parts = nodeStr.split(":")
-                parts(1) match {
-                  case "KEEP" => builder.append(parts.last)
-                  case "REMOVE" => { }
-                  case _ => throw new IllegalStateException(removeColonErrorMessage)
-                }
-              } else {
-                builder.append(nodeStr)
+        val nodeStr = if (graph == null) nodes(i).toString else graph.getNodeName(nodes(i))
+        removeColon match {
+          case "no" => builder.append(nodeStr)
+          case "yes" => builder.append(nodeStr.split(":").last)
+          case "filter" => {
+            if (nodeStr.contains(":")) {
+              val parts = nodeStr.split(":")
+              parts(1) match {
+                case "KEEP" => builder.append(parts.last)
+                case "REMOVE" => { }
+                case _ => throw new IllegalStateException(removeColonErrorMessage)
               }
+            } else {
+              builder.append(nodeStr)
             }
           }
         }

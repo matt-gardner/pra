@@ -1,10 +1,10 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.features.PathType
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
@@ -21,25 +21,17 @@ import scala.collection.JavaConverters._
  */
 class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new FileUtil) {
 
-  def getNode(index: Int, nodeDict: Dictionary): String = {
-    if (nodeDict == null) {
-      "" + index
+  def getNode(index: Int, graph: Graph): String = {
+    val node = graph.getNodeName(index)
+    if (nodeNames == null) {
+      node
     } else {
-      val node = nodeDict.getString(index)
-      if (nodeNames == null) {
-        node
-      } else {
-        nodeNames.getOrElse(node, node)
-      }
+      nodeNames.getOrElse(node, node)
     }
   }
 
-  def getPathType(pathType: PathType, edgeDict: Dictionary, nodeDict: Dictionary): String = {
-    if (edgeDict == null) {
-      pathType.encodeAsString()
-    } else {
-      pathType.encodeAsHumanReadableString(edgeDict, nodeDict)
-    }
+  def getPathType(pathType: PathType, graph: Graph): String = {
+    pathType.encodeAsHumanReadableString(graph)
   }
 
   def outputScores(filename: String, scores: Seq[(Instance, Double)], config: PraConfig) {
@@ -47,8 +39,8 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     val scoreStrings = scores.map(instanceScore => {
       val instance = instanceScore._1
       val score = instanceScore._2
-      val source = getNode(instance.source, instance.graph.nodeDict)
-      val target = getNode(instance.target, instance.graph.nodeDict)
+      val source = getNode(instance.source, instance.graph)
+      val target = getNode(instance.target, instance.graph)
       val isPositive = instance.isPositive
       (source, target, isPositive, score, instance)
     })
@@ -108,8 +100,8 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     if (baseDir != null) {
       val writer = fileUtil.getFileWriter(baseDir + filename)
       for (instance <- data.instances) {
-        writer.write(getNode(instance.source, instance.graph.nodeDict) + "\t"
-          + getNode(instance.target, instance.graph.nodeDict) + "\t")
+        writer.write(getNode(instance.source, instance.graph) + "\t"
+          + getNode(instance.target, instance.graph) + "\t")
         if (instance.isPositive) {
           writer.write("+\n")
         } else {
@@ -117,7 +109,7 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
         }
         val pathCounts = pathCountMap.getOrElse(instance, Map())
         pathCounts.toList.sortBy(-_._2).foreach(entry => {
-          val pathTypeStr = getPathType(entry._1, instance.graph.edgeDict, instance.graph.nodeDict)
+          val pathTypeStr = getPathType(entry._1, instance.graph)
           writer.write("\t" + pathTypeStr + "\t" + entry._2 + "\n")
         })
         writer.write("\n")
@@ -130,11 +122,10 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
       baseDir: String,
       filename: String,
       pathTypes: Seq[PathType],
-      edgeDict: Dictionary,
-      nodeDict: Dictionary) {
+      graph: Graph) {
     if (baseDir != null) {
       fileUtil.writeLinesToFile(baseDir + filename,
-        pathTypes.map(p => getPathType(p, edgeDict, nodeDict)).asJava)
+        pathTypes.map(p => getPathType(p, graph)).asJava)
     }
   }
 
@@ -142,8 +133,8 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     val writer = fileUtil.getFileWriter(filename)
     for (row <- matrix.getRows().asScala) {
       val instance = row.instance
-      writer.write(getNode(instance.source, instance.graph.nodeDict) + "," +
-        getNode(instance.target, instance.graph.nodeDict) + "\t")
+      writer.write(getNode(instance.source, instance.graph) + "," +
+        getNode(instance.target, instance.graph) + "\t")
       for (i <- 0 until row.columns) {
         val featureName = featureNames(row.featureTypes(i))
         writer.write(featureName + "," + row.values(i))

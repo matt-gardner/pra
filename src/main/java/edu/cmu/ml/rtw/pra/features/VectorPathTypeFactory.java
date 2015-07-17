@@ -5,7 +5,7 @@ import java.util.Random;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.pra.graphs.Graph;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
 
 /**
@@ -25,24 +25,22 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
   private Vector[] embeddings;
   private final double resetWeight;
   private final double spikiness;
-  // We keep these two around so that we can reinitialize the embeddings vector if things change.
-  // This costs us some memory, but it should be pretty negligible, as these are just references.
-  private final Dictionary edgeDict;
+  private final Graph graph;
   private final Map<Integer, Vector> embeddingsMap;
 
-  public VectorPathTypeFactory(Dictionary edgeDict,
+  public VectorPathTypeFactory(Graph graph,
                                Map<Integer, Vector> embeddingsMap,
                                double spikiness,
                                double resetWeight) {
-    this.spikiness = spikiness;
     this.resetWeight = Math.exp(spikiness * resetWeight);
-    this.edgeDict = edgeDict;
+    this.spikiness = spikiness;
+    this.graph = graph;
     this.embeddingsMap = embeddingsMap;
     initializeEmbeddings();
   }
 
-  public Dictionary getEdgeDict() {
-    return edgeDict;
+  public Graph getGraph() {
+    return graph;
   }
 
   public Map<Integer, Vector> getEmbeddingsMap() {
@@ -58,7 +56,7 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
   }
 
   public void initializeEmbeddings() {
-    int maxIndex = edgeDict.getNextIndex();
+    int maxIndex = graph.getNumEdgeTypes();
     embeddings = new Vector[maxIndex + 1];
     for (Map.Entry<Integer, Vector> entry : embeddingsMap.entrySet()) {
       embeddings[entry.getKey()] = entry.getValue();

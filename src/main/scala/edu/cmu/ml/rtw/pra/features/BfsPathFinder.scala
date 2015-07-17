@@ -148,8 +148,8 @@ class BfsPathFinder(
           val node_ = graph.getNode(node)
         } catch {
           case e: ArrayIndexOutOfBoundsException => {
-            println("Source: " + graph.nodeDict.getString(source))
-            println("Target: " + graph.nodeDict.getString(target))
+            println("Source: " + graph.getNodeName(source))
+            println("Target: " + graph.getNodeName(target))
             println("graph size: " + graph.entries.size)
             println("node: " + node)
             println("i: " + i)

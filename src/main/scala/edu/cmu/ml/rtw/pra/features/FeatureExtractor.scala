@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.pra.config.JsonHelper
@@ -23,12 +22,11 @@ trait FeatureExtractor {
 
 class PraFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.edgeDict
+    val graph = instance.graph
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        List(entry._1.encodeAsHumanReadableString(edgeDict, nodeDict))
+        List(entry._1.encodeAsHumanReadableString(graph))
       } else {
         List[String]()
       }
@@ -38,12 +36,11 @@ class PraFeatureExtractor extends FeatureExtractor {
 
 class OneSidedFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.edgeDict
+    val graph = instance.graph
     subgraph.asScala.flatMap(entry => {
       entry._2.asScala.map(nodePair => {
-        val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
-        val endNode = instance.graph.nodeDict.getString(nodePair.getRight)
+        val path = entry._1.encodeAsHumanReadableString(graph)
+        val endNode = graph.getNodeName(nodePair.getRight)
         if (nodePair.getLeft == instance.source) {
           "SOURCE:" + path + ":" + endNode
         } else if (nodePair.getLeft == instance.target) {
@@ -64,13 +61,12 @@ class OneSidedFeatureExtractor extends FeatureExtractor {
 
 class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val nodeDict = instance.graph.nodeDict
-    val edgeDict = instance.graph.edgeDict
+    val graph = instance.graph
     subgraph.asScala.flatMap(entry => {
-      val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
+      val path = entry._1.encodeAsHumanReadableString(graph)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == instance.source)
       val pairs = for (int1 <- src; int2 <- targ)
-        yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight));
+        yield (graph.getNodeName(int1.getRight), graph.getNodeName(int2.getRight));
       for{pair <- pairs}  yield "CATCOMP:" + path + ":" + pair._1 + ":" + pair._2
     }).toList.asJava
   }
@@ -78,13 +74,12 @@ class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
 
 class NumericalComparisonFeatureExtractor extends FeatureExtractor{
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val edgeDict = instance.graph.edgeDict
-    val nodeDict = instance.graph.nodeDict
+    val graph = instance.graph
     subgraph.asScala.flatMap(entry => {
-      val path = entry._1.encodeAsHumanReadableString(edgeDict, nodeDict)
+      val path = entry._1.encodeAsHumanReadableString(graph)
       val (src, targ) = entry._2.asScala.partition(nodePair => nodePair.getLeft == instance.source)
       val strings = for {int1 <- src; int2 <- targ}
-        yield (nodeDict.getString(int1.getRight), nodeDict.getString(int2.getRight))
+        yield (graph.getNodeName(int1.getRight), graph.getNodeName(int2.getRight))
       val valid_strings = strings.filter(str => isDoubleNumber(str._1) && isDoubleNumber(str._2))
       for(str <- valid_strings )
         yield s"NUMCOMP:${path}:" + "%.2f".format(log10(abs(str._1.toDouble - str._2.toDouble))).toDouble
@@ -97,17 +92,16 @@ class NumericalComparisonFeatureExtractor extends FeatureExtractor{
 
 class PathBigramsFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val edgeDict = instance.graph.edgeDict
-    val nodeDict = instance.graph.nodeDict
+    val graph = instance.graph
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        List(entry._1.encodeAsHumanReadableString(edgeDict, nodeDict))
+        List(entry._1.encodeAsHumanReadableString(graph))
         val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
         val edgeTypes = pathType.getEdgeTypes()
         val reverses = pathType.getReverse()
         val edgeTypeStrings = "@START@" +: edgeTypes.zip(reverses).map(edge => {
-          val edgeString = edgeDict.getString(edge._1)
+          val edgeString = graph.getEdgeName(edge._1)
           if (edge._2) "_" + edgeString else edgeString
         }).toList :+ "@END@"
         val bigrams = for (i <- (1 until edgeTypeStrings.size))
@@ -140,9 +134,8 @@ class VectorSimilarityFeatureExtractor(
   val relations = pairs.groupBy(_._1).mapValues(_.map(_._2).sortBy(-_._2).take(maxSimilarVectors).map(_._1))
 
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val edgeDict = instance.graph.edgeDict
-    val nodeDict = instance.graph.nodeDict
-    val anyRel = edgeDict.getIndex("@ANY_REL@")
+    val graph = instance.graph
+    val anyRel = graph.getEdgeIndex("@ANY_REL@")
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
@@ -151,15 +144,15 @@ class VectorSimilarityFeatureExtractor(
         val reverses = pathType.getReverse()
         val similarities =
           for (i <- (0 until edgeTypes.length);
-               relStr = edgeDict.getString(edgeTypes(i));
+               relStr = graph.getEdgeName(edgeTypes(i));
                similar <- (Seq(edgeTypes(i), anyRel) ++
-                 relations.getOrElse(relStr, Seq()).map(r => edgeDict.getIndex(r))))
+                 relations.getOrElse(relStr, Seq()).map(r => graph.getEdgeIndex(r))))
             yield (i, similar)
         similarities.map(sim => {
           val oldEdgeType = edgeTypes(sim._1)
           edgeTypes(sim._1) = sim._2
           val similar = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(edgeDict, nodeDict)
+            .encodeAsHumanReadableString(graph)
           edgeTypes(sim._1) = oldEdgeType
           "VECSIM:" + similar
         }).toSet
@@ -173,9 +166,8 @@ class VectorSimilarityFeatureExtractor(
 class AnyRelFeatureExtractor extends FeatureExtractor{
 
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-    val edgeDict = instance.graph.edgeDict
-    val nodeDict = instance.graph.nodeDict
-    val anyRel = edgeDict.getIndex("@ANY_REL@")
+    val graph = instance.graph
+    val anyRel = graph.getEdgeIndex("@ANY_REL@")
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
@@ -186,7 +178,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor{
           val oldEdgeType = edgeTypes(i)
           edgeTypes(i) = anyRel
           val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(edgeDict, nodeDict)
+            .encodeAsHumanReadableString(graph)
           edgeTypes(i) = oldEdgeType
           "ANYREL:" + newPathType
         }).toSet

@@ -149,10 +149,10 @@ public class VectorClusteringPathTypeSelector implements PathTypeSelector {
       // track of how many vectors are represented by a current cluster mean, in order to avoid a
       // lot of extra bookkeeping.  And it even seems like a reasonable thing to do apart from
       // bookkeeping considerations.
-      String firstName = factory.getEdgeDict().getString(firstPathType.getEdgeTypes()[i]);
-      String secondName = factory.getEdgeDict().getString(secondPathType.getEdgeTypes()[i]);
+      String firstName = factory.getGraph().getEdgeName(firstPathType.getEdgeTypes()[i]);
+      String secondName = factory.getGraph().getEdgeName(secondPathType.getEdgeTypes()[i]);
       String clusterEdgeName = firstName + CLUSTER_SEPARATOR + secondName;
-      int clusterEdgeIndex = factory.getEdgeDict().getIndex(clusterEdgeName);
+      int clusterEdgeIndex = factory.getGraph().getEdgeIndex(clusterEdgeName);
       newEdgeTypes[i] = clusterEdgeIndex;
       Vector secondVector = factory.getEmbedding(secondPathType.getEdgeTypes()[i]);
       int firstCount = first.getRight();

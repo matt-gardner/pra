@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.pra.graphs.Graph;
 
 public interface PathType {
 
@@ -32,7 +32,7 @@ public interface PathType {
    * to convert the integers that show up in the path type into their string representations, using
    * the provided dictionaries.
    */
-  public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict);
+  public String encodeAsHumanReadableString(Graph graph);
 
   /**
    * Given the hop number and information about the current vertex, pick an edge to follow.

@@ -10,8 +10,8 @@ import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.Vector
@@ -136,24 +136,24 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
         List(s"${praBase}embeddings/${name}/embeddings.tsv")
       }
     }
-    val embeddings = readEmbeddingsVectors(embeddingsFiles, config.graph.get.edgeDict)
+    val embeddings = readEmbeddingsVectors(embeddingsFiles, config.graph.get)
     val javaEmbeddings = embeddings.map(entry => (Integer.valueOf(entry._1), entry._2)).asJava
-    new VectorPathTypeFactory(config.graph.get.edgeDict, javaEmbeddings, spikiness, resetWeight)
+    new VectorPathTypeFactory(config.graph.get, javaEmbeddings, spikiness, resetWeight)
   }
 
-  def readEmbeddingsVectors(embeddingsFiles: Seq[String], edgeDict: Dictionary) = {
+  def readEmbeddingsVectors(embeddingsFiles: Seq[String], graph: Graph) = {
     embeddingsFiles.flatMap(file => {
       println(s"Embeddings file: $file")
-      readVectorsFromFile(file, edgeDict)
+      readVectorsFromFile(file, graph)
     }).toMap
   }
 
-  def readVectorsFromFile(embeddingsFile: String, edgeDict: Dictionary) = {
+  def readVectorsFromFile(embeddingsFile: String, graph: Graph) = {
     // Embeddings files are formated as tsv, where the first column is the relation name
     // and the rest of the columns make up the vector.
     fileUtil.readLinesFromFile(embeddingsFile).asScala.map(line => {
       val fields = line.split("\t");
-      val relationIndex = edgeDict.getIndex(fields(0));
+      val relationIndex = graph.getEdgeIndex(fields(0));
       val vector = fields.drop(1).map(_.toDouble)
       (relationIndex, new Vector(vector))
     }).toMap

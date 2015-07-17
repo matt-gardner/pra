@@ -4,7 +4,6 @@ import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.Vector
@@ -50,7 +49,7 @@ class PraFeatureGenerator(
     if (graph.edgeDict == null) {
       pathTypes.map(_.encodeAsString).toArray
     } else {
-      pathTypes.map(_.encodeAsHumanReadableString(graph.edgeDict, graph.nodeDict)).toArray
+      pathTypes.map(_.encodeAsHumanReadableString(graph)).toArray
     }
   }
 
@@ -85,8 +84,7 @@ class PraFeatureGenerator(
     val numPaths = JsonHelper.extractWithDefault(params \ "path selector", "number of paths to keep", 1000)
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
-    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes, graph.edgeDict,
-      graph.nodeDict)
+    config.outputter.outputPaths(config.outputBase, "kept_paths.tsv", pathTypes, graph)
     pathTypes
   }
 

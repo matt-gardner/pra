@@ -6,7 +6,6 @@ import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
@@ -55,12 +54,8 @@ class Dataset(
 
   def instanceToString(instance: Instance): String = {
     val pos = if (instance.isPositive) 1 else -1
-    val nodeDict = instance.graph.nodeDict
-    if (nodeDict == null) {
-      s"${instance.source}\t${instance.target}\t$pos"
-    } else {
-      s"${nodeDict.getString(instance.source)}\t${nodeDict.getString(instance.target)}\t$pos"
-    }
+    val graph = instance.graph
+    s"${graph.getNodeName(instance.source)}\t${graph.getNodeName(instance.target)}\t$pos"
   }
 
   def merge(other: Dataset) = new Dataset(instances ++ other.instances)
@@ -101,7 +96,6 @@ object Dataset {
   }
 
   def lineToInstance(graph: Graph)(line: String): Instance = {
-    val dict = graph.nodeDict
     val fields = line.split("\t")
     val isPositive =
       try {
@@ -110,8 +104,8 @@ object Dataset {
         case e: NumberFormatException =>
           throw new IllegalStateException("Dataset not formatted correctly!")
       }
-    val source = if (dict == null) fields(0).toInt else dict.getIndex(fields(0))
-    val target = if (dict == null) fields(1).toInt else dict.getIndex(fields(1))
+    val source = graph.getNodeIndex(fields(0))
+    val target = graph.getNodeIndex(fields(0))
     new Instance(source, target, isPositive, graph)
   }
 
@@ -132,14 +126,8 @@ object Dataset {
     }
     val entries = graphBuilder.build()
     val graph = new GraphInMemory(entries, graphBuilder.nodeDict, graphBuilder.edgeDict)
-    // This isn't ideal, but the Ints in the Instance object need to be with respect to the graph.
-    // It might be a bit cleaner to have each Instance have a pointer to the graph that it
-    // corresponds to, but that would mean that in the single-graph case, I have to construct the
-    // graph before reading the Dataset, and can't just load it lazily...  It's a bit messy either
-    // way, so I'm going to keep the lazy loading and just grab indices from the instance graph's
-    // nodeDict here.
-    val sourceId = graph.nodeDict.getIndex(instanceSource)
-    val targetId = graph.nodeDict.getIndex(instanceTarget)
+    val sourceId = graph.getNodeIndex(instanceSource)
+    val targetId = graph.getNodeIndex(instanceTarget)
     new Instance(sourceId, targetId, isPositive, graph)
   }
 }
