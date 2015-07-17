@@ -59,10 +59,14 @@ object ExperimentScorer {
   }
 
   def shouldKeepFile(filters: Seq[String])(file: File): Boolean = {
-    for (filter <- filters) {
-      if (file.getAbsolutePath.contains(filter)) return true
+    if (filters.size == 0) {
+      true
+    } else {
+      for (filter <- filters) {
+        if (file.getAbsolutePath.contains(filter)) return true
+      }
+      false
     }
-    false
   }
 
   def scoreExperiments(
@@ -104,7 +108,8 @@ object ExperimentScorer {
         pra_base,
         experiment_dir.getAbsolutePath(),
         displayNameSplit,
-        savedMetrics.get(experiment_name), metricComputers)
+        savedMetrics.get(experiment_name),
+        metricComputers)
       if (experiment_metrics.size > 0) {
         metrics(experiment_name) = experiment_metrics
         savedMetrics(experiment_name) = experiment_metrics
@@ -209,7 +214,7 @@ object ExperimentScorer {
       displayNameSplit: String,
       saved_metrics: Option[MutableRelationMetrics],
       metricComputers: Seq[MetricComputer]): MutableRelationMetrics = {
-    println(s"Getting metrics for experiment $experiment_dir")
+    println(s"Getting metrics for experiment $experiment_dir, using computers $metricComputers")
     val metrics = EmptyRelationMetricsWithDefaults
     // Getting the split dir and relations first.
     val split_dir = findSplitDir(pra_base, experiment_dir)

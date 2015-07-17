@@ -107,9 +107,7 @@ class GraphBuilder(
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
     // actually saw edges for, and we'll need an empty node representations for that.
-    // TODO(matt): HACK!  I'm not totally sure yet why this + 2 works instead of + 1...  I need to
-    // think about this a bit more.
-    val finalSize = if (initialSize == -1) maxIndexSeen + 2 else entries.size
+    val finalSize = if (initialSize == -1) maxIndexSeen + 1 else entries.size
     val finalized = new Array[Node](finalSize)
     (0 until finalSize).par.foreach(i => {
       if (entries(i) == null) {

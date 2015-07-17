@@ -1,7 +1,8 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Driver
 import edu.cmu.ml.rtw.pra.config.JsonHelper
+import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.experiments.Driver
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -111,12 +112,12 @@ class GraphDensifier(
   }
 
   def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
-    val node_dict = new Dictionary
-    node_dict.setFromFile(graph_dir + "/node_dict.tsv")
-    val edge_dict = new Dictionary
-    edge_dict.setFromFile(graph_dir + "/edge_dict.tsv")
+    // TODO(matt): ugly!  oh well...  I need to migrate this code to using the new Graph object.
+    // But this code was experimental anyway, and didn't really work, so why bother?
+    val builder = new PraConfigBuilder
+    builder.setGraph(new GraphOnDisk(graph_dir, fileUtil))
     println(s"Metadata directory: $metadata")
-    val inverses = Driver.createInverses(metadata, edge_dict, fileUtil)
+    val inverses = Driver.createInverses(metadata, builder, fileUtil)
     println(s"Inverses size: ${inverses.size}")
     // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
     // Dataset.fromFile.  I should use that here.

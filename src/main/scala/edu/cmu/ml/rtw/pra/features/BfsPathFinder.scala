@@ -53,7 +53,15 @@ class BfsPathFinder(
   }
 
   override def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]] = {
-    throw new NotImplementedError
+    results.map(subgraphInstance => {
+      val instance = subgraphInstance._1
+      val subgraph = subgraphInstance._2
+      val converted = subgraph.asScala.mapValues(s => {
+        val t = s.asScala.filter(i => i.getLeft() == instance.source && i.getRight() == instance.target)
+        Integer.valueOf(t.size)
+      }).asJava
+      (instance -> converted)
+    }).asJava
   }
 
   override def getLocalSubgraphs() = results.asJava
@@ -136,6 +144,17 @@ class BfsPathFinder(
       currentNodes = currentNodes.flatMap(nodeEntry => {
         val node = nodeEntry._1
         val pathTypes = nodeEntry._2
+        try {
+          val node_ = graph.getNode(node)
+        } catch {
+          case e: ArrayIndexOutOfBoundsException => {
+            println("Source: " + graph.nodeDict.getString(source))
+            println("Target: " + graph.nodeDict.getString(target))
+            println("graph size: " + graph.entries.size)
+            println("node: " + node)
+            println("i: " + i)
+          }
+        }
         val nodeResults = graph.getNode(node).edges.toSeq.flatMap(relationEdges => {
           val relation = relationEdges._1
           val inEdges = relationEdges._2._1

@@ -101,9 +101,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
-      if (metadataDirectory != null) {
-        Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
-      }
+      Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
@@ -234,7 +232,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       Dataset.fromFile(inputFile, config.graph, fileUtil)
     }
 
-    val explorer = new GraphExplorer(praParams \ "explore", config)
+    val explorer = new GraphExplorer(praParams \ "explore", config, praBase)
     val pathCountMap = explorer.findConnectingPaths(data)
     config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, data)
   }
@@ -465,9 +463,7 @@ object Driver {
       builder: PraConfigBuilder,
       outputBase: String,
       fileUtil: FileUtil = new FileUtil) {
-    val edgeDict = builder.graph.get.edgeDict
-    val nodeDict = builder.graph.get.nodeDict
-    val inverses = Driver.createInverses(directory, edgeDict, fileUtil)
+    val inverses = Driver.createInverses(directory, builder, fileUtil)
     builder.setRelationInverses(inverses)
 
     val embeddings = {
@@ -478,7 +474,7 @@ object Driver {
         null
       }
     }
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder)
     builder.setUnallowedEdges(unallowedEdges)
 
     if (directory != null && mode != "explore graph" && fileUtil.fileExists(directory + "ranges.tsv")) {
@@ -491,6 +487,7 @@ object Driver {
       val fixed = range.replace("/", "_")
       val cat_file = directory + "category_instances/" + fixed
 
+      val nodeDict = builder.graph.get.nodeDict
       val allowedTargets = fileUtil.readIntegerSetFromFile(cat_file, nodeDict).asScala.map(_.toInt).toSet
       builder.setAllowedTargets(allowedTargets)
     } else {
@@ -505,8 +502,19 @@ object Driver {
       relation: String,
       inverses: Map[Int, Int],
       embeddings: Map[String, List[String]],
-      edgeDict: Dictionary): List[Int] = {
+      builder: PraConfigBuilder): List[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
+
+    // TODO(matt): I need a better way to specify this...  It's problematic when there is no shared
+    // graph.
+    builder.graph match {
+      case None => {
+        println("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
+        return unallowedEdges.toList
+      }
+      case _ => { }
+    }
+    val edgeDict = builder.graph.get.edgeDict
 
     // The relation itself is an unallowed edge type.
     val relIndex = edgeDict.getIndex(relation)
@@ -541,12 +549,13 @@ object Driver {
    */
   def createInverses(
       directory: String,
-      dict: Dictionary,
+      builder: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {
       inverses.toMap
     } else {
+      val dict = builder.graph.get.edgeDict
       val filename = directory + "inverses.tsv"
       if (!fileUtil.fileExists(filename)) {
         inverses.toMap
