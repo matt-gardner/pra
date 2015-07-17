@@ -170,7 +170,7 @@ object generate_tuning_specs {
     }
   }
 
-  def main(args: Array[String]) {
+  def NOT_main(args: Array[String]) {
     createRescalTuningSpecs()
   }
 }

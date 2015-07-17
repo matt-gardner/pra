@@ -37,7 +37,7 @@ object multilingual_svo_experiments {
   val percent_training = .8
   val experiment_spec_base = "/home/mg1/pra/experiment_specs/multilingual/better/"
 
-  def main(args: Array[String]) {
+  def NOT_main(args: Array[String]) {
     //println("Reformatting SVO data")
     //reformat_all_languages()
     //println("Finding aliases in the SVO data")

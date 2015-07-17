@@ -55,7 +55,7 @@ object fix_arvinds_split {
     "_tv_tv_program_genre"
   )
 
-  def main(args: Array[String]) {
+  def NOT_main(args: Array[String]) {
     val fileUtil = new FileUtil
     val base_dir = "/home/mg1/data/freebase/arvind/"
     val split_dir = "/home/mg1/pra/splits/freebase_arvind/"
