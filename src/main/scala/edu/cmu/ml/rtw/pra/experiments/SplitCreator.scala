@@ -31,7 +31,6 @@ class SplitCreator(
   val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split from relation metadata")
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
-  val percentTraining = (params \ "percent training").extract[Double]
   val negativeExampleSelector = createNegativeExampleSelector(params \ "negative instances")
 
   def createSplit() {
@@ -48,6 +47,7 @@ class SplitCreator(
 
   def createSplitFromMetadata() {
     println(s"Creating split at $splitDir")
+    val percentTraining = (params \ "percent training").extract[Double]
     val relations = (params \ "relations").extract[List[String]]
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
       + "relations to run!")

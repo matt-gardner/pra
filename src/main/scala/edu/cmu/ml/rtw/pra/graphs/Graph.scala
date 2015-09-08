@@ -51,6 +51,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
       val relation = fields(2).toInt
       graphBuilder.addEdge(source, target, relation)
     }
+    println("Done reading graph file")
     graphBuilder.build
   }
 }
@@ -103,6 +104,7 @@ class GraphBuilder(
   }
 
   def build(): Array[Node] = {
+    println("Building the graph object")
     // If no initial size was provided, we try to trim the size of the resultant array (this should
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
@@ -121,6 +123,7 @@ class GraphBuilder(
         }).toMap, edgeDict)
       }
     })
+    println("Graph object built")
     finalized
   }
 }

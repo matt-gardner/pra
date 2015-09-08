@@ -56,9 +56,15 @@ class BfsPathFinder(
     results.map(subgraphInstance => {
       val instance = subgraphInstance._1
       val subgraph = subgraphInstance._2
-      val converted = subgraph.asScala.mapValues(s => {
+      val converted = subgraph.asScala.flatMap(entry => {
+        val key = entry._1
+        val s = entry._2
         val t = s.asScala.filter(i => i.getLeft() == instance.source && i.getRight() == instance.target)
-        Integer.valueOf(t.size)
+        if (t.size > 0) {
+          Seq(key -> Integer.valueOf(t.size))
+        } else {
+          Seq()
+        }
       }).asJava
       (instance -> converted)
     }).asJava
