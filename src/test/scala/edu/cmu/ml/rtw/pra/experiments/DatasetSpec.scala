@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
@@ -63,18 +62,18 @@ class DatasetSpec extends FlatSpecLike with Matchers {
     graph1.getNode("node1").edges.size should be(1)
     graph1.getNode("node1").getEdges("rel1")._1.size should be(0)
     graph1.getNode("node1").getEdges("rel1")._2.size should be(1)
-    graph1.getNode("node1").getEdges("rel1")._2(0) should be(graph1.nodeDict.getIndex("node3"))
+    graph1.getNode("node1").getEdges("rel1")._2(0) should be(graph1.getNodeIndex("node3"))
     graph1.getNode("node2").edges.size should be(1)
     graph1.getNode("node2").getEdges("rel2")._1.size should be(1)
-    graph1.getNode("node2").getEdges("rel2")._1(0) should be(graph1.nodeDict.getIndex("node3"))
+    graph1.getNode("node2").getEdges("rel2")._1(0) should be(graph1.getNodeIndex("node3"))
     graph1.getNode("node2").getEdges("rel2")._2.size should be(0)
     graph1.getNode("node3").edges.size should be(2)
     graph1.getNode("node3").getEdges("rel1")._1.size should be(1)
-    graph1.getNode("node3").getEdges("rel1")._1(0) should be(graph1.nodeDict.getIndex("node1"))
+    graph1.getNode("node3").getEdges("rel1")._1(0) should be(graph1.getNodeIndex("node1"))
     graph1.getNode("node3").getEdges("rel1")._2.size should be(0)
     graph1.getNode("node3").getEdges("rel2")._1.size should be(0)
     graph1.getNode("node3").getEdges("rel2")._2.size should be(1)
-    graph1.getNode("node3").getEdges("rel2")._2(0) should be(graph1.nodeDict.getIndex("node2"))
+    graph1.getNode("node3").getEdges("rel2")._2(0) should be(graph1.getNodeIndex("node2"))
 
     val graph2 = dataset.instances(1).graph
     //graph2.entries.size should be(5)
@@ -82,18 +81,18 @@ class DatasetSpec extends FlatSpecLike with Matchers {
     graph2.getNode("node3").edges.size should be(1)
     graph2.getNode("node3").getEdges("rel1")._1.size should be(0)
     graph2.getNode("node3").getEdges("rel1")._2.size should be(1)
-    graph2.getNode("node3").getEdges("rel1")._2(0) should be(graph2.nodeDict.getIndex("node5"))
+    graph2.getNode("node3").getEdges("rel1")._2(0) should be(graph2.getNodeIndex("node5"))
     graph2.getNode("node4").edges.size should be(1)
     graph2.getNode("node4").getEdges("rel3")._1.size should be(0)
     graph2.getNode("node4").getEdges("rel3")._2.size should be(1)
-    graph2.getNode("node4").getEdges("rel3")._2(0) should be(graph2.nodeDict.getIndex("node6"))
+    graph2.getNode("node4").getEdges("rel3")._2(0) should be(graph2.getNodeIndex("node6"))
     graph2.getNode("node5").edges.size should be(1)
     graph2.getNode("node5").getEdges("rel1")._1.size should be(1)
-    graph2.getNode("node5").getEdges("rel1")._1(0) should be(graph2.nodeDict.getIndex("node3"))
+    graph2.getNode("node5").getEdges("rel1")._1(0) should be(graph2.getNodeIndex("node3"))
     graph2.getNode("node5").getEdges("rel1")._2.size should be(0)
     graph2.getNode("node6").edges.size should be(1)
     graph2.getNode("node6").getEdges("rel3")._1.size should be(1)
-    graph2.getNode("node6").getEdges("rel3")._1(0) should be(graph2.nodeDict.getIndex("node4"))
+    graph2.getNode("node6").getEdges("rel3")._1(0) should be(graph2.getNodeIndex("node4"))
     graph2.getNode("node6").getEdges("rel3")._2.size should be(0)
   }
 }

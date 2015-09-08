@@ -8,11 +8,17 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 trait Graph {
   def entries: Array[Node]
-  def nodeDict: Dictionary
-  def edgeDict: Dictionary
 
   def getNode(i: Int) = entries(i)
-  def getNode(name: String) = entries(nodeDict.getIndex(name))
+  def getNode(name: String) = entries(getNodeIndex(name))
+
+  def getNodeName(i: Int): String
+  def getNodeIndex(name: String): Int
+  def getNumNodes(): Int
+
+  def getEdgeName(i: Int): String
+  def getEdgeIndex(name: String): Int
+  def getNumEdgeTypes(): Int
 }
 
 class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) {
@@ -29,14 +35,19 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv").asScala(0).toInt
 
   println("Loading node and edge dictionaries")
-  val _nodeDict = new Dictionary(fileUtil)
+  val nodeDict = new Dictionary(fileUtil)
   nodeDict.setFromFile(graphDir + "node_dict.tsv")
-  val _edgeDict = new Dictionary(fileUtil)
+  val edgeDict = new Dictionary(fileUtil)
   edgeDict.setFromFile(graphDir + "edge_dict.tsv")
 
   override def entries = _entries
-  override def nodeDict = _nodeDict
-  override def edgeDict = _edgeDict
+  override def getNodeName(i: Int) = nodeDict.getString(i)
+  override def getNodeIndex(name: String) = nodeDict.getIndex(name)
+  override def getNumNodes() = nodeDict.getNextIndex()
+
+  override def getEdgeName(i: Int) = edgeDict.getString(i)
+  override def getEdgeIndex(name: String) = edgeDict.getIndex(name)
+  override def getNumEdgeTypes() = edgeDict.getNextIndex()
 
   def loadGraph(): Array[Node] = {
     println(s"Loading graph")
@@ -59,10 +70,15 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
 // This Graph implementation has no corresponding file on disk, so it cannot be used with GraphChi,
 // and is only kept in memory.  It must be constructed with the Node array, as there is no way to
 // load it lazily.
-class GraphInMemory(_entries: Array[Node], _nodeDict: Dictionary, _edgeDict: Dictionary) extends Graph {
+class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dictionary) extends Graph {
   override def entries = _entries
-  override def nodeDict = _nodeDict
-  override def edgeDict = _edgeDict
+  override def getNodeName(i: Int) = nodeDict.getString(i)
+  override def getNodeIndex(name: String) = nodeDict.getIndex(name)
+  override def getNumNodes() = nodeDict.getNextIndex()
+
+  override def getEdgeName(i: Int) = edgeDict.getString(i)
+  override def getEdgeIndex(name: String) = edgeDict.getIndex(name)
+  override def getNumEdgeTypes() = edgeDict.getNextIndex()
 }
 
 // This class constructs a Node array corresponding to a particular graph.  There's a little bit of

@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.features;
 import java.util.Arrays;
 import java.util.Random;
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.pra.graphs.Graph;
 
 public abstract class BaseEdgeSequencePathType implements PathType {
   protected final int[] edgeTypes;
@@ -73,21 +73,21 @@ public abstract class BaseEdgeSequencePathType implements PathType {
   }
 
   @Override
-  public String encodeAsHumanReadableString(Dictionary edgeDict, Dictionary nodeDict) {
-    return stringDescription(edgeDict);
+  public String encodeAsHumanReadableString(Graph graph) {
+    return stringDescription(graph);
   }
 
-  private String stringDescription(Dictionary edgeDict) {
+  private String stringDescription(Graph graph) {
     StringBuilder builder = new StringBuilder();
     builder.append("-");
     for (int i = 0; i < numHops; i++) {
       if (reverse[i]) {
         builder.append("_");
       }
-      if (edgeDict == null) {
+      if (graph == null) {
         builder.append(edgeTypes[i]);
       } else {
-        builder.append(edgeDict.getString(edgeTypes[i]));
+        builder.append(graph.getEdgeName(edgeTypes[i]));
       }
       builder.append("-");
     }

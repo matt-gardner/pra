@@ -7,6 +7,9 @@ import junit.framework.TestCase;
 
 import com.google.common.collect.Maps;
 
+import edu.cmu.ml.rtw.pra.graphs.Graph;
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
+import edu.cmu.ml.rtw.pra.graphs.Node;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
@@ -114,7 +117,8 @@ public class BasicPathTypeFactoryTest extends TestCase {
         edgeDict.getIndex("r1");
         edgeDict.getIndex("r2");
         edgeDict.getIndex("r3");
+        Graph graph = new GraphInMemory(new Node[0], null, edgeDict);
         String humanReadable = "-r1-_r2-r3-";
-        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(edgeDict, null));
+        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(graph));
     }
 }

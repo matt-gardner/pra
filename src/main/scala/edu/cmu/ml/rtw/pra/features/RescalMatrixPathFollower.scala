@@ -15,7 +15,6 @@ import scala.collection.parallel.ParSeq
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -50,13 +49,10 @@ class RescalMatrixPathFollower(
     case MatrixRowPolicy.EVERYTHING => getFeatureMatrix(source_nodes, allowedTargets, false)
   }
 
-  val node_dict = graph.nodeDict
-  val edge_dict = graph.edgeDict
-
   // Now we build up a few data structures that we'll need.  First are the node vectors.
   val node_vectors = fileUtil.readLinesFromFile(rescalDir + "a_matrix.tsv").asScala.map(line => {
     val fields = line.split("\t")
-    val node_index = node_dict.getIndex(fields(0))
+    val node_index = graph.getNodeIndex(fields(0))
     val vector_entries = fields.drop(1).map(_.toDouble)
     (node_index -> new DenseVector(vector_entries))
   }).toMap
@@ -96,7 +92,7 @@ class RescalMatrixPathFollower(
     val lines = fileUtil.readLinesFromFile(filename).asScala
     val matrices_with_lines = splitMatrixLines(lines)
     matrices_with_lines.par.map(matrix_lines => {
-      (edge_dict.getIndex(matrix_lines._1), createDenseMatrixFromLines(matrix_lines._2))
+      (graph.getEdgeIndex(matrix_lines._1), createDenseMatrixFromLines(matrix_lines._2))
     }).seq.toMap
   }
 
@@ -139,7 +135,7 @@ class RescalMatrixPathFollower(
   def createPathMatrix(
       path_type: BaseEdgeSequencePathType,
       connectivity_matrices: Map[Int, DenseMatrix[Double]]): DenseMatrix[Double] = {
-    val str = path_type.encodeAsHumanReadableString(edge_dict, node_dict)
+    val str = path_type.encodeAsHumanReadableString(graph)
     var result = connectivity_matrices(path_type.getEdgeTypes()(0))
     if (path_type.getReverse()(0)) {
       result = result.t

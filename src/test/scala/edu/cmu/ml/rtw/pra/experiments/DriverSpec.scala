@@ -1,7 +1,8 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
+import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
+import edu.cmu.ml.rtw.pra.graphs.Node
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
@@ -25,7 +26,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
   val kbDirectory = "/dev/null/"
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
-  val graph = new GraphOnDisk("src/test/resources/")
+  val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
   val builder = new PraConfigBuilder().setGraph(graph)
   val fileUtil = new FakeFileUtil()
   val driver = new Driver("/", fileUtil)
@@ -40,7 +41,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
     // the relation itself, even if there are embeddings.  Sometimes we use both the original
     // edge and the embedding as edges in the graph.  If the original edge is still there, this
     // will stop it, and if it's not there, having it in this list won't hurt anything.
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder)
     unallowedEdges.size should be(6)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 2)
@@ -50,7 +51,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no inverses" in {
-    val unallowedEdges = Driver.createUnallowedEdges(relation, Map(), embeddings, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, Map(), embeddings, builder)
     unallowedEdges.size should be(3)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -58,21 +59,21 @@ class DriverSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no embeddings" in {
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, null, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, null, builder)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
   }
 
   it should "work when the relation has no inverse" in {
-    val unallowedEdges = Driver.createUnallowedEdges(relation2, inverses, null, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation2, inverses, null, builder)
     unallowedEdges.size should be(1)
     expectCount(unallowedEdges, edgeDict.getIndex(relation2), 1)
   }
 
   it should "work when the inverse has no embeddings" in {
     // This test is due to a bug.
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings - inverse, edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings - inverse, builder)
     unallowedEdges.size should be(4)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -82,7 +83,7 @@ class DriverSpec extends FlatSpecLike with Matchers {
 
   it should "work when the relation has no embeddings" in {
     // This test is also due to a bug.
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, Map(), edgeDict)
+    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, Map(), builder)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
