@@ -142,4 +142,9 @@ class GraphBuilder(
     println("Graph object built")
     finalized
   }
+
+  def toGraphInMemory(): GraphInMemory = {
+    val nodes = build()
+    new GraphInMemory(nodes, nodeDict, edgeDict)
+  }
 }
