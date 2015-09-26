@@ -103,7 +103,8 @@ create a directory called `experiment_specs/tuning/`, with `.json` files `l1_.05
 `l1_.1,l2_.1.json`, or whatever you wish to do.  Then when running the experiments, all of the
 results will appear under `$pra_base/results/tuning/`.  You can filter which experiments to run
 with the second parameter to this main method, so, e.g., `run /home/mg1/pra/ tuning` would only run
-the experiments with `tuning` in their name.
+the experiments with `tuning` in their name.  (You can add as many filters as you like; the
+results of each filter are merged, so this is an OR, not an AND operation on multiple filters.)
 
 `ExperimentRunner` will attempt to create any inputs that it needs from the specification you give
 it.  For example, PRA needs a graph as input, and a graph is made up of some number of relation
