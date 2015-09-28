@@ -18,6 +18,9 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   val badDatasetFile = datasetFile + "node1\tnode4\tnode5\n"
   val badDatasetFilename = "/bad/filename"
 
+  val instanceFilename = "/instance file"
+  val instanceFileContents = "node1\tnode2\t1\nnode3\tnode4\t-1\n"
+
   val instanceGraphFilename = "/instance graph file"
   val instanceGraphFileContents =
     // the (positive) instance
@@ -31,6 +34,7 @@ class DatasetSpec extends FlatSpecLike with Matchers {
 
 
   val fileUtil = new FakeFileUtil
+  fileUtil.addFileToBeRead(instanceFilename, instanceFileContents)
   fileUtil.addFileToBeRead(instanceGraphFilename, instanceGraphFileContents)
   fileUtil.addFileToBeRead(badDatasetFilename, badDatasetFile)
   fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n")
@@ -45,7 +49,17 @@ class DatasetSpec extends FlatSpecLike with Matchers {
     })
   }
 
-  "fromFile" should "correctly read an instance-graph dataset file" in {
+  it should "correctly read an instance dataset file" in {
+    val dataset = Dataset.fromFile(instanceFilename, Some(graphOnDisk), fileUtil)
+    dataset.instances(0).source should be(graphOnDisk.getNodeIndex("node1"))
+    dataset.instances(0).target should be(graphOnDisk.getNodeIndex("node2"))
+    dataset.instances(0).isPositive should be(true)
+    dataset.instances(1).source should be(graphOnDisk.getNodeIndex("node3"))
+    dataset.instances(1).target should be(graphOnDisk.getNodeIndex("node4"))
+    dataset.instances(1).isPositive should be(false)
+  }
+
+  it should "correctly read an instance-graph dataset file" in {
     val dataset = Dataset.fromFile(instanceGraphFilename, None, fileUtil)
     val graph1 = dataset.instances(0).graph
 

@@ -32,6 +32,7 @@ object ExperimentRunner {
   }
 
   def shouldKeepFile(filters: Seq[String])(file: File): Boolean = {
+    if (filters.size == 0) return true
     for (filter <- filters) {
       if (file.getAbsolutePath.contains(filter)) return true
     }
@@ -42,7 +43,15 @@ object ExperimentRunner {
     val random = new Random
     val experiment_spec_dir = s"${pra_base}/experiment_specs/"
     val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
+    if (experiment_specs.size == 0) {
+      println("No experiment specs found.  Check your base path (the first argument).")
+    }
     val filtered = experiment_specs.filter(shouldKeepFile(experiment_filters))
+    println(s"Found ${experiment_specs.size} experiment specs, and kept ${filtered.size} of them")
+    if (filtered.size == 0) {
+      println("No experiment specs kept after filtering.  Check your filters (all arguments after "
+        + "the first one).")
+    }
     val shuffled = random.shuffle(filtered)
     shuffled.map(runPraFromSpec(pra_base) _)
   }
