@@ -93,6 +93,7 @@ class GraphBuilder(
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
   (0 until entries.size).par.foreach(i => { entries(i) = new MutableGraphEntry })
   var maxIndexSeen = -1
+  var edgesAdded = 0
 
   def addEdge(source: String, target: String, relation: String) {
     addEdge(nodeDict.getIndex(source), nodeDict.getIndex(target), edgeDict.getIndex(relation))
@@ -108,6 +109,7 @@ class GraphBuilder(
     sourceMap.update(false, sourceMap.getOrElse(false, Set()) + target)
     val targetMap = entries(target).getOrElseUpdate(relation, new mutable.HashMap[Boolean, Set[Int]])
     targetMap.update(true, targetMap.getOrElse(true, Set()) + source)
+    edgesAdded += 1
   }
 
   def growEntries() {
