@@ -21,9 +21,14 @@ trait Graph {
   def getNumEdgeTypes(): Int
 }
 
+// The edges map is (relation -> (in edges, out edges)).
 class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) {
   def getEdges(edgeLabel: String) = {
     edges(edgeDict.getIndex(edgeLabel))
+  }
+
+  def getAllConnectedNodes(): Set[Int] = {
+    edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
   }
 }
 

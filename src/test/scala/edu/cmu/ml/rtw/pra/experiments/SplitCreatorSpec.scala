@@ -61,10 +61,11 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "return a PprNegativeExampleSelector with the right input" in {
-    val params: JValue = ("iterations" -> 1)
+    val params: JValue = ("ppr computer" -> ("iterations" -> 1) ~ ("type" -> "GraphChiPprComputer"))
     val selector = splitCreator.createNegativeExampleSelector(params)
-    selector.graphFile should be("/graphs/nell/graph_chi/edges.tsv")
-    selector.numShards should be(1)
+    val graph = selector.graph.asInstanceOf[GraphOnDisk]
+    graph.graphFile should be("/graphs/nell/graph_chi/edges.tsv")
+    graph.numShards should be(1)
   }
 
   "addNegativeExampels" should "read domains and ranges correctly" in {
@@ -122,7 +123,7 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   class FakeNegativeExampleSelector(expectedSources: Set[Int], expectedTargets: Set[Int])
-      extends PprNegativeExampleSelector(JNothing, "", 1) {
+      extends PprNegativeExampleSelector(JNothing, new GraphOnDisk("src/test/resources/")) {
     override def selectNegativeExamples(
         data: Dataset,
         allowedSources: Set[Int],

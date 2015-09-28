@@ -4,22 +4,6 @@ import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.config.JsonHelper
 
-import edu.cmu.graphchi.ChiVertex
-import edu.cmu.graphchi.EdgeDirection
-import edu.cmu.graphchi.EmptyType
-import edu.cmu.graphchi.datablocks.IntConverter;
-import edu.cmu.graphchi.util.IdCount
-import edu.cmu.graphchi.walks.DrunkardContext;
-import edu.cmu.graphchi.walks.DrunkardDriver;
-import edu.cmu.graphchi.walks.DrunkardJob;
-import edu.cmu.graphchi.walks.DrunkardMobEngine;
-import edu.cmu.graphchi.walks.IntDrunkardContext
-import edu.cmu.graphchi.walks.IntDrunkardFactory
-import edu.cmu.graphchi.walks.IntWalkArray
-import edu.cmu.graphchi.walks.WalkArray
-import edu.cmu.graphchi.walks.WalkUpdateFunction
-import edu.cmu.graphchi.walks.distributions.IntDrunkardCompanion
-
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
@@ -31,18 +15,14 @@ import java.util.Random
 
 class PprNegativeExampleSelector(
     params: JValue,
-    val graphFile: String,
-    val numShards: Int,
-    random: Random = new Random) extends WalkUpdateFunction[EmptyType, Integer] {
+    val graph: Graph,
+    random: Random = new Random) {
   implicit val formats = DefaultFormats
-  val paramKeys = Seq("reset probability", "walks per source", "iterations",
-    "negative to positive ratio")
+  val paramKeys = Seq("ppr computer", "negative to positive ratio")
   JsonHelper.ensureNoExtras(params, "split -> negative instances", paramKeys)
 
-  val resetProbability = JsonHelper.extractWithDefault(params, "reset probability", 0.15)
-  val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 250)
-  val iterations = JsonHelper.extractWithDefault(params, "iterations", 4)
   val negativesPerPositive = JsonHelper.extractWithDefault(params, "negative to positive ratio", 3)
+  val pprComputer = PprComputerCreator.create(params \ "ppr computer", graph, random)
 
   // This is how many times we should try sampling the right number of negatives for each positive
   // before giving up, in case a (source, target) pair is isolated from the graph, for instance.
@@ -55,58 +35,11 @@ class PprNegativeExampleSelector(
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
     println("Selecting negative examples by PPR score")
     val graph = data.instances(0).graph
-    val pprValues = computePersonalizedPageRank(data, allowedSources, allowedTargets)
+    val pprValues = pprComputer.computePersonalizedPageRank(data, allowedSources, allowedTargets)
     val negativeExamples = sampleByPrr(data, pprValues)
 
     val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
     data.merge(negativeData)
-  }
-
-  def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
-    val engine = new DrunkardMobEngine[EmptyType, Integer](graphFile, numShards, new IntDrunkardFactory())
-    engine.setEdataConverter(new IntConverter());
-    val companion = new IntDrunkardCompanion(4, Runtime.getRuntime.maxMemory() / 3) {
-      def waitForFinish() {
-        while (pendingQueue.size() > 0) Thread.sleep(100)
-        while (outstanding.get() > 0) Thread.sleep(100)
-      }
-      override def getTop(vertexId: Int, nTop: Int): Array[IdCount] = {
-        waitForFinish()
-        super.getTop(vertexId, nTop)
-      }
-    }
-    val job = engine.addJob("ppr", EdgeDirection.IN_AND_OUT_EDGES, this, companion)
-    val translate = engine.getVertexIdTranslate;
-    val positiveInstances = data.getPositiveInstances
-    val sources = positiveInstances.map(_.source).toSet
-    val targets = positiveInstances.map(_.target).toSet
-    val walkSources = sources ++ targets
-    val translatedSources = walkSources.map(x => translate.forward(x)).toList.sorted
-    val javaTranslatedSources = new java.util.ArrayList[Integer]
-    for (s <- translatedSources) {
-      javaTranslatedSources.add(s)
-    }
-    job.configureWalkSources(javaTranslatedSources, walksPerSource)
-
-    engine.run(iterations)
-    val pprValues = translatedSources.map(s => {
-      val originalSource = translate.backward(s).toInt
-      val allowed = if (sources.contains(originalSource)) allowedSources else allowedTargets
-      val top: Array[IdCount] = try {
-        companion.getTop(s, 100)
-      } catch {
-        case e: ArrayIndexOutOfBoundsException => Array[IdCount]()
-      }
-      val counts = top.map(idcount =>
-          (translate.backward(idcount.id), idcount.count)).toMap
-      if (allowed != null) {
-        (originalSource, counts.filter(n => allowed.contains(n._1)))
-      } else {
-        (originalSource, counts)
-      }
-    }).toMap.withDefaultValue(Map())
-    companion.close()
-    pprValues
   }
 
   def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]): Seq[(Int, Int)] = {
@@ -147,51 +80,6 @@ class PprNegativeExampleSelector(
       default
     else {
       weight_list(index)._1
-    }
-  }
-
-  // This tells GraphChi that there are some node pairs we don't want to compute PPR for.  We could
-  // use this to restrict the statistics collected to only nodes whose type is the same as the
-  // source (or target) node.  The trouble with this is that we'd have to return a list of _every
-  // node in the graph_ here minus the ones of a particular type.  That's huge, and it totally
-  // breaks the assumptions made in GraphChi's implementation of "avoidance distributions".  So
-  // instead we just handle the type restrictions in post-processing, after we've done our walks.
-  override def getNotTrackedVertices(vertex: ChiVertex[EmptyType, Integer]): Array[Int] = {
-    new Array[Int](0)
-  }
-
-  override def processWalksAtVertex(
-      walkArray: WalkArray,
-      vertex: ChiVertex[EmptyType, Integer],
-      context_ : DrunkardContext,
-      random: Random) {
-    val walks = walkArray.asInstanceOf[IntWalkArray].getArray()
-    val context = context_.asInstanceOf[IntDrunkardContext]
-    val numWalks = walks.length
-    val numEdges = vertex.numOutEdges + vertex.numInEdges
-    val numOutEdges = vertex.numOutEdges
-
-    // Advance each walk through a random edge (if any)
-    if (numEdges > 0) {
-      for(walk <- walks) {
-        // Reset?
-        if (random.nextDouble < resetProbability) {
-          context.resetWalk(walk, false)
-        } else {
-          val edgeNum = random.nextInt(numEdges);
-          val nextHop = if (edgeNum < numOutEdges) vertex.getOutEdgeId(edgeNum)
-            else vertex.inEdge(edgeNum - numOutEdges).getVertexId
-
-          // Optimization to tell the manager that walks that have just been started
-          // need not to be tracked.
-          context.forwardWalkTo(walk, nextHop, true)
-        }
-      }
-    } else {
-      // Reset all walks -- no where to go from here
-      for(walk <- walks) {
-        context.resetWalk(walk, false)
-      }
     }
   }
 }

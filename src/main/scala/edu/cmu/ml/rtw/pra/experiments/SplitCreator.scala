@@ -155,9 +155,8 @@ class SplitCreator(
     params match {
       case JNothing => null
       case jval => {
-        val graphFile = s"${graphDir}graph_chi/edges.tsv"
-        val numShards = fileUtil.readIntegerListFromFile(s"${graphDir}num_shards.tsv").get(0)
-        new PprNegativeExampleSelector(params, graphFile, numShards)
+        val graph = new GraphOnDisk(graphDir, fileUtil)
+        new PprNegativeExampleSelector(params, graph)
       }
     }
   }
