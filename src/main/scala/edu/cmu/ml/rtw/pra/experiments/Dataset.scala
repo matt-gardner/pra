@@ -105,7 +105,7 @@ object Dataset {
           throw new IllegalStateException("Dataset not formatted correctly!")
       }
     val source = graph.getNodeIndex(fields(0))
-    val target = graph.getNodeIndex(fields(0))
+    val target = graph.getNodeIndex(fields(1))
     new Instance(source, target, isPositive, graph)
   }
 
