@@ -11,17 +11,18 @@ import org.json4s.native.JsonMethods._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import java.util.Random
+import scala.util.Random
 
 class PprNegativeExampleSelector(
     params: JValue,
     val graph: Graph,
     random: Random = new Random) {
   implicit val formats = DefaultFormats
-  val paramKeys = Seq("ppr computer", "negative to positive ratio")
+  val paramKeys = Seq("ppr computer", "negative to positive ratio", "max potential predictions")
   JsonHelper.ensureNoExtras(params, "split -> negative instances", paramKeys)
 
   val negativesPerPositive = JsonHelper.extractWithDefault(params, "negative to positive ratio", 3)
+  val maxPotentialPredictions = JsonHelper.extractWithDefault(params, "max potential predictions", 1000)
   val pprComputer = PprComputerCreator.create(params \ "ppr computer", graph, random)
 
   // This is how many times we should try sampling the right number of negatives for each positive
@@ -40,6 +41,27 @@ class PprNegativeExampleSelector(
 
     val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
     data.merge(negativeData)
+  }
+
+  /**
+   * This one is similar to selectNegativeExamples, but instead of looking specifically for
+   * _training_ examples that are close to the given positive examples, we look across the whole
+   * domain and range of a relation to find things to score.  The point of this is to actually
+   * perform KB completion, instead of just training a model or doing cross validation.  So this
+   * method is used to generate possible predictions for NELL's ongoing run, for instance.
+   */
+  def findPotentialPredictions(domain: Set[Int], range: Set[Int], knownPositives: Dataset): Dataset = {
+    println("Finding potential predictions to add to the KB")
+    val graph = knownPositives.instances(0).graph
+    val data = new Dataset(domain.map(entity => new Instance(entity, -1, true, graph)).toSeq)
+
+    // By using computePersonalizedPageRank this way, we will get a map from entities in the domain
+    // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
+    // and create a set of potential predictions.
+    val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
+    val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
+
+    new Dataset(potentialPredictions.map(x => new Instance(x._1, x._2, false, graph)))
   }
 
   def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]): Seq[(Int, Int)] = {
@@ -64,6 +86,30 @@ class PprNegativeExampleSelector(
       }
       negative_instances.toSet
     }).seq.toSet.toSeq
+  }
+
+  def pickPredictionsByPpr(pprValues: Map[Int, Map[Int, Int]], knownPositives: Dataset): Seq[(Int, Int)] = {
+    // We'll use the negative to positive ratio to set how many targets we'll sample per entity in
+    // the domain, then cap it at maxPotentialPredictions.
+    val knownPositiveSet = knownPositives.instances.map(
+      instance => (instance.source, instance.target)).toSet
+    val potentialPredictions = pprValues.par.flatMap(entry => {
+      val source = entry._1
+      val targetWeights = entry._2.toArray
+      val totalWeight = targetWeights.map(_._2).sum
+      val sampledTargets = new mutable.HashSet[(Int, Int)]
+      var attempts = 0
+      while (sampledTargets.size < negativesPerPositive && attempts < maxAttempts) {
+        attempts += 1
+        val target = weightedSample(targetWeights, totalWeight, -1)
+        val pair = (source, target)
+        if (target != -1 && !knownPositiveSet.contains(pair)) {
+          sampledTargets += pair
+        }
+      }
+      sampledTargets.toSet
+    }).seq.toSet.toSeq
+    random.shuffle(potentialPredictions).take(maxPotentialPredictions)
   }
 
   // The default value here is because total_weight can be more than weight_list.map(_._2).sum.  If

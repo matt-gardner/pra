@@ -26,7 +26,7 @@ import org.json4s.native.JsonMethods._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import java.util.Random
+import scala.util.Random
 
 trait PprComputer {
   // The return value here is a map from node ids to (node id, score) pairs.  We will use all
@@ -88,6 +88,7 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
   // sequentially inside here.
   def pprFromNode(node: Int, allowed: Set[Int]): Map[Int, Int] = {
     val targetCounts = new mutable.HashMap[Int, Int].withDefaultValue(0)
+    if (allowed.size == 0) return targetCounts.toMap
 
     for (walkNum <- 1 to walksPerSource) {
       var currentNode = node
@@ -186,7 +187,7 @@ class GraphChiPprComputer(
       walkArray: WalkArray,
       vertex: ChiVertex[EmptyType, Integer],
       context_ : DrunkardContext,
-      random: Random) {
+      random: java.util.Random) {
     val walks = walkArray.asInstanceOf[IntWalkArray].getArray()
     val context = context_.asInstanceOf[IntDrunkardContext]
     val numWalks = walks.length
