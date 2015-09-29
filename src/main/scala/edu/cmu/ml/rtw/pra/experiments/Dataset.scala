@@ -10,10 +10,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
 
-// Not a case class, because we really don't want equality on source/target/isPositive.  We need
-// equality to only look at object identity, because the source and target Ints might be with
-// respect to different dictionaries.
-class Instance(val source: Int, val target: Int, val isPositive: Boolean, val graph: Graph)
+case class Instance(source: Int, target: Int, isPositive: Boolean, graph: Graph)
 
 /**
  * A collection of positive and negative (source, target) pairs.
