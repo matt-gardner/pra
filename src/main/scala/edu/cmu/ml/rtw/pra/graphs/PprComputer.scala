@@ -78,8 +78,6 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
   override def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
     val sources = data.instances.map(_.source)
     val targets = data.instances.map(_.target)
-    println(s"Found ${sources.size} sources and ${targets.size} targets")
-    println(s"Performing ${walksPerSource} walks per source node, and going ${numSteps} steps")
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
   }
@@ -98,7 +96,7 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
         val index = random.nextInt(nextNodes.size)
         currentNode = nextNodes(index)
         // Check to see if we're at a node we want to keep track of.
-        if (allowed.contains(currentNode)) {
+        if (allowed.contains(currentNode) && currentNode != node) {
           targetCounts.update(currentNode, targetCounts(currentNode) + 1)
         }
         // And reset with probability resetProbability.
