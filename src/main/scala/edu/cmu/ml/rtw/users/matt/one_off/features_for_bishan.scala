@@ -12,19 +12,22 @@ import scala.collection.JavaConverters._
 object features_for_bishan {
   val fileUtil = new FileUtil()
   val graphBase = "/home/mg1/data/bishan/doc_graph/"
-  val outFile = "/home/mg1/data/bishan/dataset.tsv"
+  val outDirectory = "/home/mg1/data/bishan/split/"
 
   def main(args: Array[String]) {
     val edgelists = FileHelper.recursiveListFiles(new File(graphBase), """.*\.edgelist$""".r)
-    val dataset = edgelists.par.map(processEdgeListFile)
-    val lines = dataset.flatMap(file => {
-      val graph = file._1
-      val instances = file._2
-      instances.map(sourceTarget => {
+    val relations = edgelists.par.map(edgelistFile => {
+      val (graph, instances) = processEdgeListFile(edgelistFile)
+      val lines = instances.map(sourceTarget => {
         sourceTarget._1 + "\t" + sourceTarget._2 + "\t1\t" + graph
       })
+      val relation = edgelistFile.getName().replace(".edgelist", "")
+      fileUtil.mkdirs(outDirectory + relation + "/")
+      val outfile = outDirectory + relation + "/training.tsv"
+      fileUtil.writeLinesToFile(outfile, lines.asJava)
+      relation
     }).seq
-    fileUtil.writeLinesToFile(outFile, lines.asJava)
+    fileUtil.writeLinesToFile(outDirectory + "relations_to_run.tsv", relations.asJava)
   }
 
   def processEdgeListFile(file: File): (String, Seq[(String, String)]) = {
