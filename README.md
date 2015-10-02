@@ -5,12 +5,19 @@ processing of large graphs on a single machine.  This algorithm learns models th
 and predict missing edges of particular types.  The code here was used to run experiments in the
 following papers:
 
+* Efficient and Expressive Knowledge Base Completion Using Subgraph Feature Extraction.  Matt
+  Gardner and Tom Mitchell.  EMNLP 2015. ([website](http://rtw.ml.cmu.edu/emnlp2015_sfe))
 * Incorporating Vector Space Similarity in Random Walk Inference over Knowledge Bases.  Matt
   Gardner, Partha Talukdar, Jayant Krishnamurthy, and Tom Mitchell.  EMNLP 2014.
 ([website](http://rtw.ml.cmu.edu/emnlp2014_vector_space_pra))
 * Improving Learning and Inference in a Large Knowledge-base using Latent Syntactic Cues.  Matt
   Gardner, Partha Talukdar, Bryan Kisiel, and Tom Mitchell.  EMNLP 2013.
 ([website](http://rtw.ml.cmu.edu/emnlp2013_pra))
+
+To reproduce the experiments in those papers, see the corresponding website.  Note that the EMNLP
+2015 paper has the most detailed instructions, and the older papers use versions of the code that
+aren't compatible with the current repository; if you really want to reproduce the older
+experiments, talk to me.
 
 See [the github.io page](http://matt-gardner.github.io/pra/) for code documentation.  Please feel
 free to file bugs, feature requests, or send pull requests.
