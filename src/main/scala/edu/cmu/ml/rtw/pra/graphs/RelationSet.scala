@@ -1,9 +1,9 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import java.io.BufferedReader

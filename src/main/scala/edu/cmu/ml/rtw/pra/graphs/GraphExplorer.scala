@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
@@ -10,6 +9,7 @@ import edu.cmu.ml.rtw.pra.features.PathFinderCreator
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluder
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import scala.collection.JavaConverters._

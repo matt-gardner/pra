@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.config.JsonHelper
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import edu.cmu.graphchi.ChiVertex
 import edu.cmu.graphchi.EdgeDirection

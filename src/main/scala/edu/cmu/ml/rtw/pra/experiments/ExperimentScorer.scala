@@ -8,9 +8,9 @@ import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
 import scalax.io.Resource
 
-import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.users.matt.util.FileHelper
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}

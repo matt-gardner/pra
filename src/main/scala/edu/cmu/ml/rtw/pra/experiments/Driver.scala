@@ -1,10 +1,8 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.config.SpecFileReader
 import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator
 import edu.cmu.ml.rtw.pra.features.SubgraphFeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
@@ -14,7 +12,9 @@ import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 import edu.cmu.ml.rtw.pra.models.PraModelCreator
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
+import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable

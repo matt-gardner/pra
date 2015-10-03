@@ -1,11 +1,11 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.Vector
 

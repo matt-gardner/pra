@@ -3,7 +3,6 @@ package edu.cmu.ml.rtw.pra.features
 import java.util.{Map => JavaMap}
 import java.util.{Set => JavaSet}
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
@@ -12,6 +11,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Index
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import org.json4s._

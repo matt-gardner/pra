@@ -7,11 +7,11 @@ import cc.mallet.types.InstanceList
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable

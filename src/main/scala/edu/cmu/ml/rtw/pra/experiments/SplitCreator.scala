@@ -2,11 +2,11 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import java.io.FileWriter
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 import org.json4s._

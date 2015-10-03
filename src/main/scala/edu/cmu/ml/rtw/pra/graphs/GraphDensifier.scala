@@ -1,10 +1,10 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.config.JsonHelper
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Driver
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import breeze.linalg._
 

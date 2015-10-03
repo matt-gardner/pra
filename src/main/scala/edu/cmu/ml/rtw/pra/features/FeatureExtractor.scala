@@ -1,9 +1,9 @@
 package edu.cmu.ml.rtw.pra.features
 
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
-import edu.cmu.ml.rtw.pra.config.JsonHelper
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.util.control.Exception.allCatch
