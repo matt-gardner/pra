@@ -23,6 +23,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-compress" % "1.9",
   // Scala utility libraries
   "org.json4s" %% "json4s-native" % "3.2.11",
+  "edu.cmu.ml.rtw" %% "matt-util" % "1.0",
   // Matrix stuff, both for java and scala
   "net.sf.trove4j" % "trove4j" % "2.0.2",
   "org.scalanlp" %% "breeze" % "0.10",
@@ -30,10 +31,10 @@ libraryDependencies ++= Seq(
   // MALLET, for optimization
   "cc.mallet" % "mallet" % "2.0.7",
   // GraphChi
-  "org.graphchi" %%  "graphchi-java" % "0.2.2",
+  "org.graphchi" %% "graphchi-java" % "0.2.2",
   // Testing dependencies
+  "com.novocode" % "junit-interface" % "0.11",
   "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
-  "com.novocode" % "junit-interface" % "0.11" % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 )
 
