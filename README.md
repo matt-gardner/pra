@@ -45,6 +45,16 @@ that license).  You can find the text of that license
 
 # Changelog
 
+Version 3.1 (current snapshot):
+
+- More improvements on the Graph object.  The eventual idea is to make this much more versatile,
+  allowing for graph servers that live in other processes, or on other machines, and for graphs
+where you use a remote graph but add something local to it...  This is currently in progress, and
+when it's finished I will release 3.1.
+
+- Removed the utility code into its own repository, which is now a dependency.  This was so I
+  could use those utilities in other projects I'm working on.
+
 Version 3.0 (released on 5/30/2015):
 
 - More refinement on the parameter specification (hence the larger version bump, as the parameter
