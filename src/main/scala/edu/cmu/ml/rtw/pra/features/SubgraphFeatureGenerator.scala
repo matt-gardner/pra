@@ -108,22 +108,7 @@ class SubgraphFeatureGenerator(
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(_ match {
-      case JString("PraFeatureExtractor") => new PraFeatureExtractor
-      case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
-      case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
-      case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
-      case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
-      case jval: JValue => {
-        (jval \ "name") match {
-          case JString("VectorSimilarityFeatureExtractor") => {
-            new VectorSimilarityFeatureExtractor(jval, praBase, fileUtil)
-          }
-          case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
-        }
-      }
-    })
+    extractorNames.map(params => FeatureExtractorCreator.create(params, praBase, fileUtil))
   }
 
   def hashFeature(feature: String): Int = {

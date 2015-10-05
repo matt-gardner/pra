@@ -12,12 +12,33 @@ import scala.math.abs
 import scala.io.Source
 
 import org.json4s._
-import org.json4s.Formats
 import org.json4s.native.JsonMethods._
 
 trait FeatureExtractor {
   type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
   def extractFeatures(instance: Instance, subgraph: Subgraph): java.util.List[String]
+}
+
+object FeatureExtractorCreator {
+  def create(params: JValue, praBase: String, fileUtil: FileUtil): FeatureExtractor = {
+    params match {
+      case JString("PraFeatureExtractor") => new PraFeatureExtractor
+      case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
+      case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
+      case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
+      case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
+      case jval: JValue => {
+        (jval \ "name") match {
+          case JString("VectorSimilarityFeatureExtractor") => {
+            new VectorSimilarityFeatureExtractor(jval, praBase, fileUtil)
+          }
+          case JString("PraFeatureExtractorWithFilter") => new PraFeatureExtractorWithFilter(jval)
+          case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
+        }
+      }
+    }
+  }
 }
 
 class PraFeatureExtractor extends FeatureExtractor {
@@ -26,6 +47,22 @@ class PraFeatureExtractor extends FeatureExtractor {
     val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
     subgraph.asScala.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
+        List(entry._1.encodeAsHumanReadableString(graph))
+      } else {
+        List[String]()
+      }
+    }).toList.asJava
+  }
+}
+
+class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor {
+  val filter = PathTypeFilterCreator.create(params \ "filter")
+
+  override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    val sourceTarget = new Pair[Integer, Integer](instance.source, instance.target)
+    subgraph.asScala.flatMap(entry => {
+      if (entry._2.contains(sourceTarget) && filter.shouldKeepPath(entry._1, graph)) {
         List(entry._1.encodeAsHumanReadableString(graph))
       } else {
         List[String]()
