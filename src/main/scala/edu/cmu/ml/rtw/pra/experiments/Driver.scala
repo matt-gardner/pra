@@ -592,8 +592,16 @@ object Driver {
     if (fileUtil.fileExists(splitsDirectory + fixed)) {
       val training = splitsDirectory + fixed + "/training.tsv"
       val testing = splitsDirectory + fixed + "/testing.tsv"
-      builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
-      builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
+      if (fileUtil.fileExists(training)) {
+        builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
+      } else {
+        println("WARNING: NO TRAINING FILE FOUND")
+      }
+      if (fileUtil.fileExists(testing)) {
+        builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
+      } else {
+        println("WARNING: NO TESTING FILE FOUND")
+      }
       false
     } else {
       if (relationMetadataDirectory == null) {
