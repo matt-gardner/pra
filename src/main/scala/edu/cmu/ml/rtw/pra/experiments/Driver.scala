@@ -163,7 +163,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val praParams = params \ "pra parameters"
     val praParamKeys = Seq("mode", "features", "learning")
     JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
-    val mode = praParams \ "mode"
+    val mode = JsonHelper.extractWithDefault(praParams, "mode", "learn models")
 
     // Split the data if we're doing cross validation instead of a fixed split.
     if (doCrossValidation) {
