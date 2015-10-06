@@ -106,7 +106,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       fileUtil.mkdirs(outdir)
       builder.setOutputBase(outdir)
 
-      if (mode == "learn models") {
+      if (mode == "learn models" || mode == "create feature matrix") {
         learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
       } else if (mode == "explore graph") {
         exploreGraph(params, builder.setNoChecks().build(), splitsDirectory)
@@ -163,6 +163,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val praParams = params \ "pra parameters"
     val praParamKeys = Seq("mode", "features", "learning")
     JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
+    val mode = praParams \ "mode"
 
     // Split the data if we're doing cross validation instead of a fixed split.
     if (doCrossValidation) {
@@ -182,6 +183,8 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // First we get features.
     val generator = createFeatureGenerator(praParams, config)
     val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
+
+    if (mode == "create feature matrix") return
 
     // Then we train a model.
     val learningParams = praParams \ "learning"
