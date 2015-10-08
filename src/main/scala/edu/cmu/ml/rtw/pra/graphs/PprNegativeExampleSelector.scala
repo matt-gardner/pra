@@ -34,9 +34,15 @@ class PprNegativeExampleSelector(
    * PPR from the positive examples in the input data.
    */
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
-    println("Selecting negative examples by PPR score")
+    println("Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
     val graph = data.instances(0).graph
+
+    val start = compat.Platform.currentTime
+    print("Computing PPR scores...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, allowedSources, allowedTargets)
+    val end = compat.Platform.currentTime
+    val seconds = (end - start) / 1000.0
+    println(s"  took ${seconds} seconds")
     val negativeExamples = sampleByPrr(data, pprValues)
 
     val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
@@ -53,12 +59,19 @@ class PprNegativeExampleSelector(
   def findPotentialPredictions(domain: Set[Int], range: Set[Int], knownPositives: Dataset): Dataset = {
     println("Finding potential predictions to add to the KB")
     val graph = knownPositives.instances(0).graph
-    val data = new Dataset(domain.map(entity => new Instance(entity, -1, true, graph)).toSeq)
+    val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
+    val data = new Dataset(sourcesToUse.map(entity => new Instance(entity, -1, true, graph)).toSeq)
+    println(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
 
+    val start = compat.Platform.currentTime
     // By using computePersonalizedPageRank this way, we will get a map from entities in the domain
     // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
     // and create a set of potential predictions.
+    print("Computing PPR scores for the sources...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
+    val end = compat.Platform.currentTime
+    val seconds = (end - start) / 1000.0
+    println(s"  took ${seconds} seconds")
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
     new Dataset(potentialPredictions.map(x => new Instance(x._1, x._2, false, graph)))

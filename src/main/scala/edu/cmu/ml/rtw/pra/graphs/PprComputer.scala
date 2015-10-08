@@ -76,8 +76,9 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
   val numSteps = JsonHelper.extractWithDefault(params, "num steps", 4)
 
   override def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
-    val sources = data.instances.map(_.source)
-    val targets = data.instances.map(_.target)
+    val sources = if (allowedSources.size > 0) data.instances.map(_.source).toSet else Set[Int]()
+    val targets = if (allowedTargets.size > 0) data.instances.map(_.target).toSet else Set[Int]()
+    println(s"Computing PPR with ${sources.size} sources and ${targets.size} targets")
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
   }
