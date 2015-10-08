@@ -91,6 +91,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     baseBuilder.setOutputter(new Outputter(nodeNames))
     // TODO(matt): move this parameter to the outputter.
     baseBuilder.setOutputMatrices(JsonHelper.extractWithDefault(params, "output matrices", false))
+    println(s"Outputting matrices: ${baseBuilder.outputMatrices}")
 
     val baseConfig = baseBuilder.setNoChecks().build()
 
@@ -183,6 +184,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // First we get features.
     val generator = createFeatureGenerator(praParams, config)
     val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
+    if (config.outputMatrices && config.outputBase != null) {
+      val output = config.outputBase + "training_matrix.tsv"
+      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
+    }
 
     if (mode == "create feature matrix") return
 
@@ -197,6 +202,10 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // not worth it, anyway), we could feasibly just generate the training and test matrices at the
     // same time, and because of how GraphChi works, that would save us considerable time.
     val testMatrix = generator.createTestMatrix(config.testingData)
+    if (config.outputMatrices && config.outputBase != null) {
+      val output = config.outputBase + "test_matrix.tsv"
+      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
+    }
     val scores = model.classifyInstances(testMatrix)
     config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
   }
