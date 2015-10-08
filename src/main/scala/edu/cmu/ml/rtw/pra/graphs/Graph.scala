@@ -72,7 +72,10 @@ class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) 
     edges(edgeDict.getIndex(edgeLabel))
   }
 
-  private lazy val _connectedNodes: Set[Int] = edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
+  // We'll save ourselves some time and memory and only create this when it's asked for.  Hopefully
+  // it won't exacerbate memory issues too much.  But, especially when using random walks to
+  // compute PPR, this can take a lot of time if it's recomputed every time it's asked for.
+  private lazy val _connectedNodes = edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
 
   def getAllConnectedNodes(): Set[Int] = _connectedNodes
 }
