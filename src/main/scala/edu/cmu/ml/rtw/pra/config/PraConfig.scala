@@ -21,10 +21,11 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
  * params object.  I'm pretty close to done with this, but there are a few parameters that are
  * left.
  *
- * TODO(matt): this has entries both for global-level information and for relation-specific
- * configuration (e.g., the graph is global, over all relations being run, while the allowed
- * targets are per-relation).  It might be nicer for these two functions to be split into separate
- * classes.
+ * TODO(matt): I want to remove this object entirely and just go with the
+ * one-object-per-spec-parameter paradigm I've been using more recently.  That would mean having a
+ * Graph object that I pass around, a Split object, an Outputter, and a RelationMetadata object.
+ * The Driver creates all of these objects, and passes them to the other parts of the code that
+ * need them.
  */
 class PraConfig(builder: PraConfigBuilder) {
   ////////////////////////////////////////////////////////////////////////////////////////////////
