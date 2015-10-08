@@ -150,17 +150,6 @@ class BfsPathFinder(
       currentNodes = currentNodes.flatMap(nodeEntry => {
         val node = nodeEntry._1
         val pathTypes = nodeEntry._2
-        try {
-          val node_ = graph.getNode(node)
-        } catch {
-          case e: ArrayIndexOutOfBoundsException => {
-            println("Source: " + graph.getNodeName(source))
-            println("Target: " + graph.getNodeName(target))
-            println("graph size: " + graph.entries.size)
-            println("node: " + node)
-            println("i: " + i)
-          }
-        }
         val nodeResults = graph.getNode(node).edges.toSeq.flatMap(relationEdges => {
           val relation = relationEdges._1
           val inEdges = relationEdges._2._1

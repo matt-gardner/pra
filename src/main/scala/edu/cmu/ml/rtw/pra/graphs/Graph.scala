@@ -72,9 +72,9 @@ class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) 
     edges(edgeDict.getIndex(edgeLabel))
   }
 
-  def getAllConnectedNodes(): Set[Int] = {
-    edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
-  }
+  private lazy val _connectedNodes: Set[Int] = edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
+
+  def getAllConnectedNodes(): Set[Int] = _connectedNodes
 }
 
 // This Graph implementation is backed by a file on disk, and can either be used with GraphChi or
