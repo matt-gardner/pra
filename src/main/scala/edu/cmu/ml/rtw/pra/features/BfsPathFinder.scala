@@ -45,7 +45,12 @@ class BfsPathFinder(
   val factory = createPathTypeFactory(params \ "path type factory")
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
+    print("Running BFS...  ")
+    val start = compat.Platform.currentTime
     results = runBfs(data, config.unallowedEdges.map(_.toInt).toSet)
+    val end = compat.Platform.currentTime
+    val seconds = (end - start) / 1000.0
+    println(s"Took ${seconds} seconds")
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
@@ -75,7 +80,6 @@ class BfsPathFinder(
   override def finished() { }
 
   def runBfs(data: Dataset, unallowedEdges: Set[Int]) = {
-    println("Running BFS")
     val instances = data.instances
     // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
     // the data is using a shared graph.
@@ -91,104 +95,82 @@ class BfsPathFinder(
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
     instances.par.map(instance => {
-      val pathDict = new Index[PathType](factory)
       val graph = instance.graph
       val source = instance.source
       val target = instance.target
-      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, pathDict)
-      val oneSidedSource = reKeyBfsResults(source, sourceSubgraph)
-      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, pathDict)
-      val oneSidedTarget = reKeyBfsResults(target, targetSubgraph)
-      val intersection = sourceSubgraph.keys.toSet.intersect(targetSubgraph.keys.toSet)
-      val twoSided = intersection.flatMap(node => {
-        val sourcePaths = sourceSubgraph(node)
-        val targetPaths = targetSubgraph(node)
-        val combinedPaths = for (sp <- sourcePaths; tp <- targetPaths)
-           yield (factory.concatenatePathTypes(pathDict.getKey(sp), pathDict.getKey(tp)), (source, target))
-        combinedPaths.groupBy(_._1).mapValues(_.map(_._2))
-      })
       val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-      oneSidedSource.foreach(entry => {
-        result.getOrElseUpdate(pathDict.getKey(entry._1), new mutable.HashSet[(Int, Int)]).++=(entry._2)
-      })
-      oneSidedTarget.foreach(entry => {
-        result.getOrElseUpdate(pathDict.getKey(entry._1), new mutable.HashSet[(Int, Int)]).++=(entry._2)
-      })
-      twoSided.foreach(entry => {
-        result.getOrElseUpdate(entry._1, new mutable.HashSet[(Int, Int)]).++=(entry._2)
-      })
+      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
+      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
+      val sourceKeys = sourceSubgraph.keys.toSet
+      val targetKeys = targetSubgraph.keys.toSet
+      val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
+      for (intermediateNode <- keysToUse) {
+        for (sourcePath <- sourceSubgraph(intermediateNode);
+             targetPath <- targetSubgraph(intermediateNode)) {
+           val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
+           result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
+         }
+      }
       val subgraph = result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
       (instance -> subgraph)
     }).seq.toMap
   }
 
-  def reKeyBfsResults(origin: Int, bfsResults: Map[Int, Set[Int]]) = {
-    val rekeyed = new mutable.HashMap[Int, mutable.HashSet[(Int, Int)]]
-    bfsResults.foreach(endNodePaths => {
-      val endNode = endNodePaths._1
-      val paths = endNodePaths._2
-      paths.foreach(pathType => {
-        rekeyed.getOrElseUpdate(pathType, new mutable.HashSet[(Int, Int)]).add((origin, endNode))
-      })
-    })
-    rekeyed.mapValues(_.toSet).toMap
-  }
-
-  // TODO(matt): I'm not doing anything to detect cycles in here.  Maybe I should...  But, if you
-  // get to the same node with different path types, we want to keep both of them.  So you can't do
-  // the typical thing of keeping a set of seen nodes; you need to have a much more complicated
-  // data structure to get this right.  Maybe it's worth it, maybe it's not.
+  // The return value here is a map of (end node -> path types).  The resultsByPathType is
+  // basically what we're after here; we keep around the (end node -> path types) map so that we
+  // can do a join on it to reconstruct larger paths, which then get added to resultsByPathType.
+  //
+  // I simplified this from a method that used a bunch of maps and flat maps instead of a queue to
+  // do this search.  I was hoping this would give a nice speed up, but some timing results seem
+  // like it's about the same.  At least this way I think the code is easier to understand.
   def bfsFromNode(
       graph: Graph,
       source: Int,
       target: Int,
       unallowedRelations: Set[Int],
-      pathDict: Index[PathType]) = {
-    var currentNodes = Map((source -> Set(pathDict.getIndex(factory.emptyPathType))))
-    val results = new mutable.HashMap[Int, mutable.HashSet[Int]]
-    for (i <- 1 to numSteps) {
-      currentNodes = currentNodes.flatMap(nodeEntry => {
-        val node = nodeEntry._1
-        val pathTypes = nodeEntry._2
-        val nodeResults = graph.getNode(node).edges.toSeq.flatMap(relationEdges => {
-          val relation = relationEdges._1
-          val inEdges = relationEdges._2._1
-          val outEdges = relationEdges._2._2
-          if (inEdges.length + outEdges.length > maxFanOut) {
-            Seq()
-          } else {
-            val nextNodes = new mutable.HashMap[Int, mutable.HashSet[Int]]
-            inEdges.foreach(nextNode => {
+      resultsByPathType: mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]) = {
+    // The object in this queue is (what node I'm at, what path type got me there, steps left).  If
+    // you really want to detect cycles (and I'm not sure it's worth it), instead of the PathType
+    // you should keep a Seq[(Int, Int, Boolean)] with edge types, nodes, and reverse.  You can
+    // check the nodes at each step to see if you're at a cycle, then construct a path type from
+    // the edge types and reverse when it's needed.
+    val queue = new mutable.Queue[(Int, PathType, Int)]
+    val resultsByNode = new mutable.HashMap[Int, mutable.HashSet[PathType]].withDefaultValue(
+      new mutable.HashSet[PathType]())
+    queue += Tuple3(source, factory.emptyPathType, numSteps)
+    while (!queue.isEmpty) {
+      val (node, pathType, stepsLeft) = queue.dequeue
+      if (pathType != factory.emptyPathType) {
+        resultsByNode.getOrElseUpdate(node, new mutable.HashSet[PathType]).add(pathType)
+        resultsByPathType.getOrElseUpdate(pathType, new mutable.HashSet[(Int, Int)]).add((source, node))
+      }
+      if (stepsLeft > 0) {
+        for (entry <- graph.getNode(node).edges) {
+          val relation = entry._1
+          val inEdges = entry._2._1
+          val outEdges = entry._2._2
+          if (inEdges.length + outEdges.length <= maxFanOut) {
+            for (nextNode <- inEdges) {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
-                pathTypes.foreach(pathType => {
-                  val newPathType = factory.addToPathType(
-                    pathDict.getKey(pathType), relation, nextNode, true)
-                  val newIndex = pathDict.getIndex(newPathType)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
-                  newPathType
-                })
+                val nextPathType = factory.addToPathType(pathType, relation, nextNode, true)
+                queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
               }
-            })
-            outEdges.foreach(nextNode => {
+            }
+            for (nextNode <- outEdges) {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
-                pathTypes.foreach(pathType => {
-                  val newPathType = factory.addToPathType(
-                    pathDict.getKey(pathType), relation, nextNode, false)
-                  val newIndex = pathDict.getIndex(newPathType)
-                  results.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
-                  nextNodes.getOrElseUpdate(nextNode, new mutable.HashSet[Int]).add(newIndex)
-                  newPathType
-                })
+                val nextPathType = factory.addToPathType(pathType, relation, nextNode, false)
+                queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
               }
-            })
-            nextNodes.toSeq.map(entry => (entry._1, entry._2.toSet))
+            }
           }
-        })
-        nodeResults.groupBy(_._1).mapValues(_.flatMap(_._2).toSet)
-      })
+        }
+      }
     }
-    results.map(entry => (entry._1 -> entry._2.toSet)).toMap
+
+    // NB: I originally had this method return immutable types, because it's the nicer, scala way
+    // of doing things.  However, it seems like I get a ~10-20% speedup by removing the conversion
+    // to immutable types here.
+    resultsByNode
   }
 
   def shouldSkip(source: Int, target: Int, node1: Int, node2: Int, relation: Int, exclude: Set[Int]) = {

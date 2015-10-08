@@ -18,6 +18,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
+  val factory = new BasicPathTypeFactory
 
   val graphFilename = "/graph/graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
@@ -48,9 +49,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     .setUnallowedEdges(Seq(1)).setGraph(graph).setNoChecks().build()
   val data = new Dataset(Seq(instance), fileUtil)
 
-  val params: JValue = JNothing
-
-  def makeFinder() = new BfsPathFinder(params, config, "/", fileUtil)
+  def makeFinder(params: JValue = JNothing) = new BfsPathFinder(params, config, "/", fileUtil)
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val factory = new BasicPathTypeFactory
@@ -112,11 +111,54 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   it should "exclude edges when specified" in {
     val instance = new Instance(1, 3, true, graph)
     val data = new Dataset(Seq(instance), fileUtil)
-    val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))
     val results13 = finder.results(instance).asScala
     val badPath = factory.fromString("-1-")
     results13(badPath) should not contain(Pair.makePair(1, 3))
+  }
+
+  it should "observe the max fan out" in {
+    val finder = makeFinder(("max fan out" -> 2))
+    finder.findPaths(config, data, Seq(((1, 3), 1)))
+
+    // These results should be the same as above, except missing anything that uses relation 1 at
+    // node 1.  However, we can use it as an _intermediate_ node when combining paths, so we should
+    // still see one -3-1- in here.
+    val results53 = finder.results(instance).asScala
+
+    // 4 Source paths
+    results53(factory.fromString("-3-")).size should be(1)
+    results53(factory.fromString("-3-")) should contain(Pair.makePair(5, 1))
+    results53(factory.fromString("-3-2-")).size should be(1)
+    results53(factory.fromString("-3-2-")) should contain(Pair.makePair(5, 4))
+    results53(factory.fromString("-3-_4-")).size should be(1)
+    results53(factory.fromString("-3-_4-")) should contain(Pair.makePair(5, 2))
+    results53(factory.fromString("-3-_3-")).size should be(1)
+    results53(factory.fromString("-3-_3-")) should contain(Pair.makePair(5, 5))
+
+    // 4 Target paths
+    results53(factory.fromString("-_1-")).size should be(1)
+    results53(factory.fromString("-_1-")) should contain(Pair.makePair(3, 1))
+    results53(factory.fromString("-_1-2-")).size should be(1)
+    results53(factory.fromString("-_1-2-")) should contain(Pair.makePair(3, 4))
+    results53(factory.fromString("-_1-_4-")).size should be(1)
+    results53(factory.fromString("-_1-_4-")) should contain(Pair.makePair(3, 2))
+    results53(factory.fromString("-_1-_3-")).size should be(1)
+    results53(factory.fromString("-_1-_3-")) should contain(Pair.makePair(3, 5))
+
+    // 4 Combined paths - some of these contain loops.  If loop detection is ever added, these
+    // tests should be revisited.
+    results53(factory.fromString("-3-1-")).size should be(1)
+    results53(factory.fromString("-3-1-")) should contain(Pair.makePair(5, 3))
+    results53(factory.fromString("-3-2-_2-1-")).size should be(1)
+    results53(factory.fromString("-3-2-_2-1-")) should contain(Pair.makePair(5, 3))
+    results53(factory.fromString("-3-_4-4-1-")).size should be(1)
+    results53(factory.fromString("-3-_4-4-1-")) should contain(Pair.makePair(5, 3))
+    results53(factory.fromString("-3-_3-3-1-")).size should be(1)
+    results53(factory.fromString("-3-_3-3-1-")) should contain(Pair.makePair(5, 3))
+
+    // 4 + 4 + 4 = 12 total paths
+    results53.size should be(12)
   }
 }
