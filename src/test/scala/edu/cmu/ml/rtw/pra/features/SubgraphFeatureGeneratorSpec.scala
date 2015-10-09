@@ -18,9 +18,10 @@ import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
-  type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
+  type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val params: JValue = ("include bias" -> true)
   val graph = new GraphOnDisk("src/test/resources/")
@@ -34,16 +35,11 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   generator.featureDict.getIndex("feature3")
 
   def getSubgraph(instance: Instance) = {
-    val subgraph = new java.util.HashMap[PathType, java.util.Set[Pair[Integer, Integer]]]
     val pathType1 = new BasicPathTypeFactory().fromString("-1-")
     val pathType2 = new BasicPathTypeFactory().fromString("-2-")
-    val nodePairs1 = new java.util.HashSet[Pair[Integer, Integer]]
-    nodePairs1.add(Pair.makePair(Integer.valueOf(instance.source), 1:Integer))
-    val nodePairs2 = new java.util.HashSet[Pair[Integer, Integer]]
-    nodePairs2.add(Pair.makePair(Integer.valueOf(instance.target), 2:Integer))
-    subgraph.put(pathType1, nodePairs1)
-    subgraph.put(pathType2, nodePairs2)
-    Map(instance -> subgraph)
+    val nodePairs1 = Set((instance.source, 1))
+    val nodePairs2 = Set((instance.target, 2))
+    Map(instance -> Map(pathType1 -> nodePairs1, pathType2 -> nodePairs2))
   }
 
   val instance = new Instance(1, 2, true, graph)
@@ -129,18 +125,12 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     // dataset.
     val subgraph = generator.getLocalSubgraphs(dataset)(instance)
     val factory = new BasicPathTypeFactory
-    var pathType = factory.fromString("-1-")
-    subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 2:Integer))
-    pathType = factory.fromString("-3-_3-")
-    subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 7:Integer))
-    pathType = factory.fromString("-1-2-")
-    subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 3:Integer))
-    pathType = factory.fromString("-2-")
-    subgraph.get(pathType) should contain(Pair.makePair(2:Integer, 3:Integer))
-    pathType = factory.fromString("-3-")
-    subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 4:Integer))
-    pathType = factory.fromString("-3-4-")
-    subgraph.get(pathType) should contain(Pair.makePair(1:Integer, 5:Integer))
+    subgraph(factory.fromString("-1-")) should contain((1, 2))
+    subgraph(factory.fromString("-3-_3-")) should contain((1, 7))
+    subgraph(factory.fromString("-1-2-")) should contain((1, 3))
+    subgraph(factory.fromString("-2-")) should contain((2, 3))
+    subgraph(factory.fromString("-3-")) should contain((1, 4))
+    subgraph(factory.fromString("-3-4-")) should contain((1, 5))
   }
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {
@@ -148,7 +138,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
       override def createExtractors(params: JValue) = {
         Seq(new FeatureExtractor() {
           override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
-            Seq("feature1", "feature2").asJava
+            Seq("feature1", "feature2")
           }
         })
       }

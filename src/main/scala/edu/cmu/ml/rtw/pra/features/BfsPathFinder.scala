@@ -27,7 +27,7 @@ class BfsPathFinder(
     praBase: String,
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
-  type Subgraph = JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]
+  type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
@@ -61,10 +61,10 @@ class BfsPathFinder(
     results.map(subgraphInstance => {
       val instance = subgraphInstance._1
       val subgraph = subgraphInstance._2
-      val converted = subgraph.asScala.flatMap(entry => {
+      val converted = subgraph.flatMap(entry => {
         val key = entry._1
         val s = entry._2
-        val t = s.asScala.filter(i => i.getLeft() == instance.source && i.getRight() == instance.target)
+        val t = s.filter(i => i._1 == instance.source && i._2 == instance.target)
         if (t.size > 0) {
           Seq(key -> Integer.valueOf(t.size))
         } else {
@@ -75,7 +75,7 @@ class BfsPathFinder(
     }).asJava
   }
 
-  override def getLocalSubgraphs() = results.asJava
+  override def getLocalSubgraphs() = results
 
   override def finished() { }
 
@@ -114,7 +114,7 @@ class BfsPathFinder(
          result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
        }
     }
-    result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
+    result.mapValues(_.toSet).toMap
   }
 
   // The return value here is a map of (end node -> path types).  The resultsByPathType is
@@ -194,10 +194,6 @@ class BfsPathFinder(
         throw e
       }
     }
-  }
-
-  def convertToPair(entry: (Int, Int)): Pair[Integer, Integer] = {
-    Pair.makePair(entry._1, entry._2)
   }
 
   def createPathTypeFactory(params: JValue) = {

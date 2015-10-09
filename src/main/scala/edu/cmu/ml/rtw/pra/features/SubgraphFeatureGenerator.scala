@@ -29,7 +29,7 @@ class SubgraphFeatureGenerator(
     "include bias")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
-  type Subgraph = java.util.Map[PathType, java.util.Set[Pair[Integer, Integer]]]
+  type Subgraph = Map[PathType, Set[(Int, Int)]]
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
@@ -88,14 +88,14 @@ class SubgraphFeatureGenerator(
     val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
     pathFinder.findPaths(config, data, edgesToExclude)
 
-    pathFinder.getLocalSubgraphs.asScala.toMap
+    pathFinder.getLocalSubgraphs
   }
 
   def extractFeatures(subgraphs: Map[Instance, Subgraph]): FeatureMatrix = {
     val matrix_rows = subgraphs.par.flatMap(entry => {
       val instance = entry._1
       val subgraph = entry._2
-      val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph).asScala)
+      val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
       if (features.size > 0) {
         Seq(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
       } else {
