@@ -6,7 +6,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
-import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -25,23 +25,19 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   val instance = new Instance(1, 2, true, graph)
 
   def getSubgraph(pathTypes: Seq[String], nodePairs: Seq[Set[(Int, Int)]]) = {
-    val subgraph = new java.util.HashMap[PathType, java.util.Set[Pair[Integer, Integer]]]
+    val subgraph = new mutable.HashMap[PathType, Set[(Int, Int)]]
     for (entry <- pathTypes.zip(nodePairs)) {
       val pathType = factory.fromString(entry._1)
-      val pairs = new java.util.HashSet[Pair[Integer, Integer]]
-      for (pair <- entry._2) {
-        pairs.add(Pair.makePair(Integer.valueOf(pair._1), Integer.valueOf(pair._2)))
-      }
-      subgraph.put(pathType, pairs)
+      subgraph.put(pathType, entry._2)
     }
-    subgraph
+    subgraph.toMap
   }
 
   "PraFeatureExtractor" should "extract only standard PRA features" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
     val extractor = new PraFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     features.size should be(1)
     features should contain("-rel1-")
   }
@@ -50,7 +46,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val pathTypes = Seq("-1-2-", "-2-")
     val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
     val extractor = new PathBigramsFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     features.size should be(3)
     features should contain("BIGRAM:@START@-rel1")
     features should contain("BIGRAM:rel1-rel2")
@@ -61,7 +57,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (2, 3)), Set((1, 3)))
     val extractor = new OneSidedFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     print(features)
     features.size should be(3)
     features should contain("SOURCE:-rel1-:node2")
@@ -73,7 +69,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,3),(2,4)))
     val extractor = new CategoricalComparisonFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     features.size should be(1)
     features should contain("CATCOMP:-rel2-:node3:node4")
   }
@@ -82,7 +78,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val extractor = new NumericalComparisonFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     features.size should be(1)
     features should contain("NUMCOMP:-rel2-:1.7")  // log10(50) == 1.7
   }
@@ -98,7 +94,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("matrix name" -> "test") ~
       ("max similar vectors" -> 10)
     val extractor = new VectorSimilarityFeatureExtractor(jval, "/", fileUtil)
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     println(features)
     features.size should be(6)
     features should contain("VECSIM:-rel1-rel3-")
@@ -120,7 +116,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("matrix name" -> "test") ~
       ("max similar vectors" -> 1)
     val extractor = new VectorSimilarityFeatureExtractor(jval, "/", fileUtil)
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     println(features)
     features.size should be(5)
     features should contain("VECSIM:-rel1-rel3-")
@@ -134,7 +130,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val pathTypes = Seq("-1-3-", "-2-")
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val extractor = new AnyRelFeatureExtractor
-    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs)).asScala
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     println(features)
     features.size should be(2)
     features should contain("ANYREL:-@ANY_REL@-rel3-")

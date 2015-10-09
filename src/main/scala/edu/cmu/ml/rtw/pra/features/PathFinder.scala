@@ -31,7 +31,7 @@ trait PathFinder {
   // undefined if called before findPaths, and can either crash or give empty results.
   def getPathCounts(): JavaMap[PathType, Integer]
   def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]]
-  def getLocalSubgraphs(): JavaMap[Instance, JavaMap[PathType, JavaSet[Pair[Integer, Integer]]]]
+  def getLocalSubgraphs(): Map[Instance, Map[PathType, Set[(Int, Int)]]]
   def finished()
 }
 
@@ -104,7 +104,8 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
   }
 
   override def getLocalSubgraphs() = {
-    finder.getLocalSubgraphs()
+    finder.getLocalSubgraphs().asScala.mapValues(_.asScala.mapValues(_.asScala.map(pair =>
+      (pair.getLeft().toInt, pair.getRight().toInt)).toSet).toMap).toMap
   }
 
   def createPathTypeFactory(params: JValue, config: PraConfig): PathTypeFactory = {
