@@ -34,7 +34,7 @@ class PprNegativeExampleSelector(
    * PPR from the positive examples in the input data.
    */
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
-    println("Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
+    println(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
     val graph = data.instances(0).graph
 
     val start = compat.Platform.currentTime
