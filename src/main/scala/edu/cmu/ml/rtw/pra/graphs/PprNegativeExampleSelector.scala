@@ -108,19 +108,20 @@ class PprNegativeExampleSelector(
       instance => (instance.source, instance.target)).toSet
     val potentialPredictions = pprValues.par.flatMap(entry => {
       val source = entry._1
-      val targetWeights = entry._2.toArray
-      val totalWeight = targetWeights.map(_._2).sum
-      val sampledTargets = new mutable.HashSet[(Int, Int)]
-      var attempts = 0
-      while (sampledTargets.size < negativesPerPositive && attempts < maxAttempts) {
-        attempts += 1
-        val target = weightedSample(targetWeights, totalWeight, -1)
+      val sortedTargets = entry._2.toSeq.sortBy(-_._2)
+      val selectedTargets = new mutable.HashSet[(Int, Int)]
+      var index = 0
+      // Instead of sampling by PPR, just pick the targets with the highest PPR value that aren't
+      // already known positives.
+      while (selectedTargets.size < negativesPerPositive && index < sortedTargets.size) {
+        val target = sortedTargets(index)._1
         val pair = (source, target)
         if (target != -1 && !knownPositiveSet.contains(pair)) {
-          sampledTargets += pair
+          selectedTargets += pair
         }
+        index += 1
       }
-      sampledTargets.toSet
+      selectedTargets.toSet
     }).seq.toSet.toSeq
     random.shuffle(potentialPredictions).take(maxPotentialPredictions)
   }
