@@ -94,26 +94,27 @@ class BfsPathFinder(
     // BFS for each instance holding out just a _single_ edge from the graph - the training edge
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
-    instances.par.map(instance => {
-      val graph = instance.graph
-      val source = instance.source
-      val target = instance.target
-      val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-      val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
-      val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
-      val sourceKeys = sourceSubgraph.keys.toSet
-      val targetKeys = targetSubgraph.keys.toSet
-      val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
-      for (intermediateNode <- keysToUse) {
-        for (sourcePath <- sourceSubgraph(intermediateNode);
-             targetPath <- targetSubgraph(intermediateNode)) {
-           val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
-           result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
-         }
-      }
-      val subgraph = result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
-      (instance -> subgraph)
-    }).seq.toMap
+    instances.par.map(instance => (instance -> getSubgraphForInstance(instance, unallowedEdges))).seq.toMap
+  }
+
+  def getSubgraphForInstance(instance: Instance, unallowedEdges: Set[Int]) = {
+    val graph = instance.graph
+    val source = instance.source
+    val target = instance.target
+    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+    val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
+    val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
+    val sourceKeys = sourceSubgraph.keys.toSet
+    val targetKeys = targetSubgraph.keys.toSet
+    val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
+    for (intermediateNode <- keysToUse) {
+      for (sourcePath <- sourceSubgraph(intermediateNode);
+           targetPath <- targetSubgraph(intermediateNode)) {
+         val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
+         result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
+       }
+    }
+    result.mapValues(_.map(convertToPair).seq.toSet.asJava).seq.asJava
   }
 
   // The return value here is a map of (end node -> path types).  The resultsByPathType is
