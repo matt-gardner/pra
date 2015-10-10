@@ -15,7 +15,6 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 
 trait FeatureExtractor {
-  type Subgraph = Map[PathType, Set[(Int, Int)]]
   def extractFeatures(instance: Instance, subgraph: Subgraph): Seq[String]
 }
 

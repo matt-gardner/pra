@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -28,6 +29,12 @@ class PraFeatureGenerator(
 
   // With PraFeatureGenerator, we assume a single shared graph.
   val graph = config.graph.get.asInstanceOf[GraphOnDisk]
+
+  override def constructMatrixRow(instance: Instance): Option[MatrixRow] = {
+    // The reason this would be complicated is because we can't do this without having first
+    // selected path features.
+    throw new RuntimeException("This method is not yet implemented!  And it would be complicated...")
+  }
 
   override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
     pathTypes = selectPathFeatures(data)
@@ -71,7 +78,7 @@ class PraFeatureGenerator(
     println("Selecting path features with " + data.instances.size + " training instances")
 
     val finder = createPathFinder()
-    val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
+    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     finder.findPaths(config, data, edgesToExclude)
 
     // Next we get the resultant path counts.
@@ -117,7 +124,7 @@ class PraFeatureGenerator(
       outputFile: String,
       isTraining: Boolean) = {
     println("Computing feature values")
-    val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
+    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
     follower.execute()
     if (follower.usesGraphChi()) {
@@ -142,7 +149,7 @@ class PraFeatureGenerator(
       data: Dataset,
       isTraining: Boolean): PathFollower = {
     val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
-    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data, config.unallowedEdges))
+    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data.instances, config.unallowedEdges))
     if (name.equals("random walks")) {
       val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
         "matrix accept policy: training", "matrix accept policy: test", "normalize walk probabilities")

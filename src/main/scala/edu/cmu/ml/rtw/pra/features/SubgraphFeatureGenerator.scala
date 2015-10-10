@@ -29,28 +29,20 @@ class SubgraphFeatureGenerator(
     "include bias")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
 
-  type Subgraph = Map[PathType, Set[(Int, Int)]]
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
 
   lazy val pathFinder = PathFinderCreator.create(params \ "path finder", config, praBase)
 
-  override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
-    createMatrixFromData(data)
-  }
+  override def constructMatrixRow(instance: Instance) =
+    extractFeatures(instance, getLocalSubgraph(instance))
+
+  override def createTrainingMatrix(data: Dataset): FeatureMatrix = createMatrixFromData(data)
 
   override def removeZeroWeightFeatures(weights: Seq[Double]): Seq[Double] = weights
 
-  override def createTestMatrix(data: Dataset): FeatureMatrix = {
-    val testMatrix = createMatrixFromData(data)
-    if (config.outputMatrices && config.outputBase != null) {
-      println("Outputting test matrix")
-      val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, testMatrix, getFeatureNames())
-    }
-    testMatrix
-  }
+  override def createTestMatrix(data: Dataset): FeatureMatrix = createMatrixFromData(data)
 
   def createMatrixFromData(data: Dataset) = {
     val subgraphs = getLocalSubgraphs(data)
@@ -85,21 +77,31 @@ class SubgraphFeatureGenerator(
   def getLocalSubgraphs(data: Dataset): Map[Instance, Subgraph] = {
     println("Finding local subgraphs with " + data.instances.size + " training instances")
 
-    val edgesToExclude = createEdgesToExclude(data, config.unallowedEdges)
+    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     pathFinder.findPaths(config, data, edgesToExclude)
 
     pathFinder.getLocalSubgraphs
   }
 
+  def getLocalSubgraph(instance: Instance): Subgraph = {
+    val edgesToExclude = createEdgesToExclude(Seq(instance), config.unallowedEdges)
+    pathFinder.getLocalSubgraph(instance, edgesToExclude)
+  }
+
+  def extractFeatures(instance: Instance, subgraph: Subgraph): Option[MatrixRow] = {
+    val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
+    if (features.size > 0) {
+      Some(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
+    } else {
+      None
+    }
+  }
+
   def extractFeatures(subgraphs: Map[Instance, Subgraph]): FeatureMatrix = {
     val matrix_rows = subgraphs.par.flatMap(entry => {
-      val instance = entry._1
-      val subgraph = entry._2
-      val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
-      if (features.size > 0) {
-        Seq(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
-      } else {
-        Seq()
+      extractFeatures(entry._1, entry._2) match {
+        case Some(row) => Seq(row)
+        case None => Seq()
       }
     }).seq.toList
     new FeatureMatrix(matrix_rows.asJava)

@@ -27,7 +27,6 @@ class BfsPathFinder(
     praBase: String,
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
-  type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory")
   JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
@@ -44,10 +43,17 @@ class BfsPathFinder(
 
   val factory = createPathTypeFactory(params \ "path type factory")
 
+  override def getLocalSubgraph(instance: Instance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph = {
+    // We're going to ignore the edgesToExclude here, and just use the unallowedEdges from the
+    // config object.  I'm not sure how I ended up with two different ways to get the same input,
+    // but that needs to be fixed somewhere...
+    getSubgraphForInstance(instance, config.unallowedEdges.toSet)
+  }
+
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
     print("Running BFS...  ")
     val start = compat.Platform.currentTime
-    results = runBfs(data, config.unallowedEdges.map(_.toInt).toSet)
+    results = runBfs(data, config.unallowedEdges.toSet)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
     println(s"Took ${seconds} seconds")

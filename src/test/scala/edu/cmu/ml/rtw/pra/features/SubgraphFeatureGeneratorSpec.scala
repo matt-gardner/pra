@@ -61,7 +61,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     generator.createTrainingMatrix(dataset) should be(featureMatrix)
   }
 
-  "createTestMatrix" should "create the same thing as createTrainingMatrix, and output the matrix" in {
+  "createTestMatrix" should "create the same thing as createTrainingMatrix" in {
     val subgraph = getSubgraph(instance)
     val matrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
     val featureMatrix = new FeatureMatrix(List(matrixRow).asJava)
@@ -85,8 +85,6 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     generator.hashFeature("feature2")
 
     fakeFileUtil.onlyAllowExpectedFiles
-    fakeFileUtil.addExpectedFileWritten("/test_matrix.tsv",
-      "node1,node2\tbias,1.0 -#- feature1,1.0 -#- feature2,1.0\n")
     generator.createTestMatrix(dataset) should be(featureMatrix)
     fakeFileUtil.expectFilesWritten
   }

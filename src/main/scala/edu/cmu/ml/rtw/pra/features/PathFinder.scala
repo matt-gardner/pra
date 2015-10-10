@@ -24,6 +24,12 @@ import scala.collection.JavaConverters._
 // move away from the RandomWalkPathFinder, then we can take the second option.  Otherwise, the
 // first.
 trait PathFinder {
+  // Constructs a local subgraph for a single instance.  This is for SGD-style training, as opposed
+  // to a batch computation.  Some PathFinders may not support this mode of operation (it's
+  // incredibly inefficient with GraphChi, for instance).  This getLocalSubgraphs method does not
+  // require first running findPaths.
+  def getLocalSubgraph(instance: Instance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph
+
   // Does whatever computation is necessary to find paths between nodes requested in the dataset.
   def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)])
 
@@ -94,6 +100,11 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
   }
 
   override def finished() { finder.shutDown() }
+
+  override def getLocalSubgraph(instance: Instance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph = {
+    throw new RuntimeException("This method is not implemented for this PathFinder, " +
+      "and would be incredibly inefficient to use anyway.")
+  }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
     GraphChiPathFinder.collapseInverses(finder.getPathCounts(), inverses, pathTypeFactory)

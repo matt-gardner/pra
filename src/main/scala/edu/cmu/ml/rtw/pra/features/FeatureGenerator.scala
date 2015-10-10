@@ -1,10 +1,19 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 
 import scala.collection.JavaConverters._
 
 trait FeatureGenerator {
+
+  /**
+   * Constructs a MatrixRow for a single instance.  This is intended for SGD-style training or
+   * online prediction.  Note that this could be _really_ inefficient for some kinds of feature
+   * generators, and so far is only implemented for SFE.
+   */
+  def constructMatrixRow(instance: Instance): Option[MatrixRow]
+
   /**
    * Takes the data, probably does some random walks (or maybe some matrix multiplications, or a
    * few other possibilities), and returns a FeatureMatrix.
@@ -37,14 +46,14 @@ trait FeatureGenerator {
    */
   def getFeatureNames(): Array[String]
 
-  def createEdgesToExclude(data: Dataset, unallowedEdges: Seq[Int]): Seq[((Int, Int), Int)] = {
+  def createEdgesToExclude(instances: Seq[Instance], unallowedEdges: Seq[Int]): Seq[((Int, Int), Int)] = {
     // If there was no input data (e.g., if we are actually trying to predict new edges, not
     // just hide edges from ourselves to try to recover), then there aren't any edges to
     // exclude.  So return an empty list.
-    if (data == null || unallowedEdges == null) {
+    if (unallowedEdges == null) {
       return Seq()
     }
-    data.instances.flatMap(instance => {
+    instances.flatMap(instance => {
       unallowedEdges.map(edge => {
         ((instance.source, instance.target), edge.toInt)
       })

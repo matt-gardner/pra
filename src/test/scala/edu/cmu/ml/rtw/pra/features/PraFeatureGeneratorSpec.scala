@@ -65,7 +65,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val generator = new PraFeatureGenerator(params, "/", config, fileUtil)
 
   "createEdgesToExclude" should "handle the basic case" in {
-    val edgesToExclude = generator.createEdgesToExclude(data, unallowedEdges)
+    val edgesToExclude = generator.createEdgesToExclude(data.instances, unallowedEdges)
     edgesToExclude.size should be(6)
     edgesToExclude.count(_ == ((node1Index, node2Index), 1)) should be(1)
     edgesToExclude.count(_ == ((node1Index, node2Index), 3)) should be(1)
@@ -75,8 +75,8 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     edgesToExclude.count(_ == ((node3Index, node4Index), 2)) should be(1)
   }
 
-  it should "work with a null dataset" in {
-    val edgesToExclude = generator.createEdgesToExclude(null, unallowedEdges)
+  it should "work with an empty dataset" in {
+    val edgesToExclude = generator.createEdgesToExclude(Seq(), unallowedEdges)
     edgesToExclude.size should be(0)
   }
 
