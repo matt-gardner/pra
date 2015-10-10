@@ -11,7 +11,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
-import edu.cmu.ml.rtw.pra.models.PraModelCreator
+import edu.cmu.ml.rtw.pra.models.BatchModelCreator
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
@@ -193,7 +193,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     // Then we train a model.
     val learningParams = praParams \ "learning"
-    val model = PraModelCreator.create(config, learningParams)
+    val model = BatchModelCreator.create(config, learningParams)
     val featureNames = generator.getFeatureNames()
     model.train(trainingMatrix, config.trainingData, featureNames)
 

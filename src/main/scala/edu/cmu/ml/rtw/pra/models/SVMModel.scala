@@ -31,7 +31,7 @@ import ca.uwo.csd.ai.nlp.libsvm.svm_node
 import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel(config: PraConfig, params: JValue)
-    extends PraModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
+    extends BatchModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
   implicit val formats = DefaultFormats
   val allowedParams = Seq("type", "binarize features", "kernel")
   JsonHelper.ensureNoExtras(params, "pra parameters -> learning", allowedParams)
@@ -94,6 +94,6 @@ class SVMModel(config: PraConfig, params: JValue)
    * which are stored in the svmClassifier
    */
   override def classifyMatrixRow(row: MatrixRow) = {
-    svmClassifier.scoreInstance(matrixRowToInstance(row, alphabet, true))
+    svmClassifier.scoreInstance(matrixRowToInstance(row, alphabet))
   }
 }

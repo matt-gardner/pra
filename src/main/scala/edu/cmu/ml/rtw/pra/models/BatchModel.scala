@@ -19,14 +19,14 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Handles learning and classification for models that uses PRA features.
+ * Handles learning and classification for models that do batch training.
  *
  * Note that this only deals with _feature indices_, and has no concept of path types or anything
  * else.  So you need to be sure that the feature indices don't change between training and
  * classification time, or your model will be all messed up.
  */
 
-abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
+abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
@@ -68,7 +68,7 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
     // First convert the positive matrix to a scala object
     positiveMatrix.getRows().asScala
     // Then, in parallel, map the MatrixRow objects there to MALLET Instance objects
-      .par.map(row => matrixRowToInstance(row, alphabet, true))
+      .par.map(row => matrixRowToInstance(row, alphabet))
     // Then, sequentially, add them to the data object, and simultaneously count how many columns
     // there are.
       .seq.foreach(instance => {
@@ -80,7 +80,7 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
     var numNegativeFeatures = 0
     for (negativeExample <- negativeMatrix.getRows().asScala) {
       numNegativeFeatures += negativeExample.columns
-      data.addThruPipe(matrixRowToInstance(negativeExample, alphabet, false))
+      data.addThruPipe(matrixRowToInstance(negativeExample, alphabet))
     }
     println("Number of positive features: " + numPositiveFeatures)
     println("Number of negative features: " + numNegativeFeatures)
@@ -95,7 +95,7 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
       val unseenWeight = difference / numUnseenFeatures
       println("Unseen weight: " + unseenWeight)
       for (unseenExample <- unseenMatrix.getRows().asScala) {
-        val unseenInstance = matrixRowToInstance(unseenExample, alphabet, false)
+        val unseenInstance = matrixRowToInstance(unseenExample, alphabet)
         data.addThruPipe(unseenInstance)
         data.setInstanceWeight(unseenInstance, unseenWeight)
       }
@@ -121,16 +121,16 @@ abstract class PraModel(config: PraConfig, binarizeFeatures: Boolean) {
 
   protected def classifyMatrixRow(row: MatrixRow): Double
 
-  def matrixRowToInstance(row: MatrixRow, alphabet: Alphabet, positive: Boolean): MalletInstance = {
-    val value = if (positive) 1.0 else 0.0
+  def matrixRowToInstance(row: MatrixRow, alphabet: Alphabet): MalletInstance = {
+    val value = if (row.instance.isPositive) 1.0 else 0.0
     val rowValues = row.values.map(v => if (binarizeFeatures) 1 else v)
     val feature_vector = new FeatureVector(alphabet, row.featureTypes, rowValues)
     new MalletInstance(feature_vector, value, row.instance.source + " " + row.instance.target, null)
   }
 }
 
-object PraModelCreator {
-  def create(config: PraConfig, params: JValue): PraModel = {
+object BatchModelCreator {
+  def create(config: PraConfig, params: JValue): BatchModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new LogisticRegressionModel(config, params)
