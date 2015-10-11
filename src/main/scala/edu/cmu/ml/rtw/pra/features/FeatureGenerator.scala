@@ -1,9 +1,14 @@
 package edu.cmu.ml.rtw.pra.features
 
+import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import scala.collection.JavaConverters._
+
+import org.json4s._
 
 trait FeatureGenerator {
 
@@ -58,5 +63,20 @@ trait FeatureGenerator {
         ((instance.source, instance.target), edge.toInt)
       })
     })
+  }
+}
+
+object FeatureGenerator {
+  def create(
+      params: JValue,
+      config: PraConfig,
+      fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
+    val featureType = JsonHelper.extractWithDefault(params \ "features", "type", "subgraphs")
+    println("feature type being used is " + featureType)
+    featureType match {
+      case "pra" => new PraFeatureGenerator(params \ "features", config, fileUtil)
+      case "subgraphs" => new SubgraphFeatureGenerator(params \ "features", config, fileUtil)
+      case other => throw new IllegalStateException("Illegal feature type!")
+    }
   }
 }

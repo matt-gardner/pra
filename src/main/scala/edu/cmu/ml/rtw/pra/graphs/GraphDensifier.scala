@@ -1,7 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.experiments.Driver
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -117,7 +116,7 @@ class GraphDensifier(
     val builder = new PraConfigBuilder
     builder.setGraph(new GraphOnDisk(graph_dir, fileUtil))
     println(s"Metadata directory: $metadata")
-    val inverses = Driver.createInverses(metadata, builder, fileUtil)
+    val inverses = createInverses(metadata, builder, fileUtil)
     println(s"Inverses size: ${inverses.size}")
     // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
     // Dataset.fromFile.  I should use that here.
@@ -203,6 +202,35 @@ class GraphDensifier(
     params match {
       case JString(name) => name
       case jval => (params \ "name").extract[String]
+    }
+  }
+
+  // BAD!  I just copied this code from somewhere else because exposing it from that other location
+  // became ugly.  I really need a better design for how to pass this kind of information around.
+  // But, this code is basically dead at this point, so it's not worth fixing just for this.
+  def createInverses(
+      directory: String,
+      builder: PraConfigBuilder,
+      fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
+    val inverses = new mutable.HashMap[Int, Int]
+    if (directory == null) {
+      inverses.toMap
+    } else {
+      val graph = builder.graph.get
+      val filename = directory + "inverses.tsv"
+      if (!fileUtil.fileExists(filename)) {
+        inverses.toMap
+      } else {
+        for (line <- fileUtil.readLinesFromFile(filename).asScala) {
+          val parts = line.split("\t")
+          val rel1 = graph.getEdgeIndex(parts(0))
+          val rel2 = graph.getEdgeIndex(parts(1))
+          inverses.put(rel1, rel2)
+          // Just for good measure, in case the file only lists each relation once.
+          inverses.put(rel2, rel1)
+        }
+        inverses.toMap
+      }
     }
   }
 }

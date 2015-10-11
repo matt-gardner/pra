@@ -3,15 +3,14 @@ package edu.cmu.ml.rtw.pra.experiments
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.features.PraFeatureGenerator
-import edu.cmu.ml.rtw.pra.features.SubgraphFeatureGenerator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
-import edu.cmu.ml.rtw.pra.models.BatchModelCreator
+import edu.cmu.ml.rtw.pra.operations.Operation
+import edu.cmu.ml.rtw.pra.operations.NoOp
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
@@ -53,13 +52,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     createSplitIfNecessary(params \ "split")
 
-    val mode = JsonHelper.extractWithDefault(params \ "pra parameters", "mode", "learn models")
-    println(s"PRA mode is $mode")
-    if (mode == "no op") {
-      fileUtil.deleteFile(outputBase)
-      return
-    }
-
     val metadataDirectory: String = (params \ "relation metadata") match {
       case JNothing => null
       case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
@@ -73,9 +65,16 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       case jval => s"${praBase}splits/" + (jval \ "name").extract[String] + "/"
     }
 
+    val operation = Operation.create(params \ "operation", splitsDirectory, metadataDirectory, fileUtil)
+    operation match {
+      case op: NoOp => { fileUtil.deleteFile(outputBase); return }
+      case _ => { }
+    }
+
     val start_time = System.currentTimeMillis
 
     val baseBuilder = new PraConfigBuilder()
+    baseBuilder.setPraBase(praBase)
     var writer = fileUtil.getFileWriter(outputBase + "params.json")
     writer.write(pretty(render(params)))
     writer.close()
@@ -101,19 +100,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
       println("\n\n\n\nRunning PRA for relation " + relation)
-      Driver.parseRelationMetadata(metadataDirectory, relation, mode, builder, outputBase)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
       builder.setOutputBase(outdir)
 
-      if (mode == "learn models" || mode == "create feature matrix") {
-        learnModels(params, splitsDirectory, metadataDirectory, relation, builder)
-      } else if (mode == "explore graph") {
-        exploreGraph(params, builder.setNoChecks().build(), splitsDirectory)
-      } else {
-        throw new IllegalStateException("Unrecognized (or unspecified) mode!")
-      }
+      operation.runRelation(builder)
+
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
       var seconds = (millis / 1000).toInt
@@ -135,114 +128,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     System.out.println(s"Took $minutes minutes and $seconds seconds")
   }
 
-  // TODO(matt): as part of the refactoring mentioned at the top of this file, maybe these methods
-  // should be moved to be members of the base trait object (e.g.,
-  // FeatureGenerator.create(params)), instead of a member of Driver or whatever other calling
-  // class needs to create the object.
-  def createFeatureGenerator(praParams: JValue, config: PraConfig) = {
-    val featureType = JsonHelper.extractWithDefault(praParams \ "features", "type", "pra")
-    println("feature type being used is " + featureType)
-    featureType match {
-      case "pra" => new PraFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
-      case "subgraphs" => new SubgraphFeatureGenerator(praParams \ "features", praBase, config, fileUtil)
-      case other => throw new IllegalStateException("Illegal feature type!")
-    }
-  }
-
-  def learnModels(
-      params: JValue,
-      splitsDirectory: String,
-      metadataDirectory: String,
-      relation: String,
-      builder: PraConfigBuilder) {
-    val doCrossValidation = Driver.initializeSplit(
-      splitsDirectory,
-      metadataDirectory,
-      relation,
-      builder,
-      fileUtil)
-    val praParams = params \ "pra parameters"
-    val praParamKeys = Seq("mode", "features", "learning")
-    JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
-    val mode = JsonHelper.extractWithDefault(praParams, "mode", "learn models")
-
-    // Split the data if we're doing cross validation instead of a fixed split.
-    if (doCrossValidation) {
-      val config = builder.build()
-      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
-      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
-      builder.setAllData(null)
-      builder.setPercentTraining(0)
-      builder.setTrainingData(trainingData)
-      builder.setTestingData(testingData)
-    }
-
-    val config = builder.build()
-
-    // Now we actually run PRA.
-
-    // First we get features.
-    val generator = createFeatureGenerator(praParams, config)
-    val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "training_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-    }
-
-    if (mode == "create feature matrix") return
-
-    // Then we train a model.
-    val learningParams = praParams \ "learning"
-    val model = BatchModelCreator.create(config, learningParams)
-    val featureNames = generator.getFeatureNames()
-    model.train(trainingMatrix, config.trainingData, featureNames)
-
-    // Then we test the model.
-    // TODO(matt): if we don't care about removing zero weight features anymore (and it's probably
-    // not worth it, anyway), we could feasibly just generate the training and test matrices at the
-    // same time, and because of how GraphChi works, that would save us considerable time.
-    val testMatrix = generator.createTestMatrix(config.testingData)
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-    }
-    val scores = model.classifyInstances(testMatrix)
-    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
-  }
-
   def exploreGraph(params: JValue, config: PraConfig, splitsDirectory: String) {
-    val praParams = params \ "pra parameters"
-    val praParamKeys = Seq("mode", "explore", "data")
-    JsonHelper.ensureNoExtras(praParams, "pra parameters", praParamKeys)
-
-    val dataToUse = JsonHelper.extractWithDefault(praParams, "data", "both")
-    val fixed = config.relation.replace("/", "_")
-    val data = if (dataToUse == "both") {
-      val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
-      val trainingData = if (fileUtil.fileExists(trainingFile))
-        Dataset.fromFile(trainingFile, config.graph, fileUtil) else null
-      val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
-      val testingData = if (fileUtil.fileExists(testingFile))
-        Dataset.fromFile(testingFile, config.graph, fileUtil) else null
-      if (trainingData == null && testingData == null) {
-        throw new IllegalStateException("Neither training file nor testing file exists for " +
-          "relation " + config.relation)
-      }
-      if (trainingData == null) {
-        testingData
-      } else if (testingData == null) {
-        trainingData
-      } else {
-        trainingData.merge(testingData)
-      }
-    } else {
-      val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      Dataset.fromFile(inputFile, config.graph, fileUtil)
-    }
-
-    val explorer = new GraphExplorer(praParams \ "explore", config, praBase)
-    val pathCountMap = explorer.findConnectingPaths(data)
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, data)
   }
 
   def createGraphIfNecessary(params: JValue) {
@@ -451,177 +337,6 @@ object Driver {
       val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
       val graph = new GraphOnDisk(graphDirectory)
       config.setGraph(graph)
-    }
-  }
-
-  /**
-   * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
-   * that means deciding which relations are known to be inverses of each other, which edges
-   * should be ignored because using them to predict new relations instances would consitute
-   * cheating, and setting the range and domain of a relation to restrict new predictions.
-   *
-   * Also, if the relations have been embedded into a latent space, we perform a mapping here
-   * when deciding which edges to ignore.  This means that each embedding of a KB graph has to
-   * have a different directory.
-   */
-  def parseRelationMetadata(
-      directory: String,
-      relation: String,
-      mode: String,
-      builder: PraConfigBuilder,
-      outputBase: String,
-      fileUtil: FileUtil = new FileUtil) {
-    val inverses = Driver.createInverses(directory, builder, fileUtil)
-    builder.setRelationInverses(inverses)
-
-    val embeddings = {
-      if (directory != null && fileUtil.fileExists(directory + "embeddings.tsv")) {
-        fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv").asScala
-          .mapValues(_.asScala.toList).toMap
-      } else {
-        null
-      }
-    }
-    val unallowedEdges = Driver.createUnallowedEdges(relation, inverses, embeddings, builder)
-    builder.setUnallowedEdges(unallowedEdges)
-
-    if (directory != null && mode != "explore graph" && fileUtil.fileExists(directory + "ranges.tsv")) {
-      val ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv")
-      val range = ranges.get(relation)
-      if (range == null) {
-        throw new IllegalStateException(
-            "You specified a range file, but it doesn't contain an entry for relation " + relation)
-      }
-      val fixed = range.replace("/", "_")
-      val cat_file = directory + "category_instances/" + fixed
-
-      val allowedTargets = {
-        val lines = fileUtil.readLinesFromFile(cat_file).asScala
-        val graph = builder.graph.get
-        lines.map(line => graph.getNodeIndex(line)).toSet
-      }
-      builder.setAllowedTargets(allowedTargets)
-    } else {
-      val writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append
-      writer.write("No range file found! I hope your accept policy is as you want it...\n")
-      println("No range file found!")
-      writer.close()
-    }
-  }
-
-  def createUnallowedEdges(
-      relation: String,
-      inverses: Map[Int, Int],
-      embeddings: Map[String, List[String]],
-      builder: PraConfigBuilder): List[Int] = {
-    val unallowedEdges = new mutable.ArrayBuffer[Int]
-
-    // TODO(matt): I need a better way to specify this...  It's problematic when there is no shared
-    // graph.
-    builder.graph match {
-      case None => {
-        println("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
-        return unallowedEdges.toList
-      }
-      case _ => { }
-    }
-    val graph = builder.graph.get
-
-    // The relation itself is an unallowed edge type.
-    val relIndex = graph.getEdgeIndex(relation)
-    unallowedEdges += relIndex
-
-    val inverse = inverses.get(relIndex) match {
-      case Some(index) => {
-        // If the relation has an inverse, it's an unallowed edge type.
-        unallowedEdges += index
-        graph.getEdgeName(index)
-      }
-      case _ => null
-    }
-
-    // And if the relation has an embedding (really a set of cluster ids), those should be
-    // added to the unallowed edge type list.
-    if (embeddings != null) {
-      for (embedded <- embeddings.getOrElse(relation, Nil)) {
-        unallowedEdges += graph.getEdgeIndex(embedded)
-      }
-      if (inverse != null) {
-        for (embedded <- embeddings.getOrElse(inverse, Nil)) {
-          unallowedEdges += graph.getEdgeIndex(embedded)
-        }
-      }
-    }
-    unallowedEdges.toList
-  }
-
-  /**
-   * Reads a file containing a mapping between relations and their inverses, and returns the
-   * result as a map.
-   */
-  def createInverses(
-      directory: String,
-      builder: PraConfigBuilder,
-      fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
-    val inverses = new mutable.HashMap[Int, Int]
-    if (directory == null) {
-      inverses.toMap
-    } else {
-      val graph = builder.graph.get
-      val filename = directory + "inverses.tsv"
-      if (!fileUtil.fileExists(filename)) {
-        inverses.toMap
-      } else {
-        for (line <- fileUtil.readLinesFromFile(filename).asScala) {
-          val parts = line.split("\t")
-          val rel1 = graph.getEdgeIndex(parts(0))
-          val rel2 = graph.getEdgeIndex(parts(1))
-          inverses.put(rel1, rel2)
-          // Just for good measure, in case the file only lists each relation once.
-          inverses.put(rel2, rel1)
-        }
-        inverses.toMap
-      }
-    }
-  }
-
-  def initializeSplit(
-      splitsDirectory: String,
-      relationMetadataDirectory: String,
-      relation: String,
-      builder: PraConfigBuilder,
-      fileUtil: FileUtil = new FileUtil) = {
-    val fixed = relation.replace("/", "_")
-    // The Dataset objects need access to the graph information, which is contained in PraConfig.
-    // That's all that Dataset needs from PraConfig, so we can safely call builder.build() here and
-    // keep the PraConfig object.  Not the best solution, but it will work for now.
-    val config = builder.setNoChecks().build()
-    // We look in the splits directory for a fixed split if we don't find one, we do cross
-    // validation.
-    if (fileUtil.fileExists(splitsDirectory + fixed)) {
-      val training = splitsDirectory + fixed + "/training.tsv"
-      val testing = splitsDirectory + fixed + "/testing.tsv"
-      if (fileUtil.fileExists(training)) {
-        builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
-      } else {
-        println("WARNING: NO TRAINING FILE FOUND")
-      }
-      if (fileUtil.fileExists(testing)) {
-        builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
-      } else {
-        println("WARNING: NO TESTING FILE FOUND")
-      }
-      false
-    } else {
-      if (relationMetadataDirectory == null) {
-        throw new IllegalStateException("Must specify a relation metadata directory if you do not "
-          + "have a fixed split!")
-      }
-      builder.setAllData(
-        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
-      val percent_training_file = splitsDirectory + "percent_training.tsv"
-      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0))
-      true
     }
   }
 }

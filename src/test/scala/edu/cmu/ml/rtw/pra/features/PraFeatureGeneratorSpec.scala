@@ -62,7 +62,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")
-  val generator = new PraFeatureGenerator(params, "/", config, fileUtil)
+  val generator = new PraFeatureGenerator(params, config, fileUtil)
 
   "createEdgesToExclude" should "handle the basic case" in {
     val edgesToExclude = generator.createEdgesToExclude(data.instances, unallowedEdges)

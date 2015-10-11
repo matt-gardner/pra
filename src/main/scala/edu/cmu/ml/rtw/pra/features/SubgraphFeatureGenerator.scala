@@ -21,7 +21,6 @@ import org.json4s.JsonDSL.WithDouble._
 
 class SubgraphFeatureGenerator(
     params: JValue,
-    praBase: String,
     config: PraConfig,
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
@@ -33,7 +32,7 @@ class SubgraphFeatureGenerator(
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
 
-  lazy val pathFinder = PathFinderCreator.create(params \ "path finder", config, praBase)
+  lazy val pathFinder = PathFinder.create(params \ "path finder", config)
 
   override def constructMatrixRow(instance: Instance) =
     extractFeatures(instance, getLocalSubgraph(instance))
@@ -110,7 +109,7 @@ class SubgraphFeatureGenerator(
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => FeatureExtractorCreator.create(params, praBase, fileUtil))
+    extractorNames.map(params => FeatureExtractorCreator.create(params, config.praBase, fileUtil))
   }
 
   def hashFeature(feature: String): Int = {

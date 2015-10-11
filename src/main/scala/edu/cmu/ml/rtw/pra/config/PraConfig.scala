@@ -119,6 +119,11 @@ class PraConfig(builder: PraConfigBuilder) {
   // If not null, and in combination with the acceptPolicy, this specifies which nodes are allowed
   // to be targets in the feature matrix.
   val allowedTargets = builder.allowedTargets
+
+  // This is used in the driver that puts everything together, but there are also a few times where
+  // we want to read a file from somewhere relative to the base directory (when that happens it's
+  // most often because of poor design, and so this should probably be fixed and removed...).
+  val praBase = builder.praBase
 }
 
 class PraConfigBuilder(config: PraConfig = null) {
@@ -134,6 +139,7 @@ class PraConfigBuilder(config: PraConfig = null) {
   var outputBase: String = if (config != null) config.outputBase else null
   var outputMatrices: Boolean = if (config != null) config.outputMatrices else false
   var outputter: Outputter = if (config != null) config.outputter else null
+  var praBase: String = if (config != null) config.praBase else null
 
   var noChecks = false
 
@@ -149,6 +155,7 @@ class PraConfigBuilder(config: PraConfig = null) {
   def setOutputBase(outputBase: String) = {this.outputBase = outputBase;this;}
   def setOutputter(o: Outputter) = {this.outputter = o;this;}
   def setOutputMatrices(o: Boolean) = {this.outputMatrices = o;this;}
+  def setPraBase(o: String) = {this.praBase = o;this;}
 
   def build(): PraConfig = {
     if (outputter == null) {

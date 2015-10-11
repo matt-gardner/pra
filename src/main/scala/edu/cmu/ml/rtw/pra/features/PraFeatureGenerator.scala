@@ -18,7 +18,6 @@ import org.json4s.native.JsonMethods._
 
 class PraFeatureGenerator(
     params: JValue,
-    praBase: String,
     config: PraConfig,
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
@@ -77,7 +76,7 @@ class PraFeatureGenerator(
   def selectPathFeatures(data: Dataset): Seq[PathType] = {
     println("Selecting path features with " + data.instances.size + " training instances")
 
-    val finder = createPathFinder()
+    val finder = PathFinder.create(params \ "path finder", config)
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     finder.findPaths(config, data, edgesToExclude)
 
@@ -135,10 +134,6 @@ class PraFeatureGenerator(
     val featureMatrix = follower.getFeatureMatrix()
     follower.shutDown()
     featureMatrix
-  }
-
-  def createPathFinder(): PathFinder = {
-    PathFinderCreator.create(params \ "path finder", config, praBase)
   }
 
   // TODO(matt): this code should move to a PathFollower static object, and most of the params

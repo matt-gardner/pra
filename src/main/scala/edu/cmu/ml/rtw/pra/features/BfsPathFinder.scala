@@ -24,7 +24,6 @@ import scala.collection.parallel.ParMap
 class BfsPathFinder(
     params: JValue,
     config: PraConfig,
-    praBase: String,
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
 

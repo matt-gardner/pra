@@ -47,7 +47,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     .setUnallowedEdges(Seq(1)).setGraph(graph).setNoChecks().build()
   val data = new Dataset(Seq(instance), fileUtil)
 
-  def makeFinder(params: JValue = JNothing) = new BfsPathFinder(params, config, "/", fileUtil)
+  def makeFinder(params: JValue = JNothing) = new BfsPathFinder(params, config, fileUtil)
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val factory = new BasicPathTypeFactory

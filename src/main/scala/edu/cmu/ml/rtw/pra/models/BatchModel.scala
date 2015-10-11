@@ -130,7 +130,7 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
 }
 
 object BatchModelCreator {
-  def create(config: PraConfig, params: JValue): BatchModel = {
+  def create(params: JValue, config: PraConfig): BatchModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new LogisticRegressionModel(config, params)

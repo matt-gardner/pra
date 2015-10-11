@@ -41,16 +41,15 @@ trait PathFinder {
   def finished()
 }
 
-object PathFinderCreator {
+object PathFinder {
   def create(
       params: JValue,
       config: PraConfig,
-      praBase: String,
       fileUtil: FileUtil = new FileUtil): PathFinder = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "RandomWalkPathFinder")
     finderType match {
-      case "RandomWalkPathFinder" => new GraphChiPathFinder(params, praBase, fileUtil)
-      case "BfsPathFinder" => new BfsPathFinder(params, config, praBase, fileUtil)
+      case "RandomWalkPathFinder" => new GraphChiPathFinder(params, fileUtil)
+      case "BfsPathFinder" => new BfsPathFinder(params, config, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder")
     }
   }
@@ -59,7 +58,7 @@ object PathFinderCreator {
 // A simple wrapper around RandomWalkPathFinder, which is a java class, to make the interface with
 // this new PathFinder trait a little cleaner.  If we move RandomWalkPathFinder to scala, this
 // class can go away.
-class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = new FileUtil) extends PathFinder {
+class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) extends PathFinder {
   implicit val formats = DefaultFormats
   val allowedKeys = Seq("type", "walks per source", "path accept policy", "path type factory",
     "path finding iterations", "reset probability")
@@ -135,17 +134,17 @@ class GraphChiPathFinder(params: JValue, praBase: String, fileUtil: FileUtil = n
     val embeddingsFiles = (params \ "embeddings") match {
       case JNothing => Nil
       case JString(path) if (path.startsWith("/")) => List(path)
-      case JString(name) => List(s"${praBase}embeddings/${name}/embeddings.tsv")
+      case JString(name) => List(s"${config.praBase}embeddings/${name}/embeddings.tsv")
       case JArray(list) => {
         list.map(_ match {
           case JString(path) if (path.startsWith("/")) => path
-          case JString(name) => s"${praBase}embeddings/${name}/embeddings.tsv"
+          case JString(name) => s"${config.praBase}embeddings/${name}/embeddings.tsv"
           case other => throw new IllegalStateException("Error specifying embeddings")
         })
       }
       case jval => {
         val name = (jval \ "name").extract[String]
-        List(s"${praBase}embeddings/${name}/embeddings.tsv")
+        List(s"${config.praBase}embeddings/${name}/embeddings.tsv")
       }
     }
     val embeddings = readEmbeddingsVectors(embeddingsFiles, config.graph.get)
