@@ -21,8 +21,21 @@ import scala.collection.mutable
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
-// TODO(matt): This class is a mess.  It needs some major refactoring, splitting this into several
-// parts, and tests for each of those parts.
+// This class has two jobs.  This first is to create all of the necessary input files from the
+// parameter specification (e.g., create actual graph files from the relation sets that are
+// specified in the parameters).  This part just looks at the parameters and creates things on the
+// filesystem.
+//
+// The second job is to create all of the (in-memory) objects necessary for running the code, then
+// run it.  The general design paradigm for this is that there should be one object per parameter
+// key (e.g., "operation", "relation metadata", "split", "graph", etc.).  At each level, the object
+// creates all of the sub-objects corresponding to the parameters it has, then performs its
+// computation.  This Driver is the top-level object, and its main computation is an Operation.
+//
+// TODO(matt): The design paradigm mentioned above isn't finished yet.  I originally wrote this
+// driver before coming up with that paradigm, so this is kind of kludgy.  In particular, the
+// Graph, RelationMetadata, and Split objects need to be designed better (they currently are pretty
+// much non-existant, except for Graph).
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
@@ -79,9 +92,12 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     writer.write(pretty(render(params)))
     writer.close()
 
-    // This takes care of setting everything in the config builder that is consistent across
-    // relations.
-    Driver.initializeGraphParameters(getGraphDirectory(params), baseBuilder)
+    val graphDirectory = getGraphDirectory(params)
+    if (graphDirectory != null) {
+      val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
+      val graph = new GraphOnDisk(dir)
+      baseBuilder.setGraph(graph)
+    }
 
     val nodeNames =
       if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
@@ -126,9 +142,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     writer.write(s"Total time: $minutes minutes and $seconds seconds\n")
     writer.close()
     System.out.println(s"Took $minutes minutes and $seconds seconds")
-  }
-
-  def exploreGraph(params: JValue, config: PraConfig, splitsDirectory: String) {
   }
 
   def createGraphIfNecessary(params: JValue) {
@@ -323,20 +336,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       case JString(path) if (path.startsWith("/")) => path
       case JString(name) => praBase + "/graphs/" + name + "/"
       case jval => praBase + "/graphs/" + (jval \ "name").extract[String] + "/"
-    }
-  }
-}
-
-object Driver {
-
-  def initializeGraphParameters(
-      graphDirectory: String,
-      config: PraConfigBuilder,
-      fileUtil: FileUtil = new FileUtil) {
-    if (graphDirectory != null) {
-      val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-      val graph = new GraphOnDisk(graphDirectory)
-      config.setGraph(graph)
     }
   }
 }
