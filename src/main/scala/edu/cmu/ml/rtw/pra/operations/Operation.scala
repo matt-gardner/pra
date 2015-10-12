@@ -383,6 +383,7 @@ extends Operation {
     val start = compat.Platform.currentTime
     for (iteration <- 1 to model.iterations) {
       println(s"Iteration $iteration")
+      model.nextIteration()
       random.shuffle(config.trainingData.instances).par.foreach(instance => {
         val matrixRow = if (featureVectors.contains(instance)) {
           featureVectors(instance)
