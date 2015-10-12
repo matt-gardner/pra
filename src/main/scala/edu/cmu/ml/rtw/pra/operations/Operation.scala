@@ -2,13 +2,18 @@ package edu.cmu.ml.rtw.pra.operations
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator
+import edu.cmu.ml.rtw.pra.features.FeatureMatrix
+import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
-import edu.cmu.ml.rtw.pra.models.BatchModelCreator
+import edu.cmu.ml.rtw.pra.models.BatchModel
+import edu.cmu.ml.rtw.pra.models.OnlineModel
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import scala.collection.JavaConverters._
+import scala.collection.concurrent
 import scala.collection.mutable
 
 import org.json4s._
@@ -248,7 +253,7 @@ extends Operation {
     }
 
     // Then we train a model.
-    val model = BatchModelCreator.create(params \ "learning", config)
+    val model = BatchModel.create(params \ "learning", config)
     val featureNames = generator.getFeatureNames()
     model.train(trainingMatrix, config.trainingData, featureNames)
 
@@ -259,12 +264,11 @@ extends Operation {
     val testMatrix = generator.createTestMatrix(config.testingData)
     if (config.outputMatrices && config.outputBase != null) {
       val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
+      config.outputter.outputFeatureMatrix(output, testMatrix, generator.getFeatureNames())
     }
     val scores = model.classifyInstances(testMatrix)
     config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
   }
-
 }
 
 class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) extends Operation {
@@ -340,7 +344,98 @@ extends Operation {
 
 class SgdTrainAndTest(params: JValue, splitsDirectory: String, metadataDirectory: String, fileUtil: FileUtil)
 extends Operation {
+  val paramKeys = Seq("type", "learning", "features", "cache feature vectors")
+  JsonHelper.ensureNoExtras(params, "operation", paramKeys)
+
+  val cacheFeatureVectors = JsonHelper.extractWithDefault(params, "cache feature vectors", true)
+  val random = new util.Random
+
   override def runRelation(configBuilder: PraConfigBuilder) {
+    parseRelationMetadata(metadataDirectory, true, configBuilder)
+
+    // TODO(matt): these first two statements really should be put into a Split object that gets
+    // passed as input to this method (and to CreateMatrices).
+    val doCrossValidation = initializeSplit(
+      splitsDirectory,
+      metadataDirectory,
+      configBuilder,
+      fileUtil)
+
+    // Split the data if we're doing cross validation instead of a fixed split.
+    if (doCrossValidation) {
+      val config = configBuilder.build()
+      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
+      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
+      configBuilder.setAllData(null)
+      configBuilder.setPercentTraining(0)
+      configBuilder.setTrainingData(trainingData)
+      configBuilder.setTestingData(testingData)
+    }
+
+    val config = configBuilder.build()
+
+    val featureVectors = new concurrent.TrieMap[Instance, Option[MatrixRow]]
+
+    val model = OnlineModel.create(params \ "learning", config)
+    val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
+
+    println("Starting learning")
+    val start = compat.Platform.currentTime
+    for (iteration <- 1 to model.iterations) {
+      println(s"Iteration $iteration")
+      random.shuffle(config.trainingData.instances).par.foreach(instance => {
+        val matrixRow = if (featureVectors.contains(instance)) {
+          featureVectors(instance)
+        } else {
+          val row = generator.constructMatrixRow(instance)
+          if (cacheFeatureVectors) featureVectors(instance) = row
+          row
+        }
+        matrixRow match {
+          case Some(row) => model.updateWeights(row)
+          case None => { }
+        }
+      })
+    }
+    val end = compat.Platform.currentTime
+    val seconds = end - start / 1000.0
+    println(s"Learning took $seconds seconds")
+
+    // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
+    // The outputter should have the parameters to decide whether to do anything or not.  Also, I
+    // should probably add something to the outputter to append to the matrix file, or something,
+    // so I can have this call above and not have to keep around the feature vectors, especially if
+    // I'm not caching them.  Same for the test matrix below.
+    if (config.outputMatrices && config.outputBase != null) {
+      val output = config.outputBase + "training_matrix.tsv"
+      val trainingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
+        case Some(row) => Seq(row)
+        case _ => Seq()
+      }).toList.asJava)
+      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
+    }
+
+    featureVectors.clear
+
+    // Now we test the model.
+    val scores = config.testingData.instances.par.map(instance => {
+      val matrixRow = generator.constructMatrixRow(instance)
+      if (cacheFeatureVectors) featureVectors(instance) = matrixRow
+      matrixRow match {
+        case Some(row) => (instance, model.classifyInstance(row))
+        case None => (instance, 0.0)
+      }
+    }).seq
+    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
+
+    if (config.outputMatrices && config.outputBase != null) {
+      val testingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
+        case Some(row) => Seq(row)
+        case _ => Seq()
+      }).toList.asJava)
+      val output = config.outputBase + "test_matrix.tsv"
+      config.outputter.outputFeatureMatrix(output, testingMatrix, generator.getFeatureNames())
+    }
   }
 }
 

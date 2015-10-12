@@ -56,6 +56,9 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
     val positiveMatrix = new FeatureMatrix(grouped.getOrElse("positive", Seq()).asJava)
     val negativeMatrix = new FeatureMatrix(grouped.getOrElse("negative", Seq()).asJava)
     val unseenMatrix = new FeatureMatrix(grouped.getOrElse("unseen", Seq()).asJava)
+    // TODO(matt): this shouldn't have any checks on it, because those should be inside
+    // config.outputter.  And it'd be nice to figure out how to get rid of the feature names
+    // parameter to this method, but we'll worry about that later...
     if (config.outputMatrices && config.outputBase != null) {
       println("Outputting matrices")
       val base = config.outputBase
@@ -129,7 +132,7 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
   }
 }
 
-object BatchModelCreator {
+object BatchModel{
   def create(params: JValue, config: PraConfig): BatchModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
