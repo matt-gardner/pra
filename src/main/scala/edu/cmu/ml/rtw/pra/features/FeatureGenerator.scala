@@ -71,11 +71,11 @@ object FeatureGenerator {
       params: JValue,
       config: PraConfig,
       fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
-    val featureType = JsonHelper.extractWithDefault(params \ "features", "type", "subgraphs")
+    val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
     println("feature type being used is " + featureType)
     featureType match {
-      case "pra" => new PraFeatureGenerator(params \ "features", config, fileUtil)
-      case "subgraphs" => new SubgraphFeatureGenerator(params \ "features", config, fileUtil)
+      case "pra" => new PraFeatureGenerator(params, config, fileUtil)
+      case "subgraphs" => new SubgraphFeatureGenerator(params, config, fileUtil)
       case other => throw new IllegalStateException("Illegal feature type!")
     }
   }

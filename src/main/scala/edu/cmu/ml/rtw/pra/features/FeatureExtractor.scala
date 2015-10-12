@@ -18,7 +18,7 @@ trait FeatureExtractor {
   def extractFeatures(instance: Instance, subgraph: Subgraph): Seq[String]
 }
 
-object FeatureExtractorCreator {
+object FeatureExtractor {
   def create(params: JValue, praBase: String, fileUtil: FileUtil): FeatureExtractor = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
