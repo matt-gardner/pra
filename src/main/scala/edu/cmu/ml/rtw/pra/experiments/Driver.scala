@@ -45,8 +45,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // the proper nested place, you can put it under "create", and it will be found by the
     // "filterField" calls below.  This will work for creating embeddings, similarity matrices, and
     // (maybe) denser matrices.
-    val baseKeys = Seq("graph", "split", "relation metadata", "pra parameters", "output matrices",
-      "create")
+    val baseKeys = Seq("graph", "split", "relation metadata", "operation", "output matrices", "create")
     JsonHelper.ensureNoExtras(params, "base", baseKeys)
     val outputBase = fileUtil.addDirectorySeparatorIfNecessary(_outputBase)
     fileUtil.mkdirOrDie(outputBase)

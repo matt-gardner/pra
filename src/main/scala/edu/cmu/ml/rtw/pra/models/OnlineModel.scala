@@ -21,7 +21,7 @@ trait OnlineModel {
 }
 
 class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends OnlineModel {
-  val paramKeys = Seq("type", "learning", "iterations")
+  val paramKeys = Seq("type", "learning rate", "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
 
   val _iterations = JsonHelper.extractWithDefault(params, "iterations", 10)
