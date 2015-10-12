@@ -46,7 +46,7 @@ object PathFinder {
       params: JValue,
       config: PraConfig,
       fileUtil: FileUtil = new FileUtil): PathFinder = {
-    val finderType = JsonHelper.extractWithDefault(params, "type", "RandomWalkPathFinder")
+    val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
       case "RandomWalkPathFinder" => new GraphChiPathFinder(params, fileUtil)
       case "BfsPathFinder" => new BfsPathFinder(params, config, fileUtil)
