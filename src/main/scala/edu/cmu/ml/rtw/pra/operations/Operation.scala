@@ -399,9 +399,11 @@ extends Operation {
       })
     }
     val end = compat.Platform.currentTime
-    val seconds = end - start / 1000.0
+    val seconds = (end - start) / 1000.0
     println(s"Learning took $seconds seconds")
 
+    val featureNames = generator.getFeatureNames()
+    config.outputter.outputWeights(config.outputBase + "weights.tsv", model.getWeights(), featureNames)
     // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
     // The outputter should have the parameters to decide whether to do anything or not.  Also, I
     // should probably add something to the outputter to append to the matrix file, or something,

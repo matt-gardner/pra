@@ -9,6 +9,8 @@ import org.json4s._
 trait OnlineModel {
   def iterations(): Int
 
+  def getWeights(): Seq[Double]
+
   // This is to tell the learning that you've finished an iteration and are starting the next one,
   // in case learning rates need to be updated.
   def nextIteration()
@@ -24,10 +26,10 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
   val paramKeys = Seq("type", "learning rate", "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
 
-  val _iterations = JsonHelper.extractWithDefault(params, "iterations", 10)
+  val _iterations = JsonHelper.extractWithDefault(params, "iterations", 20)
   // TODO(matt): implement L1 weights, too.  Shouldn't be that bad, I don't think.
   val l2Weight = JsonHelper.extractWithDefault(params, "l2 weight", 0.0)
-  val learningRate = JsonHelper.extractWithDefault(params, "learning rate", 1.0)
+  val learningRate = JsonHelper.extractWithDefault(params, "learning rate", 10.0)
 
   var numFeatures = 50000
   var weights = new Array[Double](numFeatures)
@@ -41,10 +43,13 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
 
   def iterations() = _iterations
 
+  def getWeights() = weights
+
   def nextIteration() {
     iteration += 1
     lambda = learningRate / (iteration * iteration)
     println(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
+    logConditionalLikelihood = 0.0
   }
 
   def sigmoid(x: Double) = {
@@ -87,7 +92,7 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
       }
 
       // Calculate the actual probability.
-      val p = classifyInstance(instance)
+      val p = sigmoid(classifyInstance(instance))
       val y = if (instance.instance.isPositive) 1 else 0
       if (instance.instance.isPositive) {
         logConditionalLikelihood += Math.log(p)
@@ -107,7 +112,9 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
   def classifyInstance(instance: MatrixRow): Double = {
     var score = 0.0
     for (feature <- instance.featureTypes) {
-      score += weights(feature)
+      if (feature < numFeatures) {
+        score += weights(feature)
+      }
     }
     return score
   }
