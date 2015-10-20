@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.features
 
+import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Instance
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -19,18 +20,18 @@ trait FeatureExtractor {
 }
 
 object FeatureExtractor {
-  def create(params: JValue, praBase: String, fileUtil: FileUtil): FeatureExtractor = {
+  def create(params: JValue, config: PraConfig, fileUtil: FileUtil): FeatureExtractor = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(config)
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
-            new VectorSimilarityFeatureExtractor(jval, praBase, fileUtil)
+            new VectorSimilarityFeatureExtractor(jval, config, fileUtil)
           }
           case JString("PraFeatureExtractorWithFilter") => new PraFeatureExtractorWithFilter(jval)
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
@@ -70,7 +71,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor {
   }
 }
 
-class OneSidedFeatureExtractor extends FeatureExtractor {
+class OneSidedFeatureExtractor(config: PraConfig) extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -83,11 +84,11 @@ class OneSidedFeatureExtractor extends FeatureExtractor {
         } else if (start == instance.target) {
           "TARGET:" + path + ":" + endNode
         } else {
-          println(s"Source: ${instance.source}")
-          println(s"Target: ${instance.target}")
-          println(s"Left node: ${start}")
-          println(s"Right node: ${end}")
-          println(s"path: ${path}")
+          config.outputter.fatal(s"Source: ${instance.source}")
+          config.outputter.fatal(s"Target: ${instance.target}")
+          config.outputter.fatal(s"Left node: ${start}")
+          config.outputter.fatal(s"Right node: ${end}")
+          config.outputter.fatal(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }
@@ -153,7 +154,7 @@ class PathBigramsFeatureExtractor extends FeatureExtractor {
 
 class VectorSimilarityFeatureExtractor(
     val params: JValue,
-    praBase: String,
+    config: PraConfig,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
   implicit val formats = DefaultFormats
 
@@ -162,7 +163,7 @@ class VectorSimilarityFeatureExtractor(
   val matrixName = (params \ "matrix name").extract[String]
   val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 10)
   // build similarity matrix in memory
-  val matrixPath = s"${praBase}embeddings/${matrixName}/matrix.tsv"
+  val matrixPath = s"${config.praBase}embeddings/${matrixName}/matrix.tsv"
   val lines = fileUtil.readLinesFromFile(matrixPath).asScala
   val pairs = lines.map(line => {
     val words = line.split("\t")
