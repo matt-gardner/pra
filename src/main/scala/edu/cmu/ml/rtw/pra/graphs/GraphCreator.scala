@@ -22,6 +22,12 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
+// TODO(matt): I like the design of RelationSet a lot better than this, where the params JValue is
+// a class argument instead of an argument to a method.  Fix this.
+// TODO(matt): Add an option to exclude the test edges in a split when creating the graph.  This
+// makes the graph dependent on the split, but is necessary for some experimental protocols.  It
+// should be easy to use seenTriples to implement this - just add the whole test split (including
+// inverses) to the seenTriples object before adding any edges.
 class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
 
