@@ -23,20 +23,24 @@ trait OnlineModel {
 }
 
 class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends OnlineModel {
-  val paramKeys = Seq("type", "learning rate", "l2 weight", "iterations")
+  val paramKeys = Seq("type", "learning rate a", "learning rate b", "learning rate momentum",
+    "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
 
   val _iterations = JsonHelper.extractWithDefault(params, "iterations", 20)
   // TODO(matt): implement L1 weights, too.  Shouldn't be that bad, I don't think.
   val l2Weight = JsonHelper.extractWithDefault(params, "l2 weight", 0.0)
-  val learningRate = JsonHelper.extractWithDefault(params, "learning rate", 10.0)
+
+  val learningRateA = JsonHelper.extractWithDefault(params, "learning rate a", 1000.0)
+  val learningRateB = JsonHelper.extractWithDefault(params, "learning rate b", 1000.0)
+  val learningRateMomentum = JsonHelper.extractWithDefault(params, "learning rate momentum", 0.5)
 
   var numFeatures = 50000
   var weights = new Array[Double](numFeatures)
+  var velocity = new Array[Double](numFeatures)
   var lastUpdated = new Array[Int](numFeatures)
   var k = 0
   var iteration = 0
-  var lambda = 0.0
   var logConditionalLikelihood = 0.0
 
   val overflow = 20
@@ -47,7 +51,6 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
 
   def nextIteration() {
     iteration += 1
-    lambda = learningRate / (iteration * iteration)
     println(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
     logConditionalLikelihood = 0.0
   }
@@ -66,11 +69,18 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
   def growFeatures(newSize: Int) {
     numFeatures = newSize
     val newWeights = new Array[Double](numFeatures)
+    val newVelocity = new Array[Double](numFeatures)
     val newLastUpdated = new Array[Int](numFeatures)
     Array.copy(weights, 0, newWeights, 0, weights.length)
     Array.copy(lastUpdated, 0, newLastUpdated, 0, lastUpdated.length)
+    Array.copy(velocity, 0, newVelocity, 0, velocity.length)
     weights = newWeights
     lastUpdated = newLastUpdated
+    velocity = newVelocity
+  }
+
+  def computeLambda(): Double = {
+    learningRateA / (learningRateB + k)
   }
 
   def updateWeights(instance: MatrixRow) {
@@ -80,6 +90,8 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
     // accepts matrix rows from a queue, so that other threads can just add things to the queue and
     // keep doing searches.
     this.synchronized {
+      val lambda = computeLambda()
+
       // Update with regularization portion of the weights.
       for (feature <- instance.featureTypes) {
         if (feature >= numFeatures) growFeatures(feature * 2)
@@ -102,7 +114,10 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
 
       // Updating the weights (LCL portion of the update).
       for (feature <- instance.featureTypes) {
-        weights(feature) += lambda * (y - p)
+        // We'll keep the velocity out of the regularization update for now...  Still testing this
+        // to see how things work.
+        velocity(feature) = learningRateMomentum * velocity(feature) + lambda * (y - p)
+        weights(feature) += velocity(feature)
       }
 
       k += 1
