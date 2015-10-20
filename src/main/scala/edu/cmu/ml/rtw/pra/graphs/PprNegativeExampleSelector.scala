@@ -35,7 +35,6 @@ class PprNegativeExampleSelector(
    */
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
     println(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
-    val graph = data.instances(0).graph
 
     val start = compat.Platform.currentTime
     print("Computing PPR scores...")
@@ -58,7 +57,6 @@ class PprNegativeExampleSelector(
    */
   def findPotentialPredictions(domain: Set[Int], range: Set[Int], knownPositives: Dataset): Dataset = {
     println("Finding potential predictions to add to the KB")
-    val graph = knownPositives.instances(0).graph
     val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
     val data = new Dataset(sourcesToUse.map(entity => new Instance(entity, -1, true, graph)).toSeq)
     println(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
@@ -75,6 +73,17 @@ class PprNegativeExampleSelector(
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
     new Dataset(potentialPredictions.map(x => new Instance(x._1, x._2, false, graph)))
+  }
+
+  /**
+   * Like the above, but just for one source node at a time.
+   */
+  def findPotentialPredictions(source: Int, range: Set[Int], knownPositives: Dataset): Set[Int] = {
+    println("Finding potential predictions to add to the KB")
+    val data = new Dataset(Seq(Instance(source, -1, true, graph)))
+
+    val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
+    pprValues(source).toSeq.sortBy(-_._2).take(negativesPerPositive).map(_._1).toSet
   }
 
   def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]): Seq[(Int, Int)] = {
