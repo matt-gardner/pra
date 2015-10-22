@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -24,7 +25,7 @@ object FeatureExtractor {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(config)
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
@@ -71,7 +72,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor {
   }
 }
 
-class OneSidedFeatureExtractor(config: PraConfig) extends FeatureExtractor {
+class OneSidedFeatureExtractor extends FeatureExtractor {
   override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -84,11 +85,11 @@ class OneSidedFeatureExtractor(config: PraConfig) extends FeatureExtractor {
         } else if (start == instance.target) {
           "TARGET:" + path + ":" + endNode
         } else {
-          config.outputter.fatal(s"Source: ${instance.source}")
-          config.outputter.fatal(s"Target: ${instance.target}")
-          config.outputter.fatal(s"Left node: ${start}")
-          config.outputter.fatal(s"Right node: ${end}")
-          config.outputter.fatal(s"path: ${path}")
+          Outputter.fatal(s"Source: ${instance.source}")
+          Outputter.fatal(s"Target: ${instance.target}")
+          Outputter.fatal(s"Left node: ${start}")
+          Outputter.fatal(s"Right node: ${end}")
+          Outputter.fatal(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }

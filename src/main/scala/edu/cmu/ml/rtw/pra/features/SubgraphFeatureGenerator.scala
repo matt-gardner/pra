@@ -109,7 +109,7 @@ class SubgraphFeatureGenerator(
   def createExtractors(params: JValue): Seq[FeatureExtractor] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => FeatureExtractor.create(params, config.praBase, fileUtil))
+    extractorNames.map(params => FeatureExtractor.create(params, config, fileUtil))
   }
 
   def hashFeature(feature: String): Int = {
