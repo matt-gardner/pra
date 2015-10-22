@@ -2,7 +2,7 @@ load new_feature_experiment_base
 load default_subgraph_parameters
 {
   "split": "final_nell_split_with_negatives",
-  "pra parameters": {
+  "operation": {
     "features": {
       "feature extractors": [
         "PraFeatureExtractor"

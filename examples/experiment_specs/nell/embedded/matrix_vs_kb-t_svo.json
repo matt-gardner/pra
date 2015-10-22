@@ -23,7 +23,7 @@ load matrix_multiplication
       }
     ]
   },
-  "pra parameters": {
+  "operation": {
     "matrix dir": "med_threshold_denser_matrix_nell_split"
   }
 }

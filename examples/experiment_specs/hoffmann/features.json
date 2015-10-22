@@ -2,7 +2,7 @@
   "graph": "hoffmann_freebase",
   "relation metadata": "freebase",
   "split": "hoffmann_freebase",
-  "pra parameters": {
+  "operation": {
     "mode": "explore graph",
     "explore": {
       "walks per source": 200,

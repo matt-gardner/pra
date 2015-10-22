@@ -10,7 +10,7 @@
       "negative to positive ratio":10
     }
   }
-  "pra parameters": {
-    "mode": "no op"
+  "operation": {
+    "type": "no op"
   }
 }

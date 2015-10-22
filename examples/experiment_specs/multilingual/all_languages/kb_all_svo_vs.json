@@ -4,7 +4,7 @@ load vector_space_walks
   "graph": "multilingual/fb_all_svo",
   "split": "multilingual/all_languages",
   "relation metadata": "freebase",
-  "pra parameters": {
+  "operation": {
     "features": {
       "path finder": {
         "path type factory": {

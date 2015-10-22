@@ -1,7 +1,7 @@
 load arvind_data_experiment
 load default_subgraph_parameters
 {
-  "pra parameters": {
+  "operation": {
     "features": {
       "path finder": {
         "walks per source": 2000

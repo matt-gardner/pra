@@ -27,22 +27,22 @@
     ]
   },
   "split": "synthetic/very_easy",
-  "pra parameters": {
-    "mode": "learn models",
+  "operation": {
+    "type": "train and test",
     "features": {
-	   "path finder": {
-		    "walks per source": 100,
-		    "path finding iterations": 3,
-		    "path accept policy": "paired-only"
-	   },
-	   "path follower": {
-		    "walks per path": 50,
-		    "matrix accept policy": "all-targets",
-	   }
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "all-targets"
+      }
     },
     "learning": {
-		"type": "svm",
-		"kernel": "rbf"
+      "type": "svm",
+      "kernel": "rbf"
     }
   }
 }

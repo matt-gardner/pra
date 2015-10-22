@@ -2,7 +2,7 @@ load base_nell_pra_parameters
 load matrix_multiplication
 {
   "graph": "load graphs/nell/kb-t_svo"
-  "pra parameters": {
+  "operation": {
     "matrix dir": "parafac_matrices"
   }
 }

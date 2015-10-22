@@ -5,7 +5,7 @@ load default_pra_parameters
     "relation sets": ["load relation_sets/synthetic/small/easy"]
   },
   "split": "synthetic/small/easy"
-  "pra parameters": {
+  "operation": {
     "features": {
       "path follower": {
         "walks per path": "delete",

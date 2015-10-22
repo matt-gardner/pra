@@ -42,28 +42,28 @@
       }
     ]},
   "split": "synthetic/very_easy",
-  "pra parameters": {
-    "mode": "learn models",
+  "operation": {
+    "type": "train and test",
     "features": {
-	   "type": "subgraphs",
-	   "path finder": {
-		    "walks per source": 100,
-		    "path finding iterations": 3
-	   },
-	   "feature extractors": [
-		   "PraFeatureExtractor",
-		   "OneSidedFeatureExtractor",
-		   "CategoricalComparisonFeatureExtractor",
-		   "NumericalComparisonFeatureExtractor",
-		   {
-			"name" : "VectorSimilarityFeatureExtractor",
-			"matrix name" : "test_graph/similarity_matrix_0.8_2_1"
-		   } 
-		   ]
+      "type": "subgraphs",
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3
+      },
+      "feature extractors": [
+        "PraFeatureExtractor",
+        "OneSidedFeatureExtractor",
+        "CategoricalComparisonFeatureExtractor",
+        "NumericalComparisonFeatureExtractor",
+        {
+          "name" : "VectorSimilarityFeatureExtractor",
+          "matrix name" : "test_graph/similarity_matrix_0.8_2_1"
+        }
+      ]
     },
     "learning": {
-		"type": "svm",
-		"kernel": "rbf"
+      "type": "svm",
+      "kernel": "rbf"
     }
   }
 }

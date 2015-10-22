@@ -1,7 +1,7 @@
 load base_freebase_pra_parameters
 {
   "graph": "load graphs/freebase/kb_svo"
-  "pra parameters": {
+  "operation": {
     "learning": {
       "binarize features": true
     }

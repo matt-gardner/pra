@@ -1,8 +1,8 @@
 load new_feature_experiment_base
 {
   "split": "final_nell_split_with_negatives",
-  "pra parameters": {
-    "mode": "learn models",
+  "operation": {
+    "type": "train and test",
     "features": {
       "path finder": {
         "walks per source": 100,

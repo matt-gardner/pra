@@ -2,7 +2,7 @@ load base_nell_pra_parameters
 load vector_space_walks
 {
   "graph": "load graphs/nell/kb_svo"
-  "pra parameters": {
+  "operation": {
     "path type factory": {
       "embeddings": {
         "name": "my_svd/nell/kb_svo",

@@ -1,6 +1,6 @@
 {
-  "pra parameters": {
-    "mode": "learn models",
+  "operation": {
+    "type": "train and test",
     "features": {
       "type": "subgraphs",
       "path finder": {
