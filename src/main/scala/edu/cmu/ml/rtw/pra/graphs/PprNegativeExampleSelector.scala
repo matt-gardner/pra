@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import org.json4s._
@@ -34,14 +35,14 @@ class PprNegativeExampleSelector(
    * PPR from the positive examples in the input data.
    */
   def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
-    println(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
+    Outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
 
     val start = compat.Platform.currentTime
-    print("Computing PPR scores...")
+    Outputter.info("Computing PPR scores...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, allowedSources, allowedTargets)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    println(s"  took ${seconds} seconds")
+    Outputter.info(s"  took ${seconds} seconds")
     val negativeExamples = sampleByPrr(data, pprValues)
 
     val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
@@ -56,20 +57,20 @@ class PprNegativeExampleSelector(
    * method is used to generate possible predictions for NELL's ongoing run, for instance.
    */
   def findPotentialPredictions(domain: Set[Int], range: Set[Int], knownPositives: Dataset): Dataset = {
-    println("Finding potential predictions to add to the KB")
+    Outputter.info("Finding potential predictions to add to the KB")
     val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
     val data = new Dataset(sourcesToUse.map(entity => new Instance(entity, -1, true, graph)).toSeq)
-    println(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
+    Outputter.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
 
     val start = compat.Platform.currentTime
     // By using computePersonalizedPageRank this way, we will get a map from entities in the domain
     // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
     // and create a set of potential predictions.
-    print("Computing PPR scores for the sources...")
+    Outputter.info("Computing PPR scores for the sources...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    println(s"  took ${seconds} seconds")
+    Outputter.info(s"  took ${seconds} seconds")
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
     new Dataset(potentialPredictions.map(x => new Instance(x._1, x._2, false, graph)))
@@ -79,7 +80,7 @@ class PprNegativeExampleSelector(
    * Like the above, but just for one source node at a time.
    */
   def findPotentialPredictions(source: Int, range: Set[Int], knownPositives: Dataset): Set[Int] = {
-    println("Finding potential predictions to add to the KB")
+    Outputter.debug("Finding potential predictions to add to the KB (for a single source)")
     val data = new Dataset(Seq(Instance(source, -1, true, graph)))
 
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())

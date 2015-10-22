@@ -3,10 +3,11 @@ package edu.cmu.ml.rtw.pra.graphs
 import java.io.PrintWriter
 
 import scala.collection.mutable
-import scalax.io.Resource
+import scala.collection.JavaConverters._
 
 import breeze.linalg._
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -28,8 +29,8 @@ class PcaDecomposer(
     fileUtil.touchFile(in_progress_file)
     val rows = new mutable.HashMap[(Int, Int), mutable.ArrayBuffer[(Int, Double)]]
 
-    println("Reading graph from file")
-    for (line <- Resource.fromFile(graph_file).lines()) {
+    Outputter.info("Reading graph from file")
+    for (line <- fileUtil.readLinesFromFile(graph_file).asScala) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
@@ -39,7 +40,7 @@ class PcaDecomposer(
       rels += Tuple2(relation, value)
     }
 
-    println(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
+    Outputter.info(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
     val builder = new CSCMatrix.Builder[Double](rows.size, edge_dict.getNextIndex)
     var i = 0
     for (row <- rows) {
@@ -52,12 +53,12 @@ class PcaDecomposer(
     }
     val matrix = builder.result
 
-    println(s"Performing SVD with $dims dimensions")
+    Outputter.info(s"Performing SVD with $dims dimensions")
     val svd.SVD(u, s, v) = svd(matrix, dims)
-    println(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
+    Outputter.info(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
     val weights = breeze.numerics.sqrt(s)
 
-    println("Saving results")
+    Outputter.info("Saving results")
     val out = fileUtil.getFileWriter(result_dir + "embeddings.tsv")
     for (i <- 1 until edge_dict.getNextIndex) {
       val vector = v(::, i) :* weights

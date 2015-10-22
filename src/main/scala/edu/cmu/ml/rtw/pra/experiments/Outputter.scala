@@ -19,19 +19,7 @@ import scala.collection.JavaConverters._
  * @author mgardner
  *
  */
-class Outputter(logLevel: Int = 3, nodeNames: Map[String, String] = null, fileUtil: FileUtil = new FileUtil) {
-
-  def fatal(message: String) { outputAtLevel(message, 0) }
-  def error(message: String) { outputAtLevel(message, 1) }
-  def warn(message: String) { outputAtLevel(message, 2) }
-  def info(message: String) { outputAtLevel(message, 3) }
-  def debug(message: String) { outputAtLevel(message, 4) }
-
-  def outputAtLevel(message: String, level: Int) {
-    if (level <= logLevel) {
-      println(message)
-    }
-  }
+class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new FileUtil) {
 
   def getNode(index: Int, graph: Graph): String = {
     val node = graph.getNodeName(index)
@@ -157,5 +145,25 @@ class Outputter(logLevel: Int = 3, nodeNames: Map[String, String] = null, fileUt
       writer.write("\n")
     }
     writer.close()
+  }
+}
+
+object Outputter {
+  private var logLevel = 3
+
+  def fatal(message: String) { outputAtLevel(message, 0) }
+  def error(message: String) { outputAtLevel(message, 1) }
+  def warn(message: String) { outputAtLevel(message, 2) }
+  def info(message: String) { outputAtLevel(message, 3) }
+  def debug(message: String) { outputAtLevel(message, 4) }
+
+  def setLogLevel(level: Int) {
+    logLevel = level
+  }
+
+  def outputAtLevel(message: String, level: Int) {
+    if (level <= logLevel) {
+      println(message)
+    }
   }
 }

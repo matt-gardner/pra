@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
@@ -87,7 +88,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
   val graphFile = graphDir + "graph_chi/edges.tsv"
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv").asScala(0).toInt
 
-  println("Loading node and edge dictionaries")
+  Outputter.info("Loading node and edge dictionaries")
   val nodeDict = new Dictionary(fileUtil)
   nodeDict.setFromFile(graphDir + "node_dict.tsv")
   val edgeDict = new Dictionary(fileUtil)
@@ -103,7 +104,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
   override def getNumEdgeTypes() = edgeDict.getNextIndex()
 
   def loadGraph(): Array[Node] = {
-    println(s"Loading graph")
+    Outputter.info(s"Loading graph")
     val graphBuilder = new GraphBuilder(nodeDict.getNextIndex, nodeDict, edgeDict)
     val lines = fileUtil.readLinesFromFile(graphFile).asScala
     val reader = fileUtil.getBufferedReader(graphFile)
@@ -115,7 +116,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
       val relation = fields(2).toInt
       graphBuilder.addEdge(source, target, relation)
     }
-    println("Done reading graph file")
+    Outputter.info("Done reading graph file")
     graphBuilder.build
   }
 }
@@ -182,7 +183,7 @@ class GraphBuilder(
   }
 
   def build(): Array[Node] = {
-    println("Building the graph object")
+    Outputter.info("Building the graph object")
     // If no initial size was provided, we try to trim the size of the resultant array (this should
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
@@ -201,7 +202,7 @@ class GraphBuilder(
         }).toMap, edgeDict)
       }
     })
-    println("Graph object built")
+    Outputter.info("Graph object built")
     finalized
   }
 
