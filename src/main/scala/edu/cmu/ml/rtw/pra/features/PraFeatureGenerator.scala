@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -74,7 +75,7 @@ class PraFeatureGenerator(
    *     {@link PathType} objects.
    */
   def selectPathFeatures(data: Dataset): Seq[PathType] = {
-    println("Selecting path features with " + data.instances.size + " training instances")
+    Outputter.info("Selecting path features with " + data.instances.size + " training instances")
 
     val finder = PathFinder.create(params \ "path finder", config)
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
@@ -122,7 +123,7 @@ class PraFeatureGenerator(
       data: Dataset,
       outputFile: String,
       isTraining: Boolean) = {
-    println("Computing feature values")
+    Outputter.info("Computing feature values")
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
     follower.execute()

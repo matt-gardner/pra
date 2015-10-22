@@ -9,6 +9,7 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -33,10 +34,10 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
    * instances is positive or negative, train a logistic regression classifier.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String]) = {
-    println("Learning feature weights")
-    println("Prepping training data")
+    Outputter.info("Learning feature weights")
+    Outputter.info("Prepping training data")
 
-    println("Creating alphabet")
+    Outputter.info("Creating alphabet")
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
     val pipe = new Noop()
     val data = new InstanceList(pipe)
@@ -44,20 +45,20 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    println("Creating the MalletLogisticRegression object")
+    Outputter.info("Creating the MalletLogisticRegression object")
     val lr = new MalletLogisticRegression(alphabet)
     if (l2Weight != 0.0) {
-      println("Setting L2 weight to " + l2Weight)
+      Outputter.info("Setting L2 weight to " + l2Weight)
       lr.setL2wt(l2Weight)
     }
     if (l1Weight != 0.0) {
-      println("Setting L1 weight to " + l1Weight)
+      Outputter.info("Setting L1 weight to " + l1Weight)
       lr.setL1wt(l1Weight)
     }
 
     // Finally, we train.  All that prep and everything that follows is really just to get
     // ready for and pass on the output of this one line.
-    println("Training the classifier")
+    Outputter.info("Training the classifier")
     lr.train(data)
     val features = lr.getSparseFeatures()
     val params = lr.getSparseParams()
@@ -74,7 +75,7 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
         j += 1
       }
     }
-    println("Outputting feature weights")
+    Outputter.info("Outputting feature weights")
     if (config.outputBase != null) {
       config.outputter.outputWeights(config.outputBase + "weights.tsv", weights, featureNames)
     }

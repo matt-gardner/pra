@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -25,12 +26,13 @@ class SubgraphFeatureGenerator(
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
-    "include bias")
+    "include bias", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
+  val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   lazy val pathFinder = PathFinder.create(params \ "path finder", config)
 
@@ -45,7 +47,7 @@ class SubgraphFeatureGenerator(
 
   def createMatrixFromData(data: Dataset) = {
     val subgraphs = getLocalSubgraphs(data)
-    println(s"Done getting subgraphs; extracting features")
+    Outputter.outputAtLevel(s"Done getting subgraphs; extracting features", logLevel)
     extractFeatures(subgraphs)
   }
 
@@ -74,7 +76,8 @@ class SubgraphFeatureGenerator(
   val featureExtractors = createExtractors(params)
 
   def getLocalSubgraphs(data: Dataset): Map[Instance, Subgraph] = {
-    println("Finding local subgraphs with " + data.instances.size + " training instances")
+    Outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
+      logLevel)
 
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     pathFinder.findPaths(config, data, edgesToExclude)

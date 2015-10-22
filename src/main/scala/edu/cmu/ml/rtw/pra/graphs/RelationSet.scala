@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
@@ -123,7 +124,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       writer: FileWriter,
       nodeDict: Dictionary,
       edgeDict: Dictionary): Int = {
-    println(s"Adding edges from relation file $relationFile")
+    Outputter.info(s"Adding edges from relation file $relationFile")
     val prefix = {
       if (prefixOverride != null) {
         prefixOverride
@@ -238,7 +239,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
 
   def loadEmbeddings(): Map[String, List[String]] = {
     if (embeddingsFile != null) {
-      System.out.println("Reading embeddings from file " + embeddingsFile)
+      Outputter.info("Reading embeddings from file " + embeddingsFile)
       fileUtil.readMapListFromTsvFile(embeddingsFile).asScala.mapValues(_.asScala.toList).toMap
     } else {
       null

@@ -11,6 +11,7 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -41,7 +42,7 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
       data: InstanceList,
       alphabet: Alphabet) {
 
-    println("Separating into positive, negative, unseen")
+    Outputter.info("Separating into positive, negative, unseen")
     val grouped = featureMatrix.getRows().asScala.groupBy(row => {
       if (row.instance.isPositive == true)
         "positive"
@@ -60,14 +61,14 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
     // config.outputter.  And it'd be nice to figure out how to get rid of the feature names
     // parameter to this method, but we'll worry about that later...
     if (config.outputMatrices && config.outputBase != null) {
-      println("Outputting matrices")
+      Outputter.info("Outputting matrices")
       val base = config.outputBase
       config.outputter.outputFeatureMatrix(s"${base}positive_matrix.tsv", positiveMatrix, featureNames)
       config.outputter.outputFeatureMatrix(s"${base}negative_matrix.tsv", negativeMatrix, featureNames)
       config.outputter.outputFeatureMatrix(s"${base}unseen_matrix.tsv", unseenMatrix, featureNames)
     }
 
-    println("Converting positive matrix to MALLET instances and adding to the dataset")
+    Outputter.info("Converting positive matrix to MALLET instances and adding to the dataset")
     // First convert the positive matrix to a scala object
     positiveMatrix.getRows().asScala
     // Then, in parallel, map the MatrixRow objects there to MALLET Instance objects
@@ -78,25 +79,25 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
         data.addThruPipe(instance)
       })
 
-    println("Adding negative evidence")
+    Outputter.info("Adding negative evidence")
     val numPositiveFeatures = positiveMatrix.getRows().asScala.map(_.columns).sum
     var numNegativeFeatures = 0
     for (negativeExample <- negativeMatrix.getRows().asScala) {
       numNegativeFeatures += negativeExample.columns
       data.addThruPipe(matrixRowToInstance(negativeExample, alphabet))
     }
-    println("Number of positive features: " + numPositiveFeatures)
-    println("Number of negative features: " + numNegativeFeatures)
+    Outputter.info("Number of positive features: " + numPositiveFeatures)
+    Outputter.info("Number of negative features: " + numNegativeFeatures)
     if (numNegativeFeatures < numPositiveFeatures) {
-      println("Using unseen examples to make up the difference")
+      Outputter.info("Using unseen examples to make up the difference")
       val difference = numPositiveFeatures - numNegativeFeatures
       var numUnseenFeatures = 0.0
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         numUnseenFeatures += unseenExample.columns
       }
-      println("Number of unseen features: " + numUnseenFeatures)
+      Outputter.info("Number of unseen features: " + numUnseenFeatures)
       val unseenWeight = difference / numUnseenFeatures
-      println("Unseen weight: " + unseenWeight)
+      Outputter.info("Unseen weight: " + unseenWeight)
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         val unseenInstance = matrixRowToInstance(unseenExample, alphabet)
         data.addThruPipe(unseenInstance)
@@ -115,7 +116,7 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
    *     from the features in the feature matrix and the learned weights.
    */
   def classifyInstances(featureMatrix: FeatureMatrix): Seq[(Instance, Double)] = {
-    println("Classifying instances")
+    Outputter.info("Classifying instances")
     featureMatrix.getRows().asScala.map(matrixRow => {
       val score = classifyMatrixRow(matrixRow)
       (matrixRow.instance, score)

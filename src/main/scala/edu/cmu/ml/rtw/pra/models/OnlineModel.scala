@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.models
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -51,7 +52,7 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
 
   def nextIteration() {
     iteration += 1
-    println(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
+    Outputter.info(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
     logConditionalLikelihood = 0.0
   }
 

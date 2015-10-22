@@ -46,7 +46,7 @@ class SplitCreator(
   }
 
   def createSplitFromMetadata() {
-    println(s"Creating split at $splitDir")
+    Outputter.info(s"Creating split at $splitDir")
     val percentTraining = (params \ "percent training").extract[Double]
     val relations = (params \ "relations").extract[List[String]]
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
@@ -79,7 +79,7 @@ class SplitCreator(
       } else {
         addNegativeExamples(all_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       }
-      println("Splitting data")
+      Outputter.info("Splitting data")
       val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
@@ -90,7 +90,7 @@ class SplitCreator(
   }
 
   def addNegativeToSplit() {
-    println(s"Creating split at $splitDir")
+    Outputter.info(s"Creating split at $splitDir")
     fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)

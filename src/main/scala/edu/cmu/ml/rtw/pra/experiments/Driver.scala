@@ -105,7 +105,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     baseBuilder.setOutputter(new Outputter(nodeNames))
     // TODO(matt): move this parameter to the outputter.
     baseBuilder.setOutputMatrices(JsonHelper.extractWithDefault(params, "output matrices", false))
-    println(s"Outputting matrices: ${baseBuilder.outputMatrices}")
+    Outputter.info(s"Outputting matrices: ${baseBuilder.outputMatrices}")
 
     val baseConfig = baseBuilder.setNoChecks().build()
 
@@ -114,7 +114,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
-      println("\n\n\n\nRunning PRA for relation " + relation)
+      Outputter.info("\n\n\n\nRunning PRA for relation " + relation)
 
       val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
       fileUtil.mkdirs(outdir)
@@ -140,7 +140,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     writer.write("PRA appears to have finished all relations successfully\n")
     writer.write(s"Total time: $minutes minutes and $seconds seconds\n")
     writer.close()
-    System.out.println(s"Took $minutes minutes and $seconds seconds")
+    Outputter.info(s"Took $minutes minutes and $seconds seconds")
   }
 
   def createGraphIfNecessary(params: JValue) {
@@ -170,9 +170,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         fileUtil.blockOnFileDeletion(creator.inProgressFile)
         val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
         if (params_specified == true && !graphParamsMatch(current_params, params)) {
-          println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-          println(s"Parameters specified in spec file: ${pretty(render(params))}")
-          println(s"Difference: ${current_params.diff(params)}")
+          Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+          Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
+          Outputter.fatal(s"Difference: ${current_params.diff(params)}")
           throw new IllegalStateException("Graph parameters don't match!")
         }
       } else {
@@ -199,13 +199,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     embeddings.filter(_ match {case JString(name) => false; case other => true })
       .par.map(embedding_params => {
         val name = (embedding_params \ "name").extract[String]
-        println(s"Checking for embeddings with name ${name}")
+        Outputter.info(s"Checking for embeddings with name ${name}")
         val embeddingsDir = s"${praBase}embeddings/$name/"
         val paramFile = embeddingsDir + "params.json"
         val graph = praBase + "graphs/" + (embedding_params \ "graph").extract[String] + "/"
         val decomposer = new PcaDecomposer(graph, embeddingsDir)
         if (!fileUtil.fileExists(embeddingsDir)) {
-          println(s"Creating embeddings with name ${name}")
+          Outputter.info(s"Creating embeddings with name ${name}")
           val dims = (embedding_params \ "dims").extract[Int]
           decomposer.createPcaRelationEmbeddings(dims)
           val out = fileUtil.getFileWriter(paramFile)
@@ -215,9 +215,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           fileUtil.blockOnFileDeletion(decomposer.in_progress_file)
           val current_params = parse(fileUtil.readLinesFromFile(paramFile).asScala.mkString("\n"))
           if (current_params != embedding_params) {
-            println(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
-            println(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
-            println(s"Difference: ${current_params.diff(embedding_params)}")
+            Outputter.fatal(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
+            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
+            Outputter.fatal(s"Difference: ${current_params.diff(embedding_params)}")
             throw new IllegalStateException("Embedding parameters don't match!")
           }
         }
@@ -240,9 +240,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           fileUtil.blockOnFileDeletion(creator.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
           if (current_params != matrixParams) {
-            println(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-            println(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            println(s"Difference: ${current_params.diff(matrixParams)}")
+            Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            Outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Similarity matrix parameters don't match!")
           }
         }
@@ -277,9 +277,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           fileUtil.blockOnFileDeletion(densifier.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).asScala.mkString("\n"))
           if (current_params != matrixParams) {
-            println(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
-            println(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            println(s"Difference: ${current_params.diff(matrixParams)}")
+            Outputter.fatal(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
+            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            Outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Denser matrix parameters don't match!")
           }
         }
@@ -310,19 +310,19 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val in_progress_file = SplitCreator.inProgressFile(split_dir)
       val param_file = SplitCreator.paramFile(split_dir)
       if (fileUtil.fileExists(split_dir)) {
-        println(s"Split found in ${split_dir}")
+        Outputter.info(s"Split found in ${split_dir}")
         fileUtil.blockOnFileDeletion(in_progress_file)
         if (fileUtil.fileExists(param_file)) {
           val current_params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
           if (params_specified == true && current_params != params) {
-            println(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
-            println(s"Parameters specified in spec file: ${pretty(render(params))}")
-            println(s"Difference: ${current_params.diff(params)}")
+            Outputter.fatal(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
+            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
+            Outputter.fatal(s"Difference: ${current_params.diff(params)}")
             throw new IllegalStateException("Split parameters don't match!")
           }
         }
       } else {
-        println(s"Split not found at ${split_dir}; creating it...")
+        Outputter.info(s"Split not found at ${split_dir}; creating it...")
         val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
         creator.createSplit()
       }

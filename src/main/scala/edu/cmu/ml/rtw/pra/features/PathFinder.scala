@@ -9,6 +9,7 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -127,10 +128,10 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
   }
 
   def createVectorPathTypeFactory(params: JValue, config: PraConfig) = {
-    println("Initializing vector path type factory")
+    Outputter.info("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
-    println(s"RESET WEIGHT SET TO $resetWeight")
+    Outputter.info(s"RESET WEIGHT SET TO $resetWeight")
     val embeddingsFiles = (params \ "embeddings") match {
       case JNothing => Nil
       case JString(path) if (path.startsWith("/")) => List(path)
@@ -154,7 +155,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
 
   def readEmbeddingsVectors(embeddingsFiles: Seq[String], graph: Graph) = {
     embeddingsFiles.flatMap(file => {
-      println(s"Embeddings file: $file")
+      Outputter.info(s"Embeddings file: $file")
       readVectorsFromFile(file, graph)
     }).toMap
   }

@@ -10,6 +10,7 @@ import edu.cmu.graphchi.EmptyType
 import edu.cmu.graphchi.datablocks.IntConverter
 import edu.cmu.graphchi.preprocessing.EdgeProcessor
 import edu.cmu.graphchi.preprocessing.FastSharder
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
@@ -80,8 +81,8 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
 
   def createGraphChiRelationGraph(params: JValue, shouldShardGraph: Boolean) {
     val name = (params \ "name").extract[String]
-    println(s"Creating graph $name in $outdir")
-    println("Making directories")
+    Outputter.info(s"Creating graph $name in $outdir")
+    Outputter.info("Making directories")
 
     // Some preparatory stuff
     fileUtil.mkdirOrDie(outdir)
@@ -96,7 +97,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
 
     val relationSets = getRelationSets(params)
 
-    println("Loading aliases")
+    Outputter.info("Loading aliases")
     val aliases = relationSets.filter(_.isKb).par.map(relationSet => {
       (relationSet.aliasRelation, relationSet.getAliases)
     }).seq
@@ -115,7 +116,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     val prefixes = getSvoPrefixes(relationSets)
     var numEdges = 0
     for (relationSet <- relationSets) {
-      println("Adding edges to the graph from " + relationSet.relationFile)
+      Outputter.info("Adding edges to the graph from " + relationSet.relationFile)
       val prefix = prefixes(relationSet)
       numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
                                                             seenTriples,
@@ -171,7 +172,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
   ////////////////////////////////////////////////////////
 
   def outputDictionariesToDisk(nodeDict: Dictionary, edgeDict: Dictionary) {
-    println("Outputting dictionaries to disk")
+    Outputter.info("Outputting dictionaries to disk")
     val nodeDictFile = fileUtil.getFileWriter(outdir + "node_dict.tsv")
     nodeDict.writeToWriter(nodeDictFile)
     nodeDictFile.close()
@@ -204,9 +205,9 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
   }
 
   def outputMatrices(filename: String, maxMatrixFileSize: Int) {
-    println("Creating matrices")
+    Outputter.info("Creating matrices")
     fileUtil.mkdirs(outdir + "matrices/")
-    println("Reading edge file")
+    Outputter.info("Reading edge file")
     var line: String = null
     val lines = fileUtil.readLinesFromFile(filename).asScala
     val matrices = lines.par.map(line => {
@@ -216,13 +217,13 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
       triple_set.map(triple => (triple._1, triple._2)).seq.toSeq
     }).seq
     val numRelations = matrices.map(_._1).max
-    println("Outputting matrix files")
+    Outputter.info("Outputting matrix files")
     val edgesToWrite = new mutable.ArrayBuffer[Seq[(Int, Int)]]
     var startRelation = 1
     var edgesSoFar = 0
     for (i <- 1 to numRelations) {
       val matrix = matrices.getOrElse(i, Nil)
-      if (matrix.size == 0) println("RELATION WITH NO INSTANCES: " + i)
+      if (matrix.size == 0) Outputter.warn("RELATION WITH NO INSTANCES: " + i)
       if (edgesSoFar > 0 && edgesSoFar + matrix.size > maxMatrixFileSize) {
         writeEdgesSoFar(startRelation, i - 1, edgesToWrite.toSeq)
         edgesToWrite.clear
@@ -235,7 +236,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     if (edgesToWrite.size > 0) {
       writeEdgesSoFar(startRelation, numRelations, edgesToWrite)
     }
-    System.out.println("Done creating matrices")
+    Outputter.info("Done creating matrices")
   }
 
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[Seq[(Int, Int)]]) {
@@ -288,13 +289,13 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
       val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).asScala.mkString("\n"))
       if (current_params.equals(JNothing)) {
-        println(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
+        Outputter.warn(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
           s"${creator.relation_set_dir} exists")
       }
       if (current_params != params) {
-        println(s"Parameters found in ${creator.param_file}: ${pretty(render(current_params))}")
-        println(s"Parameters specified in spec file: ${pretty(render(params))}")
-        println(s"Difference: ${current_params.diff(params)}")
+        Outputter.fatal(s"Parameters found in ${creator.param_file}: ${pretty(render(current_params))}")
+        Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
+        Outputter.fatal(s"Difference: ${current_params.diff(params)}")
         throw new IllegalStateException("Synthetic data parameters don't match!")
       }
     } else {

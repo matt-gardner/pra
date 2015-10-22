@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -72,7 +73,7 @@ object FeatureGenerator {
       config: PraConfig,
       fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
-    println("feature type being used is " + featureType)
+    Outputter.info("feature type being used is " + featureType)
     featureType match {
       case "pra" => new PraFeatureGenerator(params, config, fileUtil)
       case "subgraphs" => new SubgraphFeatureGenerator(params, config, fileUtil)

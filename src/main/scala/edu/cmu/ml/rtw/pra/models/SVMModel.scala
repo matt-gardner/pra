@@ -12,6 +12,7 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -68,10 +69,10 @@ class SVMModel(config: PraConfig, params: JValue)
    * instances is positive or negative, train an SVM.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String]) = {
-    println("Learning feature weights")
-    println("Prepping training data")
+    Outputter.info("Learning feature weights")
+    Outputter.info("Prepping training data")
 
-    println("Creating alphabet")
+    Outputter.info("Creating alphabet")
     val pipes = new mutable.ArrayBuffer[Pipe]
     pipes.+=(new Noop())
     pipes.+=(new Target2Label())
@@ -81,7 +82,7 @@ class SVMModel(config: PraConfig, params: JValue)
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    println("Creating the MalletLibSVM object")
+    Outputter.info("Creating the MalletLibSVM object")
     val svmTrainer = new SVMClassifierTrainer(kernel)
 
     // Finally, we train.  All that prep and everything that follows is really just to get

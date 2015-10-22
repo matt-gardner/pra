@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -39,7 +40,7 @@ class GraphDensifier(
     param_out.close
 
     val similarity_matrix_file = getSimilarityMatrixFile(params)
-    println("Reading the similarity matrix")
+    Outputter.info("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     val test_edges: Set[(Int, Int, Int)] = (params \ "split") match {
       case JString(name) => {
@@ -50,12 +51,12 @@ class GraphDensifier(
       case JNothing => Set()
       case other => throw new IllegalStateException("split not specified correctly")
     }
-    println(s"Found ${test_edges.size} test edges")
-    println("Reading the graph")
+    Outputter.info(s"Found ${test_edges.size} test edges")
+    Outputter.info("Reading the graph")
     val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv", test_edges)
-    println(s"Creating (${edge_vectors.size}) dense entity pair vectors")
+    Outputter.info(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
-    println(s"Rekey-ing by relation")
+    Outputter.info(s"Rekey-ing by relation")
     val relation_matrices = dense_edge_vectors.flatMap(x => {
       val entries = new mutable.ArrayBuffer[(Int, Int, Int, Double)]
       var offset = 0
@@ -67,7 +68,7 @@ class GraphDensifier(
       }
       entries.toSeq
     }).groupBy(_._1).mapValues(x => x.map(y => (y._2, y._3, y._4)).seq.toSet).seq
-    println("Outputting relation matrices")
+    Outputter.info("Outputting relation matrices")
     val edges_to_write = new mutable.ArrayBuffer[Set[(Int, Int, Double)]]
     var start_relation = 1
     var edges_so_far = 0
@@ -85,7 +86,7 @@ class GraphDensifier(
     if (edges_to_write.size > 0) {
       writeEdgesSoFar(start_relation, edge_dict.getNextIndex, edges_to_write)
     }
-    println("Done creating matrices")
+    Outputter.info("Done creating matrices")
     fileUtil.deleteFile(inProgressFile)
   }
 
@@ -115,9 +116,9 @@ class GraphDensifier(
     // But this code was experimental anyway, and didn't really work, so why bother?
     val builder = new PraConfigBuilder
     builder.setGraph(new GraphOnDisk(graph_dir, fileUtil))
-    println(s"Metadata directory: $metadata")
+    Outputter.info(s"Metadata directory: $metadata")
     val inverses = createInverses(metadata, builder, fileUtil)
-    println(s"Inverses size: ${inverses.size}")
+    Outputter.info(s"Inverses size: ${inverses.size}")
     // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
     // Dataset.fromFile.  I should use that here.
     val split_dir = s"${praBase}splits/${split_name}/"
@@ -156,7 +157,7 @@ class GraphDensifier(
         seen_test_edges += 1
       }
     }
-    println(s"Saw $seen_test_edges test edges")
+    Outputter.info(s"Saw $seen_test_edges test edges")
     edges.map(x => (x._1, createSparseVector(x._2))).toMap
   }
 

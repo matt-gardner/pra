@@ -6,6 +6,7 @@ import java.util.{Set => JavaSet}
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
@@ -27,7 +28,7 @@ class BfsPathFinder(
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
 
-  val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory")
+  val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.
@@ -38,9 +39,10 @@ class BfsPathFinder(
   // that node.
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
-  var results: Map[Instance, Subgraph] = null
-
   val factory = createPathTypeFactory(params \ "path type factory")
+  val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
+
+  var results: Map[Instance, Subgraph] = null
 
   override def getLocalSubgraph(instance: Instance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph = {
     // We're going to ignore the edgesToExclude here, and just use the unallowedEdges from the
@@ -50,12 +52,12 @@ class BfsPathFinder(
   }
 
   override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
-    print("Running BFS...  ")
+    Outputter.outputAtLevel("Running BFS...  ", logLevel)
     val start = compat.Platform.currentTime
     results = runBfs(data, config.unallowedEdges.toSet)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    println(s"Took ${seconds} seconds")
+    Outputter.outputAtLevel(s"Took ${seconds} seconds", logLevel)
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
@@ -195,7 +197,7 @@ class BfsPathFinder(
       pathDict.getIndex(factory.fromString(newString))
     } catch {
       case e: NullPointerException => {
-        println(s"NULL PATH TYPE: $pathType")
+        Outputter.fatal(s"NULL PATH TYPE: $pathType")
         throw e
       }
     }

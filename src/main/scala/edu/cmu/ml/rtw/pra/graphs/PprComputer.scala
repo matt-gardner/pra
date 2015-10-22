@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import edu.cmu.graphchi.ChiVertex
@@ -68,17 +69,18 @@ object PprComputerCreator {
 
 class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Random) extends PprComputer {
   implicit val formats = DefaultFormats
-  val paramKeys = Seq("type", "reset probability", "walks per source", "num steps")
+  val paramKeys = Seq("type", "reset probability", "walks per source", "num steps", "log level")
   JsonHelper.ensureNoExtras(params, "split -> negative instances -> ppr computer", paramKeys)
 
   val resetProbability = JsonHelper.extractWithDefault(params, "reset probability", 0.15)
   val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 250)
   val numSteps = JsonHelper.extractWithDefault(params, "num steps", 4)
+  val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   override def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
     val sources = if (allowedSources.size > 0) data.instances.map(_.source).toSet else Set[Int]()
     val targets = if (allowedTargets.size > 0) data.instances.map(_.target).toSet else Set[Int]()
-    println(s"Computing PPR with ${sources.size} sources and ${targets.size} targets")
+    Outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
   }

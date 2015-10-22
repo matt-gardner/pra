@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.operations
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -42,12 +43,12 @@ trait Operation {
       if (fileUtil.fileExists(training)) {
         builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
       } else {
-        println("WARNING: NO TRAINING FILE FOUND")
+        Outputter.warn("WARNING: NO TRAINING FILE FOUND")
       }
       if (fileUtil.fileExists(testing)) {
         builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
       } else {
-        println("WARNING: NO TESTING FILE FOUND")
+        Outputter.warn("WARNING: NO TESTING FILE FOUND")
       }
       false
     } else {
@@ -112,7 +113,7 @@ trait Operation {
     } else {
       val writer = fileUtil.getFileWriter(builder.outputBase + "log.txt", true)  // true -> append
       writer.write("No range file found! I hope your accept policy is as you want it...\n")
-      println("No range file found!")
+      Outputter.warn("No range file found!")
       writer.close()
     }
   }
@@ -128,7 +129,7 @@ trait Operation {
     // graph.
     builder.graph match {
       case None => {
-        println("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
+        Outputter.warn("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
         return unallowedEdges.toList
       }
       case _ => { }
@@ -379,10 +380,10 @@ extends Operation {
     val model = OnlineModel.create(params \ "learning", config)
     val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
 
-    println("Starting learning")
+    Outputter.info("Starting learning")
     val start = compat.Platform.currentTime
     for (iteration <- 1 to model.iterations) {
-      println(s"Iteration $iteration")
+      Outputter.info(s"Iteration $iteration")
       model.nextIteration()
       random.shuffle(config.trainingData.instances).par.foreach(instance => {
         val matrixRow = if (featureVectors.contains(instance)) {
@@ -400,7 +401,7 @@ extends Operation {
     }
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    println(s"Learning took $seconds seconds")
+    Outputter.info(s"Learning took $seconds seconds")
 
     val featureNames = generator.getFeatureNames()
     config.outputter.outputWeights(config.outputBase + "weights.tsv", model.getWeights(), featureNames)

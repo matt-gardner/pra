@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import scala.collection.mutable
 import scala.util.Random
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -83,7 +84,7 @@ class SyntheticDataCreator(
     fileUtil.mkdirs(split_dir)
     fileUtil.mkdirs(relation_set_dir)
     fileUtil.touchFile(in_progress_file)
-    println(s"Creating relation set in $relation_set_dir")
+    Outputter.info(s"Creating relation set in $relation_set_dir")
     val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
     val instances = (new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
       new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
