@@ -27,7 +27,7 @@ import scala.collection.mutable
  * classification time, or your model will be all messed up.
  */
 
-abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
+abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean, logLevel: Int) {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
@@ -116,7 +116,7 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean) {
    *     from the features in the feature matrix and the learned weights.
    */
   def classifyInstances(featureMatrix: FeatureMatrix): Seq[(Instance, Double)] = {
-    Outputter.info("Classifying instances")
+    Outputter.outputAtLevel("Classifying instances", logLevel)
     featureMatrix.getRows().asScala.map(matrixRow => {
       val score = classifyMatrixRow(matrixRow)
       (matrixRow.instance, score)
