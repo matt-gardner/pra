@@ -62,7 +62,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
   implicit val formats = DefaultFormats
   val allowedKeys = Seq("type", "walks per source", "path accept policy", "path type factory",
     "path finding iterations", "reset probability")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
+  JsonHelper.ensureNoExtras(params, "operation -> features -> path finder", allowedKeys)
   val walksPerSource = JsonHelper.extractWithDefault(params, "walks per source", 100)
   val numIters = JsonHelper.extractWithDefault(params, "path finding iterations", 3)
   val pathAcceptPolicy = JsonHelper.extractWithDefault(params, "path accept policy", "paired-only")

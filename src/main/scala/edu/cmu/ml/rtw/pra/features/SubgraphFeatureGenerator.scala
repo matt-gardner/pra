@@ -26,7 +26,7 @@ class SubgraphFeatureGenerator(
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
     "include bias")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
+  JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
   val featureDict = new Dictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)

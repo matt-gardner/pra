@@ -22,7 +22,7 @@ class PraFeatureGenerator(
     fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "path selector", "path follower")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> features", featureParamKeys)
+  JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
   var pathTypes: Seq[PathType] = null
 
@@ -149,7 +149,7 @@ class PraFeatureGenerator(
       val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
         "matrix accept policy: training", "matrix accept policy: test", "normalize walk probabilities")
       JsonHelper.ensureNoExtras(
-        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+        followerParams, "operation -> features -> path follower", followerParamKeys)
       val walksPerPath = JsonHelper.extractWithDefault(followerParams, "walks per path", 100)
       val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
       val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
@@ -165,7 +165,7 @@ class PraFeatureGenerator(
     } else if (name.equals("matrix multiplication")) {
       val followerParamKeys = Seq("name", "max fan out", "matrix dir", "normalize walk probabilities")
       JsonHelper.ensureNoExtras(
-        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+        followerParams, "operation -> features -> path follower", followerParamKeys)
       val max_fan_out = JsonHelper.extractWithDefault(followerParams, "max fan out", 100)
       val matrix_base = JsonHelper.extractWithDefault(followerParams, "matrix dir", "matrices")
       val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
@@ -184,7 +184,7 @@ class PraFeatureGenerator(
     } else if (name.equals("rescal matrix multiplication")) {
       val followerParamKeys = Seq("name", "rescal dir", "negatives per source", "matrix accept policy")
       JsonHelper.ensureNoExtras(
-        followerParams, "pra parameters -> features -> path follower", followerParamKeys)
+        followerParams, "operation -> features -> path follower", followerParamKeys)
       val dir = (followerParams \ "rescal dir").extract[String]
       val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
       val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)

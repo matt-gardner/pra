@@ -19,7 +19,7 @@ import scala.collection.mutable
 class LogisticRegressionModel(config: PraConfig, params: JValue)
     extends BatchModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
   val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> learning", allowedParams)
+  JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
   val l1Weight = JsonHelper.extractWithDefault(params, "l1 weight", 0.0)
 

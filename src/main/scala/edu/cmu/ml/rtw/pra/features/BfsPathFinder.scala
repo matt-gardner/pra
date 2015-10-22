@@ -28,7 +28,7 @@ class BfsPathFinder(
   implicit val formats = DefaultFormats
 
   val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> features -> path finder", allowedKeys)
+  JsonHelper.ensureNoExtras(params, "operation -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.
   // On NELL + SVO, it looks like it takes _way_ too much memory to do more than 2 steps here.

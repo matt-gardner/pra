@@ -34,7 +34,7 @@ class SVMModel(config: PraConfig, params: JValue)
     extends BatchModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
   implicit val formats = DefaultFormats
   val allowedParams = Seq("type", "binarize features", "kernel")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> learning", allowedParams)
+  JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
   val kernel = createKernel()
 

@@ -59,8 +59,9 @@ object ExperimentRunner {
   def runPraFromSpec(pra_base: String)(spec_file: File) {
     val spec_lines = new FileUtil().readLinesFromFile(spec_file)
     val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
-    val mode = (params \ "pra parameters" \ "mode") match {
-      case JNothing => "standard"
+    // TODO(matt): this is pretty ugly.  Can't we design this better?
+    val mode = (params \ "operation" \ "type") match {
+      case JNothing => "no op"
       case JString(m) => m
       case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
     }

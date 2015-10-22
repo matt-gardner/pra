@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.experiments.Dataset
 import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
 import edu.cmu.ml.rtw.pra.features.PathFinder
@@ -24,10 +25,10 @@ import org.json4s.native.JsonMethods._
  */
 class GraphExplorer(params: JValue, config: PraConfig) {
   val paramKeys = Seq("path finder")
-  JsonHelper.ensureNoExtras(params, "pra parameters -> explore", paramKeys)
+  JsonHelper.ensureNoExtras(params, "operation -> explore", paramKeys)
 
   def findConnectingPaths(data: Dataset): Map[Instance, Map[PathType, Int]] = {
-    println("Finding connecting paths")
+    Outputter.info("Finding connecting paths")
 
     val finder = PathFinder.create(params \ "path finder", config)
     finder.findPaths(config, data, Seq())
