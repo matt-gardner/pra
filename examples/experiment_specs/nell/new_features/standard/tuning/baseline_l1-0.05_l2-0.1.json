@@ -1,7 +1,7 @@
 load new_feature_experiment_base
 {
   "split": "nell_with_negatives",
-  "pra parameters": {
+  "operation": {
     "mode": "learn models",
     "features": {
       "path finder": {

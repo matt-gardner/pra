@@ -1,6 +1,6 @@
 load new_feature_experiment_base
 {
-  "pra parameters": {
+  "operation": {
     "features": {
       "type": "subgraphs",
       "path finder": {

@@ -2,7 +2,7 @@ load new_feature_experiment_base
 load default_pra_parameters
 load vector_space_walks
 {
-  "pra parameters": {
+  "operation": {
     "features": {
       "path finder": {
         "path type factory": {

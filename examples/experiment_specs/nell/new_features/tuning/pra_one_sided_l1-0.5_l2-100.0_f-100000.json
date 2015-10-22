@@ -1,7 +1,7 @@
 load new_feature_experiment_base
 load default_subgraph_parameters
 {
-  "pra parameters": {
+  "operation": {
     "features": {
       "feature extractors": [
       "PraFeatureExtractor", "OneSidedFeatureExtractor"
