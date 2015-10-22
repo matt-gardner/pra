@@ -442,6 +442,9 @@ extends Operation {
   }
 }
 
+// TODO(matt): I think Driver should just check for the presence or absence of the "operation"
+// parameter, and if there is no operation present it should do a no op.  That would make this
+// class unnecessary.
 class NoOp extends Operation {
   def runRelation(configBuilder: PraConfigBuilder) { }
 }
