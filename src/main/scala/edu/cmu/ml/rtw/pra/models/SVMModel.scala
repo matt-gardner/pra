@@ -32,9 +32,11 @@ import ca.uwo.csd.ai.nlp.libsvm.svm_node
 import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel(config: PraConfig, params: JValue)
-    extends BatchModel(config, JsonHelper.extractWithDefault(params, "binarize features", false)) {
+    extends BatchModel(config,
+                       JsonHelper.extractWithDefault(params, "binarize features", false),
+                       JsonHelper.extractWithDefault(params, "log level", 3)) {
   implicit val formats = DefaultFormats
-  val allowedParams = Seq("type", "binarize features", "kernel")
+  val allowedParams = Seq("type", "binarize features", "kernel", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
   val kernel = createKernel()
