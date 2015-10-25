@@ -13,7 +13,6 @@ import java.util.{Set => JSet}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.parallel.mutable.{ParSeq => MParSeq}
-import scalax.io.Resource
 import scala.util.control.Breaks._
 
 import edu.cmu.ml.rtw.pra.experiments.Dataset
