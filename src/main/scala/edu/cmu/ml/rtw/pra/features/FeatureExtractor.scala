@@ -165,7 +165,7 @@ class VectorSimilarityFeatureExtractor(
   val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 10)
   // build similarity matrix in memory
   val matrixPath = s"${config.praBase}embeddings/${matrixName}/matrix.tsv"
-  val lines = fileUtil.readLinesFromFile(matrixPath).asScala
+  val lines = fileUtil.readLinesFromFile(matrixPath)
   val pairs = lines.map(line => {
     val words = line.split("\t")
     (words(0), (words(1), words(2).toDouble))

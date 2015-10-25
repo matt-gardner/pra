@@ -2,8 +2,9 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import java.io.File
 
-import scalax.io.Resource
 import scala.collection.mutable
+
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 trait MetricComputer {
   def computeDatasetMetrics(results_dir: String, split_dir: String, relation_metrics: RelationMetrics): MutableMetrics
@@ -11,9 +12,13 @@ trait MetricComputer {
   def datasetMetricsComputed: Seq[String]
   def relationMetricsComputed: Seq[String]
 
+  // TODO(matt): If I ever get around to testing this stuff, this needs to be injected from
+  // somewhere instead of just instantiated right here.
+  val fileUtil = new FileUtil()
+
   def readPredictionsFromFile(results_file: String): List[Prediction] = {
     val predictions = new mutable.ListBuffer[Prediction]
-    for (line <- Resource.fromFile(results_file).lines()) {
+    for (line <- fileUtil.getLineIterator(results_file)) {
       val fields = line.split("\t")
       if (fields.length > 2 && fields(1).nonEmpty) {
         val score = fields(2).toDouble
@@ -33,7 +38,7 @@ trait MetricComputer {
   def readPositiveInstancesFromDataFile(data_file: String): Map[String, Set[String]] = {
     val instances = new mutable.HashMap[String, mutable.Set[String]]().withDefaultValue(new mutable.HashSet[String])
     if (new File(data_file).exists) {
-      for (line <- Resource.fromFile(data_file).lines()) {
+      for (line <- fileUtil.getLineIterator(data_file)) {
         val fields = line.split("\t")
         if (fields.length == 2 || fields(2) == "1") {
           instances.update(fields(0), instances(fields(0)) + fields(1))

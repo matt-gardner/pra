@@ -163,7 +163,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
   def readVectorsFromFile(embeddingsFile: String, graph: Graph) = {
     // Embeddings files are formated as tsv, where the first column is the relation name
     // and the rest of the columns make up the vector.
-    fileUtil.readLinesFromFile(embeddingsFile).asScala.map(line => {
+    fileUtil.readLinesFromFile(embeddingsFile).map(line => {
       val fields = line.split("\t");
       val relationIndex = graph.getEdgeIndex(fields(0));
       val vector = fields.drop(1).map(_.toDouble)

@@ -100,7 +100,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
   }
 
   it should "do cross validation when there's no fixed split" in {
-    fileUtil.setDoubleList(List(java.lang.Double.valueOf(0.0)).asJava)
+    fileUtil.addFileToBeRead(splitsDirectory + "percent_training.tsv", "0.0\n")
     fileUtil.addFileToBeRead(splitsDirectory + "relations/" + crossValidatedRelation.replace("/", "_"),
       "1\t1\n2\t2\n")
     builder.setRelation(crossValidatedRelation)

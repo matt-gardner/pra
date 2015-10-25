@@ -73,13 +73,13 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     val lines = weights.zip(featureNames).sortBy(-_._1).map(weight => {
       s"${weight._2}\t${weight._1}"
     })
-    fileUtil.writeLinesToFile(filename, lines.asJava)
+    fileUtil.writeLinesToFile(filename, lines)
   }
 
   def outputSplitFiles(outputBase: String, trainingData: Dataset, testingData: Dataset) {
     if (outputBase != null) {
-      fileUtil.writeLinesToFile(outputBase + "training_data.tsv", trainingData.instancesToStrings.asJava)
-      fileUtil.writeLinesToFile(outputBase + "testing_data.tsv", testingData.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(outputBase + "training_data.tsv", trainingData.instancesToStrings)
+      fileUtil.writeLinesToFile(outputBase + "testing_data.tsv", testingData.instancesToStrings)
     }
   }
 
@@ -88,7 +88,7 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
       val lines = pathCounts.toList.sortBy(-_._2).map(entry => {
         s"${entry._1}\t${entry._2}"
       })
-      fileUtil.writeLinesToFile(baseDir + filename, lines.asJava)
+      fileUtil.writeLinesToFile(baseDir + filename, lines)
     }
   }
 
@@ -124,8 +124,7 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
       pathTypes: Seq[PathType],
       graph: Graph) {
     if (baseDir != null) {
-      fileUtil.writeLinesToFile(baseDir + filename,
-        pathTypes.map(p => getPathType(p, graph)).asJava)
+      fileUtil.writeLinesToFile(baseDir + filename, pathTypes.map(p => getPathType(p, graph)))
     }
   }
 

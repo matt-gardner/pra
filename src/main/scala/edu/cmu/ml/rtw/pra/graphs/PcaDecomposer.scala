@@ -3,7 +3,6 @@ package edu.cmu.ml.rtw.pra.graphs
 import java.io.PrintWriter
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
 import breeze.linalg._
 
@@ -30,7 +29,7 @@ class PcaDecomposer(
     val rows = new mutable.HashMap[(Int, Int), mutable.ArrayBuffer[(Int, Double)]]
 
     Outputter.info("Reading graph from file")
-    for (line <- fileUtil.readLinesFromFile(graph_file).asScala) {
+    for (line <- fileUtil.readLinesFromFile(graph_file)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt

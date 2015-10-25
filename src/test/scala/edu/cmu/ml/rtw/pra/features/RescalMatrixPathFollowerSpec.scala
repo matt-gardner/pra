@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.features
 
 import org.scalatest._
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.Random
 
@@ -114,7 +113,7 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   "splitMatrixLines" should "split lines correctly" in {
-    val lines = fileUtil.readLinesFromFile("/r_matrix.tsv").asScala
+    val lines = fileUtil.readLinesFromFile("/r_matrix.tsv")
     val split = creator.splitMatrixLines(lines)
     println(split)
     split.size should be(2)

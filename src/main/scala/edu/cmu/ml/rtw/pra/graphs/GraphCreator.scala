@@ -209,7 +209,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     fileUtil.mkdirs(outdir + "matrices/")
     Outputter.info("Reading edge file")
     var line: String = null
-    val lines = fileUtil.readLinesFromFile(filename).asScala
+    val lines = fileUtil.readLinesFromFile(filename)
     val matrices = lines.par.map(line => {
       val fields = line.split("\t")
       (fields(0).toInt, fields(1).toInt, fields(2).toInt)
@@ -287,7 +287,7 @@ class GraphCreator(baseDir: String, outdir: String, fileUtil: FileUtil = new Fil
     val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
-      val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).asScala.mkString("\n"))
+      val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).mkString("\n"))
       if (current_params.equals(JNothing)) {
         Outputter.warn(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
           s"${creator.relation_set_dir} exists")

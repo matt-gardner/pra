@@ -12,8 +12,6 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render}
 
-import scala.collection.JavaConverters._
-
 class SplitCreator(
     params: JValue,
     praBase: String,
@@ -60,9 +58,9 @@ class SplitCreator(
     val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
-    val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file).asScala else null
+    val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
     val domain_file = s"${relationMetadata}domains.tsv"
-    val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file).asScala else null
+    val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file) else null
 
     val relations_to_run = fileUtil.getFileWriter(s"${splitDir}relations_to_run.tsv")
     for (relation <- relations) {
@@ -83,8 +81,8 @@ class SplitCreator(
       val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", training.instancesToStrings.asJava)
-      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", testing.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", training.instancesToStrings)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", testing.instancesToStrings)
     }
     fileUtil.deleteFile(inProgressFile)
   }
@@ -100,12 +98,12 @@ class SplitCreator(
     val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
-    val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file).asScala else null
+    val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
     val domain_file = s"${relationMetadata}domains.tsv"
-    val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file).asScala else null
+    val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file) else null
 
     val fromSplitDir = praBase + "splits/" + (params \ "from split").extract[String] + "/"
-    val relations = fileUtil.readLinesFromFile(fromSplitDir + "relations_to_run.tsv").asScala
+    val relations = fileUtil.readLinesFromFile(fromSplitDir + "relations_to_run.tsv")
     val relations_to_run = fileUtil.getFileWriter(s"${splitDir}relations_to_run.tsv")
     for (relation <- relations) {
       relations_to_run.write(s"${relation}\n")
@@ -124,8 +122,8 @@ class SplitCreator(
         addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings.asJava)
-      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings.asJava)
+      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings)
+      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings)
     }
     fileUtil.deleteFile(inProgressFile)
   }
@@ -140,13 +138,13 @@ class SplitCreator(
     val allowedSources = if (domain == null) null else {
       val fixed = domain.replace("/", "_")
       val domain_file = s"${relationMetadata}category_instances/${fixed}"
-      fileUtil.readIntegerSetFromFile(domain_file, node_dict).asScala.map(_.toInt).toSet
+      fileUtil.readIntegerSetFromFile(domain_file, node_dict)
     }
     val range = if (ranges == null) null else ranges(relation)
     val allowedTargets = if (range == null) null else {
       val fixed = range.replace("/", "_")
       val range_file = s"${relationMetadata}category_instances/${fixed}"
-      fileUtil.readIntegerSetFromFile(range_file, node_dict).asScala.map(_.toInt).toSet
+      fileUtil.readIntegerSetFromFile(range_file, node_dict)
     }
     negativeExampleSelector.selectNegativeExamples(data, allowedSources, allowedTargets)
   }

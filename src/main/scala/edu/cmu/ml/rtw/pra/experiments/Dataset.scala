@@ -76,7 +76,7 @@ object Dataset {
    * entry is an integer, it just checks if the dictionary is null or not.
    */
   def fromFile(filename: String, graph: Option[Graph], fileUtil: FileUtil = new FileUtil): Dataset = {
-    val lines = fileUtil.readLinesFromFile(filename).asScala
+    val lines = fileUtil.readLinesFromFile(filename)
     if (lines(0).split("\t").size == 4) {
       graph match {
         case Some(g) => throw new IllegalStateException(

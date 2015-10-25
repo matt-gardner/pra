@@ -11,7 +11,6 @@ import java.io.PrintWriter
 import java.util.Random
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
@@ -45,7 +44,7 @@ class SimilarityMatrixCreator(
     val to_ignore: Set[String] = {
       (params \ "to ignore") match {
         case JNothing => Set()
-        case JString(path) => fileUtil.readLinesFromFile(path).asScala.toSet
+        case JString(path) => fileUtil.readLinesFromFile(path).toSet
         case other => throw new IllegalStateException("\"to ignore\" must be a string")
       }
     }
@@ -60,7 +59,7 @@ class SimilarityMatrixCreator(
     Outputter.info("Reading vectors")
     val vectors = {
       val tmp = new mutable.ArrayBuffer[(Int, DenseVector[Double])]
-      for (line <- fileUtil.readLinesFromFile(embeddingsFile).asScala) {
+      for (line <- fileUtil.readLinesFromFile(embeddingsFile)) {
         val fields = line.split("\t")
         val relation = fields(0)
         if (!to_ignore.contains(relation)) {

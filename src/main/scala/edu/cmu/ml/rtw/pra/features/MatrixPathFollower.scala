@@ -133,13 +133,13 @@ class MatrixPathFollower(
     Outputter.info(s"Creating path matrices from the relation matrices in $matrixDir")
     val _path_types = pathTypes.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = _path_types.flatMap(_.getEdgeTypes).toSet
-    val filenames = fileUtil.listDirectoryContents(matrixDir).asScala.toSet - "params.json"
+    val filenames = fileUtil.listDirectoryContents(matrixDir).toSet - "params.json"
     if (filenames.size == 0) {
       throw new RuntimeException(s"Didn't find any matrix files in ${matrixDir}...")
     }
     val relations_by_filename = separateRelationsByFile(relations, filenames)
     val connectivity_matrices: Map[Int, CSCMatrix[Double]] = relations_by_filename.par.flatMap(x =>
-        readMatricesFromFile(fileUtil.getBufferedReader(matrixDir + x._1), x._2)).seq
+        readMatricesFromFile(matrixDir + x._1, x._2)).seq
 
     _path_types.par.map(x => (x, createPathMatrix(x, connectivity_matrices))).seq.toMap
   }
@@ -209,7 +209,7 @@ class MatrixPathFollower(
   }
 
   def readMatricesFromFile(
-      reader: BufferedReader,
+      filename: String,
       relations: Set[Int]): Map[Int, CSCMatrix[Double]] = {
     val matrices = new mutable.HashMap[Int, CSCMatrix[Double]]
     val sorted_relations = relations.toSeq.sorted
@@ -217,7 +217,7 @@ class MatrixPathFollower(
     var current_relation = sorted_relations(relation_index)
     var builder: CSCMatrix.Builder[Double] = null
     breakable {
-      for (line <- Resource.fromReader(reader).lines()) {
+      for (line <- fileUtil.getLineIterator(filename)) {
         if (line.startsWith("Relation")) {
           if (builder != null) {
             matrices(current_relation) = builder.result

@@ -8,7 +8,6 @@ import java.lang.Integer
 import java.util.{List => JList}
 import java.util.{Set => JSet}
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.util.Random
 import scalax.io.Resource
@@ -27,7 +26,8 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val numNodes = 100
   val path_type_factory = new BasicPathTypeFactory()
-  val relation1File = {
+  val relation1File = "/relation 1"
+  val relation1FileContents = {
     "Relation 1\n" +
     "1\t1\n" +
     "1\t2\n" +
@@ -41,7 +41,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     builder.result
   }
 
-  val relation2File = {
+  val relation2File = "/relation 2"
+  val relation2FileContents = {
     "Relation 2\n" +
     "2\t1\n" +
     "2\t2\n" +
@@ -55,7 +56,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     builder.result
   }
 
-  val relation3File = {
+  val relation3File = "/relation 3"
+  val relation3FileContents = {
     "Relation 3\n" +
     "3\t1\n" +
     "3\t2\n" +
@@ -69,7 +71,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     builder.result
   }
 
-  val relation4File = {
+  val relation4File = "/relation 4"
+  val relation4FileContents = {
     "Relation 4\n" +
     "4\t1\n" +
     "4\t2\n" +
@@ -89,7 +92,8 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     builder.result
   }
 
-  val relation5File = {
+  val relation5File = "/relation 5"
+  val relation5FileContents = {
     "Relation 5\n" +
     "5\t1\n" +
     "5\t1\n" +
@@ -102,6 +106,16 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     builder.add(5, 2, 1)
     builder.result
   }
+
+  val relation1And2File = "/relation 1 and 2"
+  val relation1And2FileContents = relation1FileContents + relation2FileContents
+  val relation1Through3File = "/relation 1 through 3"
+  val relation1Through3FileContents =
+    relation1FileContents + relation2FileContents + relation3FileContents
+  val relation1Through4File = "/relation 1 through 4"
+  val relation1Through4FileContents =
+    relation1FileContents + relation2FileContents +
+    relation3FileContents + relation4FileContents
 
   val connectivity_matrices = {
     val matrices = new mutable.HashMap[Int, CSCMatrix[Double]]
@@ -121,17 +135,26 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
 
   lazy val creatorWithPathTypes = {
     val fileUtil = new FakeFileUtil()
-    val matrixFile = relation1File + relation2File + relation3File + relation4File
+    val matrixFile =
+      relation1FileContents + relation2FileContents + relation3FileContents + relation4FileContents
     fileUtil.addFileToBeRead("/matrices/1-4", matrixFile)
     fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\t1\n")
     fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
+    fileUtil.addFileToBeRead(relation1File, relation1FileContents)
+    fileUtil.addFileToBeRead(relation2File, relation2FileContents)
+    fileUtil.addFileToBeRead(relation3File, relation3FileContents)
+    fileUtil.addFileToBeRead(relation4File, relation4FileContents)
+    fileUtil.addFileToBeRead(relation5File, relation5FileContents)
+    fileUtil.addFileToBeRead(relation1And2File, relation1And2FileContents)
+    fileUtil.addFileToBeRead(relation1Through3File, relation1Through3FileContents)
+    fileUtil.addFileToBeRead(relation1Through4File, relation1Through4FileContents)
     val edgesToExclude = Seq[((Int, Int), Int)](((4, 2), 4), ((1, 4), 4))
     val graph = new GraphOnDisk("/graph/", fileUtil)
-    val path_types = seqAsJavaList(Seq(
+    val path_types = Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
       path_type_factory.fromString("-1-_1-")
-      ))
+      )
     new MatrixPathFollower(
       numNodes,
       path_types,
@@ -196,42 +219,27 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   "readMatricesFromFile" should "read a single-matrix file" in {
-    val matrixFile = relation1File
-    val matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(1))
+    val matrices = creatorWithPathTypes.readMatricesFromFile(relation1File, Set(1))
     matrices.size should be (1)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
   }
 
   it should "read a single matrix from a multi-matrix file" in {
-    var matrixFile = relation1File + relation2File
-    var matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(1))
+    var matrices = creatorWithPathTypes.readMatricesFromFile(relation1And2File, Set(1))
     matrices.size should be (1)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
 
-    matrixFile = relation1File + relation2File
-    matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(2))
+    matrices = creatorWithPathTypes.readMatricesFromFile(relation1And2File, Set(2))
     matrices.size should be (1)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
 
-    matrixFile = relation1File + relation2File + relation3File + relation4File
-    matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(3))
+    matrices = creatorWithPathTypes.readMatricesFromFile(relation1Through4File, Set(3))
     matrices.size should be (1)
     matrices(3).activeKeysIterator.toSet should be (Set((3, 1), (3, 2), (3, 3)))
   }
 
   it should "read all matrices from a multi-matrix file" in {
-    val matrixFile = relation1File + relation2File + relation3File
-    val matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(1, 2, 3))
+    val matrices = creatorWithPathTypes.readMatricesFromFile(relation1Through3File, Set(1, 2, 3))
     matrices.size should be (3)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
@@ -239,45 +247,32 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   it should "read some matrices from a multi-matrix file" in {
-    val matrixFile = relation1File + relation2File + relation3File + relation4File
-    var matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(1, 2, 3))
+    var matrices = creatorWithPathTypes.readMatricesFromFile(relation1Through4File, Set(1, 2, 3))
     matrices.size should be (3)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
     matrices(3).activeKeysIterator.toSet should be (Set((3, 1), (3, 2), (3, 3)))
 
-    matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(1, 3))
+    matrices = creatorWithPathTypes.readMatricesFromFile(relation1Through4File, Set(1, 3))
     matrices.size should be (2)
     matrices(1).activeKeysIterator.toSet should be (Set((1, 1), (1, 2), (1, 3)))
     matrices(3).activeKeysIterator.toSet should be (Set((3, 1), (3, 2), (3, 3)))
 
-    matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(2, 4))
+    matrices = creatorWithPathTypes.readMatricesFromFile(relation1Through4File, Set(2, 4))
     matrices.size should be (2)
     matrices(2).activeKeysIterator.toSet should be (Set((2, 1), (2, 2), (2, 3)))
     matrices(4).activeKeysIterator.toSet should be (Set((4, 3), (4, 4), (4, 5), (4,6)))
   }
 
   it should "remove training edges from connectivity matrices" in {
-    val matrixFile = relation4File
-    var matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(4))
+    val matrices = creatorWithPathTypes.readMatricesFromFile(relation4File, Set(4))
     matrices(4)(4, 1) should be (0)
     matrices(4)(4, 2) should be (0)
     matrices(4)(4, 3) should be (1)
   }
 
   it should "have entries higher than 1 when relation instances are repeated" in {
-    val matrixFile = relation5File
-    var matrices = creatorWithPathTypes.readMatricesFromFile(
-      new BufferedReader(new StringReader(matrixFile)),
-      Set(5))
+    val matrices = creatorWithPathTypes.readMatricesFromFile(relation5File, Set(5))
     matrices(5)(5, 1) should be (3)
     matrices(5)(5, 2) should be (1)
   }

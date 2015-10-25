@@ -59,7 +59,7 @@ trait Operation {
       builder.setAllData(
         Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
       val percent_training_file = splitsDirectory + "percent_training.tsv"
-      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file).get(0))
+      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file)(0))
       true
     }
   }
@@ -85,8 +85,7 @@ trait Operation {
 
     val embeddings = {
       if (directory != null && fileUtil.fileExists(directory + "embeddings.tsv")) {
-        fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv").asScala
-          .mapValues(_.asScala.toList).toMap
+        fileUtil.readMapListFromTsvFile(directory + "embeddings.tsv")
       } else {
         null
       }
@@ -96,16 +95,16 @@ trait Operation {
 
     if (directory != null && useRange && fileUtil.fileExists(directory + "ranges.tsv")) {
       val ranges = fileUtil.readMapFromTsvFile(directory + "ranges.tsv")
-      val range = ranges.get(relation)
-      if (range == null) {
-        throw new IllegalStateException(
+      val range = ranges.get(relation) match {
+        case None => throw new IllegalStateException(
             "You specified a range file, but it doesn't contain an entry for relation " + relation)
+        case Some(r) => r
       }
       val fixed = range.replace("/", "_")
       val cat_file = directory + "category_instances/" + fixed
 
       val allowedTargets = {
-        val lines = fileUtil.readLinesFromFile(cat_file).asScala
+        val lines = fileUtil.readLinesFromFile(cat_file)
         val graph = builder.graph.get
         lines.map(line => graph.getNodeIndex(line)).toSet
       }
@@ -121,8 +120,8 @@ trait Operation {
   def createUnallowedEdges(
       relation: String,
       inverses: Map[Int, Int],
-      embeddings: Map[String, List[String]],
-      builder: PraConfigBuilder): List[Int] = {
+      embeddings: Map[String, Seq[String]],
+      builder: PraConfigBuilder): Seq[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
 
     // TODO(matt): I need a better way to specify this...  It's problematic when there is no shared
@@ -130,7 +129,7 @@ trait Operation {
     builder.graph match {
       case None => {
         Outputter.warn("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
-        return unallowedEdges.toList
+        return unallowedEdges.toSeq
       }
       case _ => { }
     }
@@ -161,7 +160,7 @@ trait Operation {
         }
       }
     }
-    unallowedEdges.toList
+    unallowedEdges.toSeq
   }
 
   /**
@@ -181,7 +180,7 @@ trait Operation {
       if (!fileUtil.fileExists(filename)) {
         inverses.toMap
       } else {
-        for (line <- fileUtil.readLinesFromFile(filename).asScala) {
+        for (line <- fileUtil.readLinesFromFile(filename)) {
           val parts = line.split("\t")
           val rel1 = graph.getEdgeIndex(parts(0))
           val rel2 = graph.getEdgeIndex(parts(1))

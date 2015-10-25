@@ -15,7 +15,6 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import org.json4s._
@@ -100,7 +99,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val nodeNames =
       if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
-        fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true).asScala.toMap
+        fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true)
       } else null
     baseBuilder.setOutputter(new Outputter(nodeNames))
     // TODO(matt): move this parameter to the outputter.
@@ -110,7 +109,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     val baseConfig = baseBuilder.setNoChecks().build()
 
     val relationsFile = splitsDirectory + "relations_to_run.tsv"
-    for (relation <- fileUtil.readLinesFromFile(relationsFile).asScala) {
+    for (relation <- fileUtil.readLinesFromFile(relationsFile)) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
@@ -168,7 +167,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val creator = new GraphCreator(praBase, graph_dir, fileUtil)
       if (fileUtil.fileExists(graph_dir)) {
         fileUtil.blockOnFileDeletion(creator.inProgressFile)
-        val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
+        val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
         if (params_specified == true && !graphParamsMatch(current_params, params)) {
           Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
           Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
@@ -213,7 +212,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           out.close
         } else {
           fileUtil.blockOnFileDeletion(decomposer.in_progress_file)
-          val current_params = parse(fileUtil.readLinesFromFile(paramFile).asScala.mkString("\n"))
+          val current_params = parse(fileUtil.readLinesFromFile(paramFile).mkString("\n"))
           if (current_params != embedding_params) {
             Outputter.fatal(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
             Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
@@ -238,7 +237,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           creator.createSimilarityMatrix(matrixParams)
         } else {
           fileUtil.blockOnFileDeletion(creator.inProgressFile)
-          val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).asScala.mkString("\n"))
+          val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
             Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
             Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
@@ -275,7 +274,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           densifier.densifyGraph(matrixParams)
         } else {
           fileUtil.blockOnFileDeletion(densifier.inProgressFile)
-          val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).asScala.mkString("\n"))
+          val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
             Outputter.fatal(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
             Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
@@ -313,7 +312,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         Outputter.info(s"Split found in ${split_dir}")
         fileUtil.blockOnFileDeletion(in_progress_file)
         if (fileUtil.fileExists(param_file)) {
-          val current_params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
+          val current_params = parse(fileUtil.readLinesFromFile(param_file).mkString("\n"))
           if (params_specified == true && current_params != params) {
             Outputter.fatal(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
             Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")

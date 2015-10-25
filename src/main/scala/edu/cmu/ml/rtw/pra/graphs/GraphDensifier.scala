@@ -9,7 +9,6 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import breeze.linalg._
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
@@ -122,13 +121,13 @@ class GraphDensifier(
     // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
     // Dataset.fromFile.  I should use that here.
     val split_dir = s"${praBase}splits/${split_name}/"
-    val relations = fileUtil.readLinesFromFile(s"${split_dir}relations_to_run.tsv").asScala
+    val relations = fileUtil.readLinesFromFile(s"${split_dir}relations_to_run.tsv")
     relations.flatMap(relation => {
       val rel_index = edge_dict.getIndex(relation)
       val has_inverse = inverses.contains(rel_index)
       val inverse_index = if (has_inverse) inverses(rel_index) else -1
       val test_file = s"${split_dir}${relation}/testing.tsv"
-      val instances = fileUtil.readLinesFromFile(test_file).asScala
+      val instances = fileUtil.readLinesFromFile(test_file)
       instances.flatMap(instance => {
         val fields = instance.split("\t")
         val source_index = node_dict.getIndex(fields(0))
@@ -146,7 +145,7 @@ class GraphDensifier(
   def readGraphEdges(edge_file: String, test_edges: Set[(Int, Int, Int)]): Map[(Int, Int), SparseVector[Double]] = {
     val edges = new mutable.HashMap[(Int, Int), Set[Int]]().withDefaultValue(Set())
     var seen_test_edges = 0
-    for (line <- fileUtil.readLinesFromFile(edge_file).asScala) {
+    for (line <- fileUtil.readLinesFromFile(edge_file)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
@@ -171,7 +170,7 @@ class GraphDensifier(
 
   def readSimilarityMatrix(filename: String): CSCMatrix[Double] = {
     val entries = new mutable.ListBuffer[(Int, Int, Double)]
-    for (line <- fileUtil.readLinesFromFile(filename).asScala) {
+    for (line <- fileUtil.readLinesFromFile(filename)) {
       val fields = line.split("\t")
       val relation1 = edge_dict.getIndex(fields(0))
       val relation2 = edge_dict.getIndex(fields(1))
@@ -222,7 +221,7 @@ class GraphDensifier(
       if (!fileUtil.fileExists(filename)) {
         inverses.toMap
       } else {
-        for (line <- fileUtil.readLinesFromFile(filename).asScala) {
+        for (line <- fileUtil.readLinesFromFile(filename)) {
           val parts = line.split("\t")
           val rel1 = graph.getEdgeIndex(parts(0))
           val rel2 = graph.getEdgeIndex(parts(1))

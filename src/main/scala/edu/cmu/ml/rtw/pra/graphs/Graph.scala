@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
@@ -86,7 +85,7 @@ class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) 
 class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) extends Graph {
   lazy val _entries: Array[Node] = loadGraph()
   val graphFile = graphDir + "graph_chi/edges.tsv"
-  lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv").asScala(0).toInt
+  lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv")(0).toInt
 
   Outputter.info("Loading node and edge dictionaries")
   val nodeDict = new Dictionary(fileUtil)
@@ -106,10 +105,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
   def loadGraph(): Array[Node] = {
     Outputter.info(s"Loading graph")
     val graphBuilder = new GraphBuilder(nodeDict.getNextIndex, nodeDict, edgeDict)
-    val lines = fileUtil.readLinesFromFile(graphFile).asScala
-    val reader = fileUtil.getBufferedReader(graphFile)
-    var line: String = null
-    while ({ line = reader.readLine; line != null }) {
+    for (line <- fileUtil.getLineIterator(graphFile)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
@@ -138,7 +134,7 @@ class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dicti
     val fileUtil = new FileUtil
     nodeDict.writeToFile(directory + "node_dict.tsv")
     edgeDict.writeToFile(directory + "node_dict.tsv")
-    fileUtil.writeLinesToFile(directory + "edges.tsv", writeToGraphChiLines().asJava)
+    fileUtil.writeLinesToFile(directory + "edges.tsv", writeToGraphChiLines())
   }
 }
 

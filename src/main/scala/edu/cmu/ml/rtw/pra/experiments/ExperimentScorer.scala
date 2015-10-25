@@ -4,11 +4,8 @@ import java.io.File
 import java.io.PrintWriter
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
-import scalax.io.Resource
 
-import edu.cmu.ml.rtw.users.matt.util.FileHelper
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
@@ -78,7 +75,7 @@ object ExperimentScorer {
       significanceTests: Seq[String],
       relationMetrics: Seq[String]) {
     val results_dir = pra_base + RESULTS_DIR
-    val experiment_dirs = FileHelper.recursiveListFiles(new File(results_dir),
+    val experiment_dirs = fileUtil.recursiveListFiles(new File(results_dir),
       """settings.txt|params.json|log.txt""".r)
       .map(_.getParentFile).toSet
       .filter(shouldKeepFile(experiment_filters))
@@ -169,10 +166,10 @@ object ExperimentScorer {
     val param_file = s"$experiment_dir/params.json"
     val settings_file = s"$experiment_dir/settings.txt"
     if (fileUtil.fileExists(param_file)) {
-      val params = parse(fileUtil.readLinesFromFile(param_file).asScala.mkString("\n"))
+      val params = parse(fileUtil.readLinesFromFile(param_file).mkString("\n"))
       Some(params)
     } else if (fileUtil.fileExists(settings_file)) {
-      val lines = fileUtil.readLinesFromFile(settings_file).asScala
+      val lines = fileUtil.readLinesFromFile(settings_file)
       val start = lines.indexOf("{")
       val end = lines.indexOf("}") + 1
       val param_str = lines.slice(start, end).mkString("\n")
@@ -198,7 +195,7 @@ object ExperimentScorer {
         // Some older files were formatted in a way that should hopefully make this work...  This
         // is attempting to allow for some backwards compatibility.
         val settings_file = s"$experiment_dir/settings.txt"
-        val split = fileUtil.readLinesFromFile(settings_file).asScala
+        val split = fileUtil.readLinesFromFile(settings_file)
           .filter(_.contains("\"split\":")).map(_.split(":\"")(1).split("\"")(0)).toList(0)
         split match {
           case path if path.startsWith("/") => path
@@ -219,7 +216,7 @@ object ExperimentScorer {
     // Getting the split dir and relations first.
     val split_dir = findSplitDir(pra_base, experiment_dir)
     val relations_to_run = s"${split_dir}relations_to_run.tsv"
-    val relations = fileUtil.readLinesFromFile(relations_to_run).asScala
+    val relations = fileUtil.readLinesFromFile(relations_to_run)
 
     // Now we loop over the relations and compute metrics, checking the saved metrics and timestamp
     // first to see if we need recompute this.
@@ -452,7 +449,7 @@ object ExperimentScorer {
   def readSavedMetrics(metrics_file: String) = {
     val metrics = new mutable.HashMap[String, MutableRelationMetrics]
     if (new File(metrics_file).exists) {
-      for (line <- Resource.fromFile(metrics_file).lines()) {
+      for (line <- fileUtil.getLineIterator(metrics_file)) {
         val fields = line.split("\t")
         val experiment = fields(0)
         val relation = fields(1)

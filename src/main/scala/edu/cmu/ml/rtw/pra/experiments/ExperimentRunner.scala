@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.users.matt.util.FileHelper
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
@@ -15,13 +14,14 @@ object ExperimentRunner {
   val SPEC_DIR = "/experiment_specs/"
   val RESULTS_DIR = "/results/"
   val EXPLORATION_DIR = "/results_exploration/"
+  val fileUtil = new FileUtil
 
   def main(args: Array[String]) {
     if (args.length < 1) {
       println("Must supply a base directory as the first argument to ExperimentRunner")
       return
     }
-    val pra_base = new FileUtil().addDirectorySeparatorIfNecessary(args(0))
+    val pra_base = fileUtil.addDirectorySeparatorIfNecessary(args(0))
     val filter = args.toList.drop(1)
     runPra(pra_base, filter)
 
@@ -42,7 +42,7 @@ object ExperimentRunner {
   def runPra(pra_base: String, experiment_filters: Seq[String]) {
     val random = new Random
     val experiment_spec_dir = s"${pra_base}/experiment_specs/"
-    val experiment_specs = FileHelper.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
+    val experiment_specs = fileUtil.recursiveListFiles(new File(experiment_spec_dir), """.*\.json$""".r)
     if (experiment_specs.size == 0) {
       println("No experiment specs found.  Check your base path (the first argument).")
     }
@@ -57,7 +57,7 @@ object ExperimentRunner {
   }
 
   def runPraFromSpec(pra_base: String)(spec_file: File) {
-    val spec_lines = new FileUtil().readLinesFromFile(spec_file)
+    val spec_lines = fileUtil.readLinesFromFile(spec_file)
     val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
     // TODO(matt): this is pretty ugly.  Can't we design this better?
     val mode = (params \ "operation" \ "type") match {

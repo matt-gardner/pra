@@ -51,7 +51,7 @@ class RescalMatrixPathFollower(
   }
 
   // Now we build up a few data structures that we'll need.  First are the node vectors.
-  val node_vectors = fileUtil.readLinesFromFile(rescalDir + "a_matrix.tsv").asScala.map(line => {
+  val node_vectors = fileUtil.readLinesFromFile(rescalDir + "a_matrix.tsv").map(line => {
     val fields = line.split("\t")
     val node_index = graph.getNodeIndex(fields(0))
     val vector_entries = fields.drop(1).map(_.toDouble)
@@ -90,7 +90,7 @@ class RescalMatrixPathFollower(
 
   def getRescalMatrices(): Map[Int, DenseMatrix[Double]] = {
     val filename = rescalDir + "/r_matrix.tsv"
-    val lines = fileUtil.readLinesFromFile(filename).asScala
+    val lines = fileUtil.readLinesFromFile(filename)
     val matrices_with_lines = splitMatrixLines(lines)
     matrices_with_lines.par.map(matrix_lines => {
       (graph.getEdgeIndex(matrix_lines._1), createDenseMatrixFromLines(matrix_lines._2))

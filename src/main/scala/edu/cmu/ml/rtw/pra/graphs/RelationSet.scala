@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.LineFilter
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -10,7 +11,6 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 import java.io.BufferedReader
 import java.io.FileWriter
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import org.json4s._
@@ -68,27 +68,21 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
   /**
    * Get the set of aliases specified by this KB relation set.
    */
-  def getAliases(): Map[String, List[String]] = {
+  def getAliases(): Map[String, Seq[String]] = {
     if (aliasFile == null) {
-      Map()
-    } else {
-      getAliasesFromReader(fileUtil.getBufferedReader(aliasFile))
+      return Map()
     }
-  }
-
-  def getAliasesFromReader(reader: BufferedReader): Map[String, List[String]] = {
     aliasFileFormat match {
       case "freebase" => {
-        fileUtil.readMapListFromTsvReader(reader, 3, false, new FileUtil.LineFilter() {
+        fileUtil.readMapListFromTsvFile(aliasFile, 3, false, new LineFilter() {
           override def filter(fields: Array[String]): Boolean = {
             if (fields.length != 4) return true
             return false
           }
-        }).asScala.mapValues(_.asScala.toList).toMap
+        })
       }
       case "nell" => {
-        fileUtil.readInvertedMapListFromTsvReader(reader, 1000000)
-          .asScala.mapValues(_.asScala.toList).toMap
+        fileUtil.readInvertedMapListFromTsvFile(aliasFile, 1000000)
       }
       case other => throw new IllegalStateException("Unrecognized alias file format")
     }
@@ -99,11 +93,13 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       seenTriples: mutable.HashSet[(Int, Int, Int)],
       prefixOverride: String,
       seenNps: mutable.HashSet[(String)],
-      aliases: Seq[(String, Map[String, List[String]])],
+      aliases: Seq[(String, Map[String, Seq[String]])],
       nodeDict: Dictionary,
       edgeDict: Dictionary): Int = {
-    writeRelationEdgesFromReader(
-      fileUtil.getBufferedReader(relationFile),
+    // TODO(matt): does this need to be a redirect method?  That was initially for testing, but is
+    // no longer necessary.
+    writeRelationEdgesFromFile(
+      relationFile,
       loadEmbeddings(),
       seenTriples,
       prefixOverride,
@@ -114,13 +110,13 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       edgeDict)
   }
 
-  def writeRelationEdgesFromReader(
-      reader: BufferedReader,
+  def writeRelationEdgesFromFile(
+      filename: String,
       embeddings: Map[String, List[String]],
       seenTriples: mutable.HashSet[(Int, Int, Int)],
       prefixOverride: String,
       seenNps: mutable.HashSet[(String)],
-      aliases: Seq[(String, Map[String, List[String]])],
+      aliases: Seq[(String, Map[String, Seq[String]])],
       writer: FileWriter,
       nodeDict: Dictionary,
       edgeDict: Dictionary): Int = {
@@ -134,10 +130,9 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
         ""
       }
     }
-    var line: String = null
     var i = 0
     var numEdges = 0
-    while ({ line = reader.readLine(); line != null }) {
+    for (line <- fileUtil.getLineIterator(filename)) {
       i += 1
       fileUtil.logEvery(1000000, i)
       val fields = line.split("\t")
@@ -199,7 +194,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
       writer: FileWriter,
       nodeDict: Dictionary,
       edgeDict: Dictionary,
-      aliases: Seq[(String, Map[String, List[String]])]): Int = {
+      aliases: Seq[(String, Map[String, Seq[String]])]): Int = {
     var numEdges = 0
     if (seenNps.contains(np)) return numEdges
     seenNps.add(np)
@@ -240,7 +235,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
   def loadEmbeddings(): Map[String, List[String]] = {
     if (embeddingsFile != null) {
       Outputter.info("Reading embeddings from file " + embeddingsFile)
-      fileUtil.readMapListFromTsvFile(embeddingsFile).asScala.mapValues(_.asScala.toList).toMap
+      fileUtil.readMapListFromTsvFile(embeddingsFile).mapValues(_.toList)
     } else {
       null
     }
