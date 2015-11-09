@@ -29,6 +29,7 @@ object FeatureExtractor {
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
+      case JString("AnyRelAliasOnlyFeatureExtractor") => new AnyRelAliasOnlyFeatureExtractor
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
@@ -221,6 +222,38 @@ class AnyRelFeatureExtractor extends FeatureExtractor{
           edgeTypes(i) = oldEdgeType
           "ANYREL:" + newPathType
         }).toSet
+      } else {
+        List[String]()
+      }
+    }).toSeq
+  }
+}
+
+class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor{
+
+  override def extractFeatures(instance: Instance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    val anyRel = graph.getEdgeIndex("@ANY_REL@")
+    // TODO(matt): this is brittle, because the alias relation might have a different name...
+    val alias = graph.getEdgeIndex("@ALIAS@")
+    val sourceTarget = (instance.source, instance.target)
+    subgraph.flatMap(entry => {
+      if (entry._2.contains(sourceTarget)) {
+        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
+        val edgeTypes = pathType.getEdgeTypes()
+        if (edgeTypes(0) == alias && edgeTypes(edgeTypes.length - 1) == alias) {
+          val reverses = pathType.getReverse()
+          (1 until edgeTypes.length - 1).map(i => {
+            val oldEdgeType = edgeTypes(i)
+            edgeTypes(i) = anyRel
+            val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
+              .encodeAsHumanReadableString(graph)
+            edgeTypes(i) = oldEdgeType
+            "ANYREL:" + newPathType
+          }).toSet
+        } else {
+          List[String]()
+        }
       } else {
         List[String]()
       }

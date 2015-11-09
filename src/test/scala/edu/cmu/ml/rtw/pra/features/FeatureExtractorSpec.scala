@@ -20,7 +20,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
-    "1\trel1\n2\trel2\n3\trel3\n4\trel4\n")
+    "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
   val graph = new GraphOnDisk("/graph/", fileUtil)
   val config = new PraConfigBuilder().setPraBase("/").setNoChecks().build()
 
@@ -137,5 +137,17 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     features.size should be(2)
     features should contain("ANYREL:-@ANY_REL@-rel3-")
     features should contain("ANYREL:-rel1-@ANY_REL@-")
+  }
+
+  "AnyRelAliasOnlyFeatureExtractor" should "replace only paths with @ALIAS@" in {
+    val pathTypes = Seq("-1-3-", "-2-", "-5-1-5-", "-5-1-2-5-")
+    val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)), Set((1,2)), Set((1,2)))
+    val extractor = new AnyRelAliasOnlyFeatureExtractor
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
+    println(features)
+    features.size should be(3)
+    features should contain("ANYREL:-@ALIAS@-@ANY_REL@-@ALIAS@-")
+    features should contain("ANYREL:-@ALIAS@-@ANY_REL@-rel2-@ALIAS@-")
+    features should contain("ANYREL:-@ALIAS@-rel1-@ANY_REL@-@ALIAS@-")
   }
 }
