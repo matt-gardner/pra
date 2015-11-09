@@ -45,12 +45,21 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.1 (current snapshot):
+Version 3.2 (current snapshot):
 
-- Two major new features planned: SGD training for (hopefully) drastically reduced memory
-  requirements, and a more flexible Graph object.  The eventual idea with the Graph object is to
-make it much more versatile, allowing for graph servers that live in other processes, or on other
-machines, and for graphs where you use a remote graph but add something local to it.
+- Nothing major that I'm actively working on right now...  This version might include a working SGD
+  implementation, or actual remote Graph code.  We'll see.
+
+Version 3.1 (released on 11/9/2015):
+
+- Started work on getting SGD training for PRA/SFE.  There is a lot there in the code to make this
+  work, and some aspects already do.  In fact, you can run with an SGD model right now, if you
+want, it just doesn't work that well.  I haven't figured out parameters / learning rates /
+momentum / whatever to make the SGD training actually perform as well as MALLET's batch training.
+Hopefully, though, figuring this out will allow for much improved memory requirements in the code.
+
+- Some improvements on the Graph object API, with the end goal of allowing the graph to live on a
+  remote server, among other graph variations.
 
 - Removed the utility code into its own repository, which is now a dependency.  This was so I
   could use those utilities in other projects I'm working on.
