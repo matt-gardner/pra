@@ -1,0 +1,41 @@
+load new_feature_experiment_base
+{
+  "split": "final_nell_split_with_negatives",
+  "graph": {
+    "name": "nell/kb_pca_d_svo",
+    "relation sets": [
+      {
+        "relation file": "/path/to/data/labeled_edges.tsv",
+        "is kb": true,
+        "alias file": "/path/to/data/concepts_to_nps_728.tsv",
+        "alias file format": "nell"
+      },
+      {
+        "relation file": "/path/to/data/smaller.tsv",
+        "embeddings file": "/path/to/data/mapped_embeddings.tsv",
+        "is kb": false
+      }
+    ]
+  },
+  "operation": {
+    "type": "train and test",
+    "features": {
+      "path finder": {
+        "walks per source": 100,
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
+      },
+      "path selector": {
+        "number of paths to keep": 1000
+      },
+      "path follower": {
+        "walks per path": 50,
+        "matrix accept policy": "paired-targets-only"
+      }
+    }
+    "learning": {
+      "l1 weight": 0.005,
+      "l2 weight": 1.0
+    }
+  }
+}
