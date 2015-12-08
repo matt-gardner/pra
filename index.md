@@ -6,12 +6,20 @@ layout: page
 
 An implementation of the Path Ranking Algorithm (PRA) using GraphChi, a library for efficient
 processing of large graphs on a single (large) machine.  This algorithm learns models that analyze
-a graph and predict missing edges of particular types.
+a graph and predict missing edges of particular types.  This codebase also implements Subgraph
+Feature Extraction (SFE), a method similar to PRA that is simpler and faster.
 
 See the navigation on the left for code documentation.  Please feel free to file bugs, feature
 requests, or send pull requests.  And, if you find some of this documentation confusing or
 lacking, please feel free to contact me.  I try to be responsive to reasonable requests for help,
 and I would like for this documentation to be useful; if it's not, tell me.
+
+NOTE, however: the code tends to change frequently, and it's generally more work than it's worth to
+keep the documentation up to date, because it gets little use.  I mostly just update it when
+someone asks me questions.  At the moment, you're probably better off starting from the [quick
+start instructions](http://rtw.ml.cmu.edu/emnlp2015_sfe/) for reproducing my 2015 EMNLP paper, then
+checking here (or in the `examples/` directory in the code) to see what parameters are available if
+you want to change things.
 
 ## Using the code
 
