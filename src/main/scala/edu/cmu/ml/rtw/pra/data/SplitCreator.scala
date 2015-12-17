@@ -1,9 +1,8 @@
-package edu.cmu.ml.rtw.pra.experiments
+package edu.cmu.ml.rtw.pra.data
 
 import java.io.FileWriter
 
-import edu.cmu.ml.rtw.pra.data.Dataset
-import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.users.matt.util.Dictionary

@@ -45,64 +45,18 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val instance = new NodePairInstance(1, 2, true, graph)
   val dataset = new Dataset[NodePairInstance](Seq(instance))
 
-  "createTrainingMatrix" should "return extracted features from local subgraphs" in {
+  "createMatrixFromData" should "return call constructMatrixRow on all instances" in {
     val subgraph = getSubgraph(instance)
-    val featureMatrix = new FeatureMatrix(List[MatrixRow]().asJava)
+    val row = new MatrixRow(instance, Array[Int](), Array[Double]())
     val generator = new SubgraphFeatureGenerator(params, config, fakeFileUtil) {
-      override def getLocalSubgraphs(data: Dataset[NodePairInstance]) = {
-        if (data != dataset) throw new RuntimeException()
-        subgraph
-      }
-      override def extractFeatures(subgraphs: Map[NodePairInstance, Subgraph]) = {
-        if (subgraphs != subgraph) throw new RuntimeException()
-        featureMatrix
+      override def constructMatrixRow(_instance: NodePairInstance) = {
+        if (_instance != instance) throw new RuntimeException()
+        Some(row)
       }
     }
-    generator.createTrainingMatrix(dataset) should be(featureMatrix)
-  }
-
-  "createTestMatrix" should "create the same thing as createTrainingMatrix" in {
-    val subgraph = getSubgraph(instance)
-    val matrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
-    val featureMatrix = new FeatureMatrix(List(matrixRow).asJava)
-    val nodeDict = new Dictionary()
-    nodeDict.getIndex("node1")
-    nodeDict.getIndex("node2")
-    val out = new Outputter(null, fakeFileUtil)
-    val config = new PraConfigBuilder[NodePairInstance]().setOutputMatrices(true)
-      .setOutputBase("/").setOutputter(out).setNoChecks().build()
-    val generator = new SubgraphFeatureGenerator(params, config, fakeFileUtil) {
-      override def getLocalSubgraphs(data: Dataset[NodePairInstance]) = {
-        if (data != dataset) throw new RuntimeException()
-        subgraph
-      }
-      override def extractFeatures(subgraphs: Map[NodePairInstance, Subgraph]) = {
-        if (subgraphs != subgraph) throw new RuntimeException()
-        featureMatrix
-      }
-    }
-    generator.hashFeature("feature1")
-    generator.hashFeature("feature2")
-
-    fakeFileUtil.onlyAllowExpectedFiles
-    generator.createTestMatrix(dataset) should be(featureMatrix)
-    fakeFileUtil.expectFilesWritten
-  }
-
-  it should "not output the matrix when the output dir is null" in {
-    val subgraph = getSubgraph(instance)
-    val featureMatrix = new FeatureMatrix(List[MatrixRow]().asJava)
-    val generator = new SubgraphFeatureGenerator(params, config, fakeFileUtil) {
-      override def getLocalSubgraphs(data: Dataset[NodePairInstance]) = {
-        if (data != dataset) throw new RuntimeException()
-        subgraph
-      }
-      override def extractFeatures(subgraphs: Map[NodePairInstance, Subgraph]) = {
-        if (subgraphs != subgraph) throw new RuntimeException()
-        featureMatrix
-      }
-    }
-    generator.createTestMatrix(dataset) should be(featureMatrix)
+    val featureMatrix = generator.createTrainingMatrix(dataset)
+    featureMatrix.getRows().size should be(1)
+    featureMatrix.getRow(0) should be(row)
   }
 
   "removeZeroWeightFeatures" should "not remove anything" in {
