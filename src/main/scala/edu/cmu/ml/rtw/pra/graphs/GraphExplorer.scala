@@ -1,8 +1,8 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
@@ -23,11 +23,11 @@ import org.json4s.native.JsonMethods._
  * but it does not actually produce a feature matrix.  The idea here is just to see what
  * connections there are between a set of nodes in a graph, and that's it.
  */
-class GraphExplorer(params: JValue, config: PraConfig) {
+class GraphExplorer(params: JValue, config: PraConfig[NodePairInstance]) {
   val paramKeys = Seq("path finder")
   JsonHelper.ensureNoExtras(params, "operation -> explore", paramKeys)
 
-  def findConnectingPaths(data: Dataset): Map[Instance, Map[PathType, Int]] = {
+  def findConnectingPaths(data: Dataset[NodePairInstance]): Map[NodePairInstance, Map[PathType, Int]] = {
     Outputter.info("Finding connecting paths")
 
     val finder = PathFinder.create(params \ "path finder", config)

@@ -2,8 +2,8 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import org.scalatest._
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom
 
 import org.json4s._
@@ -11,12 +11,12 @@ import org.json4s.JsonDSL._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = ("ppr computer" -> ("type" -> "Fake"))
-  val dataset = new Dataset(Seq(new Instance(1, 2, true, null)))
+  val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
   val graph = new GraphOnDisk("src/test/resources/")
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, graph) {
-      override def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]) = {
+      override def sampleByPrr(data: Dataset[NodePairInstance], pprValues: Map[Int, Map[Int, Int]]) = {
         Seq((1, 1), (2, 2), (3, 3))
       }
     }

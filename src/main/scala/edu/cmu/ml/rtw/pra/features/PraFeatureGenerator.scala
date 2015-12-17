@@ -1,8 +1,8 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -18,9 +18,10 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 
 class PraFeatureGenerator(
-    params: JValue,
-    config: PraConfig,
-    fileUtil: FileUtil = new FileUtil()) extends FeatureGenerator {
+  params: JValue,
+  config: PraConfig[NodePairInstance],
+  fileUtil: FileUtil = new FileUtil()
+) extends FeatureGenerator {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "path selector", "path follower")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
@@ -30,13 +31,13 @@ class PraFeatureGenerator(
   // With PraFeatureGenerator, we assume a single shared graph.
   val graph = config.graph.get.asInstanceOf[GraphOnDisk]
 
-  override def constructMatrixRow(instance: Instance): Option[MatrixRow] = {
+  override def constructMatrixRow(instance: NodePairInstance): Option[MatrixRow] = {
     // The reason this would be complicated is because we can't do this without having first
     // selected path features.
     throw new RuntimeException("This method is not yet implemented!  And it would be complicated...")
   }
 
-  override def createTrainingMatrix(data: Dataset): FeatureMatrix = {
+  override def createTrainingMatrix(data: Dataset[NodePairInstance]): FeatureMatrix = {
     pathTypes = selectPathFeatures(data)
     computeFeatureValues(pathTypes, data, null, true)
   }
@@ -47,7 +48,7 @@ class PraFeatureGenerator(
     finalModel.map(_._2)
   }
 
-  override def createTestMatrix(data: Dataset): FeatureMatrix = {
+  override def createTestMatrix(data: Dataset[NodePairInstance]): FeatureMatrix = {
     val output = if (config.outputBase == null) null else config.outputBase + "test_matrix.tsv"
     computeFeatureValues(pathTypes, data, output, false)
   }
@@ -74,7 +75,7 @@ class PraFeatureGenerator(
    * @return A ranked list of the <code>numPaths</code> highest ranked path features, encoded as
    *     {@link PathType} objects.
    */
-  def selectPathFeatures(data: Dataset): Seq[PathType] = {
+  def selectPathFeatures(data: Dataset[NodePairInstance]): Seq[PathType] = {
     Outputter.info("Selecting path features with " + data.instances.size + " training instances")
 
     val finder = PathFinder.create(params \ "path finder", config)
@@ -119,10 +120,11 @@ class PraFeatureGenerator(
    *     there will be no row in the matrix for that source.
    */
   def computeFeatureValues(
-      pathTypes: Seq[PathType],
-      data: Dataset,
-      outputFile: String,
-      isTraining: Boolean) = {
+    pathTypes: Seq[PathType],
+    data: Dataset[NodePairInstance],
+    outputFile: String,
+    isTraining: Boolean
+  ) = {
     Outputter.info("Computing feature values")
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
@@ -140,10 +142,11 @@ class PraFeatureGenerator(
   // TODO(matt): this code should move to a PathFollower static object, and most of the params
   // should be passed directly to be handled by the PathFollower subclasses.
   def createPathFollower(
-      followerParams: JValue,
-      pathTypes: Seq[PathType],
-      data: Dataset,
-      isTraining: Boolean): PathFollower = {
+    followerParams: JValue,
+    pathTypes: Seq[PathType],
+    data: Dataset[NodePairInstance],
+    isTraining: Boolean
+  ): PathFollower = {
     val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
     val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data.instances, config.unallowedEdges))
     if (name.equals("random walks")) {

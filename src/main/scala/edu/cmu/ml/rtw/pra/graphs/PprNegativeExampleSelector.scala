@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -34,7 +34,11 @@ class PprNegativeExampleSelector(
    * Returns a new Dataset that includes the input data and negative instances sampled according to
    * PPR from the positive examples in the input data.
    */
-  def selectNegativeExamples(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Dataset = {
+  def selectNegativeExamples(
+    data: Dataset[NodePairInstance],
+    allowedSources: Set[Int],
+    allowedTargets: Set[Int]
+  ): Dataset[NodePairInstance] = {
     Outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
 
     val start = compat.Platform.currentTime
@@ -45,7 +49,8 @@ class PprNegativeExampleSelector(
     Outputter.info(s"  took ${seconds} seconds")
     val negativeExamples = sampleByPrr(data, pprValues)
 
-    val negativeData = new Dataset(negativeExamples.map(x => new Instance(x._1, x._2, false, graph)))
+    val negativeData = new Dataset[NodePairInstance](negativeExamples.map(x =>
+        new NodePairInstance(x._1, x._2, false, graph)))
     data.merge(negativeData)
   }
 
@@ -56,10 +61,15 @@ class PprNegativeExampleSelector(
    * perform KB completion, instead of just training a model or doing cross validation.  So this
    * method is used to generate possible predictions for NELL's ongoing run, for instance.
    */
-  def findPotentialPredictions(domain: Set[Int], range: Set[Int], knownPositives: Dataset): Dataset = {
+  def findPotentialPredictions(
+    domain: Set[Int],
+    range: Set[Int],
+    knownPositives: Dataset[NodePairInstance]
+  ): Dataset[NodePairInstance] = {
     Outputter.info("Finding potential predictions to add to the KB")
     val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
-    val data = new Dataset(sourcesToUse.map(entity => new Instance(entity, -1, true, graph)).toSeq)
+    val data = new Dataset[NodePairInstance](sourcesToUse.map(entity =>
+        new NodePairInstance(entity, -1, true, graph)).toSeq)
     Outputter.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
 
     val start = compat.Platform.currentTime
@@ -73,21 +83,29 @@ class PprNegativeExampleSelector(
     Outputter.info(s"  took ${seconds} seconds")
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
-    new Dataset(potentialPredictions.map(x => new Instance(x._1, x._2, false, graph)))
+    new Dataset[NodePairInstance](potentialPredictions.map(x =>
+        new NodePairInstance(x._1, x._2, false, graph)))
   }
 
   /**
    * Like the above, but just for one source node at a time.
    */
-  def findPotentialPredictions(source: Int, range: Set[Int], knownPositives: Dataset): Set[Int] = {
+  def findPotentialPredictions(
+    source: Int,
+    range: Set[Int],
+    knownPositives: Dataset[NodePairInstance]
+  ): Set[Int] = {
     Outputter.debug("Finding potential predictions to add to the KB (for a single source)")
-    val data = new Dataset(Seq(Instance(source, -1, true, graph)))
+    val data = new Dataset[NodePairInstance](Seq(new NodePairInstance(source, -1, true, graph)))
 
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
     pprValues(source).toSeq.sortBy(-_._2).take(negativesPerPositive).map(_._1).toSet
   }
 
-  def sampleByPrr(data: Dataset, pprValues: Map[Int, Map[Int, Int]]): Seq[(Int, Int)] = {
+  def sampleByPrr(
+    data: Dataset[NodePairInstance],
+    pprValues: Map[Int, Map[Int, Int]]
+  ): Seq[(Int, Int)] = {
     val positive_instances = data.getPositiveInstances.map(instance => (instance.source, instance.target))
     // The amount of weight in excess of 1 here goes to the original source or target.
     val base_weight = 1.25
@@ -111,7 +129,10 @@ class PprNegativeExampleSelector(
     }).seq.toSet.toSeq
   }
 
-  def pickPredictionsByPpr(pprValues: Map[Int, Map[Int, Int]], knownPositives: Dataset): Seq[(Int, Int)] = {
+  def pickPredictionsByPpr(
+    pprValues: Map[Int, Map[Int, Int]],
+    knownPositives: Dataset[NodePairInstance]
+  ): Seq[(Int, Int)] = {
     // We'll use the negative to positive ratio to set how many targets we'll sample per entity in
     // the domain, then cap it at maxPotentialPredictions.
     val knownPositiveSet = knownPositives.instances.map(

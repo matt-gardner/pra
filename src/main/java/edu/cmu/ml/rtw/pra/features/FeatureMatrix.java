@@ -27,15 +27,4 @@ public class FeatureMatrix {
   public void shuffle() {
     Collections.shuffle(rows);
   }
-
-  /**
-   * Searches the list of matrix rows until one is found with the corresponding source and target.
-   * This is O(size), and not recommended for general use.  I added this mostly for easier testing.
-   */
-  public MatrixRow getSourceTargetRow(int source, int target) {
-    for (MatrixRow row : rows) {
-      if (row.instance.source() == source && row.instance.target() == target) return row;
-    }
-    return null;
-  }
 }

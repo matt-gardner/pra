@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.experiments
+package edu.cmu.ml.rtw.pra.data
 
 import java.io.FileWriter
 
@@ -10,14 +10,10 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.JavaConverters._
 
-case class Instance(source: Int, target: Int, isPositive: Boolean, graph: Graph)
-
 /**
  * A collection of positive and negative (source, target) pairs.
  */
-class Dataset(
-    val instances: Seq[Instance],
-    val fileUtil: FileUtil = new FileUtil) {
+class Dataset[T <: Instance](val instances: Seq[T], val fileUtil: FileUtil = new FileUtil) {
   def getPosAndNeg() = instances.partition(_.isPositive)
   def getPositiveInstances() = instances.filter(_.isPositive)
   def getNegativeInstances() = instances.filter(!_.isPositive)
@@ -27,7 +23,7 @@ class Dataset(
    * percent of the data.  Modulo rounding errors, the ratio of positive to negative examples
    * will be the same in both resultant datasets as it is in the original dataset.
    */
-  def splitData(percent: Double): (Dataset, Dataset) = {
+  def splitData(percent: Double): (Dataset[T], Dataset[T]) = {
     import scala.util.Random
     val random = new Random
     val (positiveInstances, negativeInstances) = getPosAndNeg()
@@ -40,22 +36,16 @@ class Dataset(
     random.shuffle(negativeInstances)
     val (trainingNegative, testingNegative) = negativeInstances.splitAt(numNegativeTraining)
 
-    val training = new Dataset(trainingPositive ++ trainingNegative)
-    val testing = new Dataset(testingPositive ++ testingNegative)
+    val training = new Dataset[T](trainingPositive ++ trainingNegative)
+    val testing = new Dataset[T](testingPositive ++ testingNegative)
     (training, testing)
   }
 
   def instancesToStrings(): Seq[String] = {
-    instances.map(instanceToString)
+    instances.map(_.toString)
   }
 
-  def instanceToString(instance: Instance): String = {
-    val pos = if (instance.isPositive) 1 else -1
-    val graph = instance.graph
-    s"${graph.getNodeName(instance.source)}\t${graph.getNodeName(instance.target)}\t$pos"
-  }
-
-  def merge(other: Dataset) = new Dataset(instances ++ other.instances)
+  def merge(other: Dataset[T]) = new Dataset[T](instances ++ other.instances)
 }
 
 object Dataset {
@@ -75,24 +65,28 @@ object Dataset {
    * strings to integers, or integers that will be parsed.  The logic here doesn't check if the
    * entry is an integer, it just checks if the dictionary is null or not.
    */
-  def fromFile(filename: String, graph: Option[Graph], fileUtil: FileUtil = new FileUtil): Dataset = {
+  def nodePairDatasetFromFile(
+    filename: String,
+    graph: Option[Graph],
+    fileUtil: FileUtil = new FileUtil
+  ): Dataset[NodePairInstance] = {
     val lines = fileUtil.readLinesFromFile(filename)
     if (lines(0).split("\t").size == 4) {
       graph match {
         case Some(g) => throw new IllegalStateException(
           "You already specified a graph, but dataset has its own graphs!")
         case None => {
-          val instances = lines.par.map(lineToInstanceAndGraph).seq
-          new Dataset(instances, fileUtil)
+          val instances = lines.par.map(lineToNodePairInstanceAndGraph).seq
+          new Dataset[NodePairInstance](instances, fileUtil)
         }
       }
     } else {
-      val instances = lines.par.map(lineToInstance(graph.get)).seq
-      new Dataset(instances, fileUtil)
+      val instances = lines.par.map(lineToNodePairInstance(graph.get)).seq
+      new Dataset[NodePairInstance](instances, fileUtil)
     }
   }
 
-  def lineToInstance(graph: Graph)(line: String): Instance = {
+  def lineToNodePairInstance(graph: Graph)(line: String): NodePairInstance = {
     val fields = line.split("\t")
     val isPositive =
       try {
@@ -103,10 +97,10 @@ object Dataset {
       }
     val source = graph.getNodeIndex(fields(0))
     val target = graph.getNodeIndex(fields(1))
-    new Instance(source, target, isPositive, graph)
+    new NodePairInstance(source, target, isPositive, graph)
   }
 
-  def lineToInstanceAndGraph(line: String): Instance = {
+  def lineToNodePairInstanceAndGraph(line: String): NodePairInstance = {
     val instanceFields = line.split("\t")
     val instanceSource = instanceFields(0)
     val instanceTarget = instanceFields(1)
@@ -125,6 +119,6 @@ object Dataset {
     val graph = new GraphInMemory(entries, graphBuilder.nodeDict, graphBuilder.edgeDict)
     val sourceId = graph.getNodeIndex(instanceSource)
     val targetId = graph.getNodeIndex(instanceTarget)
-    new Instance(sourceId, targetId, isPositive, graph)
+    new NodePairInstance(sourceId, targetId, isPositive, graph)
   }
 }

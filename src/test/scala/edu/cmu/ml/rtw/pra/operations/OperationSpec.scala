@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.operations
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -27,7 +28,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
   val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
-  val builder = new PraConfigBuilder().setGraph(graph)
+  val builder = new PraConfigBuilder[NodePairInstance]().setGraph(graph)
   val fileUtil = new FakeFileUtil()
   val operation = new NoOp()
 

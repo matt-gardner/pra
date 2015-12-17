@@ -1,6 +1,8 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -34,7 +36,11 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     pathType.encodeAsHumanReadableString(graph)
   }
 
-  def outputScores(filename: String, scores: Seq[(Instance, Double)], config: PraConfig) {
+  def outputScores(
+    filename: String,
+    scores: Seq[(NodePairInstance, Double)],
+    config: PraConfig[NodePairInstance]
+  ) {
     val trainingInstances = config.trainingData.instances.toSet
     val scoreStrings = scores.map(instanceScore => {
       val instance = instanceScore._1
@@ -76,7 +82,11 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     fileUtil.writeLinesToFile(filename, lines)
   }
 
-  def outputSplitFiles(outputBase: String, trainingData: Dataset, testingData: Dataset) {
+  def outputSplitFiles(
+    outputBase: String,
+    trainingData: Dataset[NodePairInstance],
+    testingData: Dataset[NodePairInstance]
+  ) {
     if (outputBase != null) {
       fileUtil.writeLinesToFile(outputBase + "training_data.tsv", trainingData.instancesToStrings)
       fileUtil.writeLinesToFile(outputBase + "testing_data.tsv", testingData.instancesToStrings)
@@ -95,8 +105,8 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
   def outputPathCountMap(
       baseDir: String,
       filename: String,
-      pathCountMap: Map[Instance, Map[PathType, Int]],
-      data: Dataset) {
+      pathCountMap: Map[NodePairInstance, Map[PathType, Int]],
+      data: Dataset[NodePairInstance]) {
     if (baseDir != null) {
       val writer = fileUtil.getFileWriter(baseDir + filename)
       for (instance <- data.instances) {
@@ -131,7 +141,7 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
   def outputFeatureMatrix(filename: String, matrix: FeatureMatrix, featureNames: Seq[String]) {
     val writer = fileUtil.getFileWriter(filename)
     for (row <- matrix.getRows().asScala) {
-      val instance = row.instance
+      val instance = row.instance.asInstanceOf[NodePairInstance]
       writer.write(getNode(instance.source, instance.graph) + "," +
         getNode(instance.target, instance.graph) + "\t")
       for (i <- 0 until row.columns) {

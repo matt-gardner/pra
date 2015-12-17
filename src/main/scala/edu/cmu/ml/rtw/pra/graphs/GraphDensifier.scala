@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -113,7 +114,7 @@ class GraphDensifier(
   def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
     // TODO(matt): ugly!  oh well...  I need to migrate this code to using the new Graph object.
     // But this code was experimental anyway, and didn't really work, so why bother?
-    val builder = new PraConfigBuilder
+    val builder = new PraConfigBuilder[NodePairInstance]
     builder.setGraph(new GraphOnDisk(graph_dir, fileUtil))
     Outputter.info(s"Metadata directory: $metadata")
     val inverses = createInverses(metadata, builder, fileUtil)
@@ -210,7 +211,7 @@ class GraphDensifier(
   // But, this code is basically dead at this point, so it's not worth fixing just for this.
   def createInverses(
       directory: String,
-      builder: PraConfigBuilder,
+      builder: PraConfigBuilder[NodePairInstance],
       fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {

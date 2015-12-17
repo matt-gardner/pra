@@ -4,8 +4,8 @@ import java.util.{Map => JavaMap}
 import java.util.{Set => JavaSet}
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -24,7 +24,7 @@ import scala.collection.parallel.ParMap
 
 class BfsPathFinder(
     params: JValue,
-    config: PraConfig,
+    config: PraConfig[NodePairInstance],
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
 
@@ -42,16 +42,23 @@ class BfsPathFinder(
   val factory = createPathTypeFactory(params \ "path type factory")
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
-  var results: Map[Instance, Subgraph] = null
+  var results: Map[NodePairInstance, Subgraph] = null
 
-  override def getLocalSubgraph(instance: Instance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph = {
+  override def getLocalSubgraph(
+    instance: NodePairInstance,
+    edgesToExclude: Seq[((Int, Int), Int)]
+  ): Subgraph = {
     // We're going to ignore the edgesToExclude here, and just use the unallowedEdges from the
     // config object.  I'm not sure how I ended up with two different ways to get the same input,
     // but that needs to be fixed somewhere...
     getSubgraphForInstance(instance, config.unallowedEdges.toSet)
   }
 
-  override def findPaths(config: PraConfig, data: Dataset, edgesToExclude: Seq[((Int, Int), Int)]) {
+  override def findPaths(
+    config: PraConfig[NodePairInstance],
+    data: Dataset[NodePairInstance],
+    edgesToExclude: Seq[((Int, Int), Int)]
+  ) {
     Outputter.outputAtLevel("Running BFS...  ", logLevel)
     val start = compat.Platform.currentTime
     results = runBfs(data, config.unallowedEdges.toSet)
@@ -64,7 +71,7 @@ class BfsPathFinder(
     throw new NotImplementedError
   }
 
-  override def getPathCountMap(): JavaMap[Instance, JavaMap[PathType, Integer]] = {
+  override def getPathCountMap(): JavaMap[NodePairInstance, JavaMap[PathType, Integer]] = {
     results.map(subgraphInstance => {
       val instance = subgraphInstance._1
       val subgraph = subgraphInstance._2
@@ -86,7 +93,7 @@ class BfsPathFinder(
 
   override def finished() { }
 
-  def runBfs(data: Dataset, unallowedEdges: Set[Int]) = {
+  def runBfs(data: Dataset[NodePairInstance], unallowedEdges: Set[Int]) = {
     val instances = data.instances
     // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
     // the data is using a shared graph.
@@ -104,7 +111,7 @@ class BfsPathFinder(
     instances.par.map(instance => (instance -> getSubgraphForInstance(instance, unallowedEdges))).seq.toMap
   }
 
-  def getSubgraphForInstance(instance: Instance, unallowedEdges: Set[Int]) = {
+  def getSubgraphForInstance(instance: NodePairInstance, unallowedEdges: Set[Int]) = {
     val graph = instance.graph
     val source = instance.source
     val target = instance.target

@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -46,7 +47,10 @@ trait PprComputer {
   // instance in the dataset.  So, data.instances(x).graph should equal the graph passed to
   // PprComputerCreator for all x, or bad things might happen.
   def computePersonalizedPageRank(
-    data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]): Map[Int, Map[Int, Int]]
+    data: Dataset[NodePairInstance],
+    allowedSources: Set[Int],
+    allowedTargets: Set[Int]
+  ): Map[Int, Map[Int, Int]]
 }
 
 object PprComputerCreator {
@@ -57,8 +61,11 @@ object PprComputerCreator {
       case "GraphChiPprComputer" => new GraphChiPprComputer(
         params, graph.asInstanceOf[GraphOnDisk], random)
       case "Fake" => new PprComputer {
-        override def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int],
-            allowedTargets: Set[Int]) = {
+        override def computePersonalizedPageRank(
+          data: Dataset[NodePairInstance],
+          allowedSources: Set[Int],
+          allowedTargets: Set[Int]
+        ) = {
           Map[Int, Map[Int, Int]]()
         }
       }
@@ -77,7 +84,11 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
   val numSteps = JsonHelper.extractWithDefault(params, "num steps", 4)
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
-  override def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
+  override def computePersonalizedPageRank(
+    data: Dataset[NodePairInstance],
+    allowedSources: Set[Int],
+    allowedTargets: Set[Int]
+  ) = {
     val sources = if (allowedSources.size > 0) data.instances.map(_.source).toSet else Set[Int]()
     val targets = if (allowedTargets.size > 0) data.instances.map(_.target).toSet else Set[Int]()
     Outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
@@ -127,7 +138,11 @@ class GraphChiPprComputer(
   val graphFile = graph.graphFile
   val numShards = graph.numShards
 
-  def computePersonalizedPageRank(data: Dataset, allowedSources: Set[Int], allowedTargets: Set[Int]) = {
+  def computePersonalizedPageRank(
+    data: Dataset[NodePairInstance],
+    allowedSources: Set[Int],
+    allowedTargets: Set[Int]
+  ) = {
     val engine = new DrunkardMobEngine[EmptyType, Integer](graphFile, numShards, new IntDrunkardFactory())
     engine.setEdataConverter(new IntConverter());
     val companion = new IntDrunkardCompanion(4, Runtime.getRuntime.maxMemory() / 3) {

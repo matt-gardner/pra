@@ -37,7 +37,7 @@ import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
@@ -61,7 +61,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private final int[] sourceIds;
   private final List<Integer> origSources;
   private final List<Integer> origTargets;
-  private final List<Instance> instances;
+  private final List<NodePairInstance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
   private final Object printLock = new Object();
@@ -69,7 +69,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private double resetProbability = 0.35;
 
   public RandomWalkPathFinder(GraphOnDisk graph,
-                              List<Instance> instances,
+                              List<NodePairInstance> instances,
                               EdgeExcluder edgeExcluder,
                               int walksPerSource,
                               PathTypePolicy policy,
@@ -90,7 +90,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     this.instances = instances;
     origSources = Lists.newArrayList();
     origTargets = Lists.newArrayList();
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       origSources.add(instance.source());
       origTargets.add(instance.target());
     }
@@ -159,11 +159,11 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     return companion.getPathCounts(origSources, origTargets);
   }
 
-  public Map<Instance, Map<PathType, Integer>> getPathCountMap() {
+  public Map<NodePairInstance, Map<PathType, Integer>> getPathCountMap() {
     return companion.getPathCountMap(instances);
   }
 
-  public Map<Instance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
+  public Map<NodePairInstance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
     return companion.getLocalSubgraphs(instances);
   }
 

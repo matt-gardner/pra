@@ -13,8 +13,8 @@ import scala.collection.mutable
 import scala.collection.parallel.ParSeq
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -23,13 +23,14 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 // that are specified from params.  TODO(matt): change this to take a JValue as input for those
 // params.
 class RescalMatrixPathFollower(
-    config: PraConfig,
-    pathTypes: Seq[PathType],
-    val rescalDir: String,
-    data: Dataset,
-    val negativesPerSource: Int,
-    val matrixAcceptPolicy: MatrixRowPolicy,
-    fileUtil: FileUtil = new FileUtil) extends PathFollower {
+  config: PraConfig[NodePairInstance],
+  pathTypes: Seq[PathType],
+  val rescalDir: String,
+  data: Dataset[NodePairInstance],
+  val negativesPerSource: Int,
+  val matrixAcceptPolicy: MatrixRowPolicy,
+  fileUtil: FileUtil = new FileUtil
+) extends PathFollower {
 
   val allowedTargets =
     if (config.allowedTargets == null) {
@@ -168,7 +169,7 @@ class RescalMatrixPathFollower(
     m
   }
 
-  def getFeatureMatrix(data: Dataset): FeatureMatrix = {
+  def getFeatureMatrix(data: Dataset[NodePairInstance]): FeatureMatrix = {
     getFeatureMatrix(data.instances.map(instance => (instance.source, instance.target)))
   }
 
@@ -269,9 +270,9 @@ class RescalMatrixPathFollower(
       values += feature._2
     }
     val instance = if (positive_source_target_pairs.contains((source, target))) {
-      new Instance(source, target, true, graph)
+      new NodePairInstance(source, target, true, graph)
     } else {
-      new Instance(source, target, false, graph)
+      new NodePairInstance(source, target, false, graph)
     }
     new MatrixRow(instance, pathTypes.toArray, values.toArray)
   }

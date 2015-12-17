@@ -18,7 +18,7 @@ import edu.cmu.graphchi.util.IdCount;
 import edu.cmu.graphchi.util.IntegerBuffer;
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.Index;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
@@ -193,15 +193,16 @@ public class RandomWalkPathFinderCompanion extends TwoKeyCompanion {
    * unfortunate that there's so much code duplication.  It's possible that it could be cleaned up,
    * but without lambda expressions it'd still be kind of ugly.
    */
-  public Map<Instance, Map<PathType, Integer>> getPathCountMap(List<Instance> instances) {
+  public Map<NodePairInstance, Map<PathType, Integer>> getPathCountMap(
+      List<NodePairInstance> instances) {
     logger.info("Waiting for finish");
     assureReady();
     logger.info("Getting paths");
 
     List<Integer> sources = Lists.newArrayList();
     List<Integer> targets = Lists.newArrayList();
-    Map<Pair<Integer, Integer>, Instance> instanceMap = Maps.newHashMap();
-    for (Instance instance : instances) {
+    Map<Pair<Integer, Integer>, NodePairInstance> instanceMap = Maps.newHashMap();
+    for (NodePairInstance instance : instances) {
       sources.add(instance.source());
       targets.add(instance.target());
       instanceMap.put(Pair.makePair(instance.source(), instance.target()), instance);
@@ -262,12 +263,12 @@ public class RandomWalkPathFinderCompanion extends TwoKeyCompanion {
         }
       }
     }
-    Map<Instance, Map<PathType, Integer>> instancePathCountMap = Maps.newHashMap();
+    Map<NodePairInstance, Map<PathType, Integer>> instancePathCountMap = Maps.newHashMap();
 
     for (Map.Entry<Pair<Integer, Integer>, Map<PathType, Integer>> entry : pathCountMap.entrySet()) {
-      Instance instance = instanceMap.get(entry.getKey());
+      NodePairInstance instance = instanceMap.get(entry.getKey());
       if (instance == null) {
-        instance = new Instance(entry.getKey().getLeft(), entry.getKey().getRight(), false, graph);
+        instance = new NodePairInstance(entry.getKey().getLeft(), entry.getKey().getRight(), false, graph);
       }
       instancePathCountMap.put(instance, entry.getValue());
     }
@@ -286,20 +287,20 @@ public class RandomWalkPathFinderCompanion extends TwoKeyCompanion {
    *
    * Note that this method still does path combining on intermediate nodes.
    */
-  public Map<Instance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs(
-      List<Instance> instances) {
+  public Map<NodePairInstance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs(
+      List<NodePairInstance> instances) {
     logger.info("Waiting for finish");
     assureReady();
     logger.info("Getting paths");
     List<Integer> sources = Lists.newArrayList();
     List<Integer> targets = Lists.newArrayList();
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       sources.add(instance.source());
       targets.add(instance.target());
     }
     // First we just get the two-sided paths using the method above; no need to duplicate all of
     // that code.
-    Map<Instance, Map<PathType, Integer>> pathCountMap = getPathCountMap(instances);
+    Map<NodePairInstance, Map<PathType, Integer>> pathCountMap = getPathCountMap(instances);
 
     // Now we go through all of the walk counts a second time, to get one-sided paths.  It might be
     // more efficient to do this at the same time, but for now this will do.
@@ -320,10 +321,10 @@ public class RandomWalkPathFinderCompanion extends TwoKeyCompanion {
       }
     }
 
-    Map<Instance, Map<PathType, Set<Pair<Integer, Integer>>>> localSubgraphs = Maps.newHashMap();
+    Map<NodePairInstance, Map<PathType, Set<Pair<Integer, Integer>>>> localSubgraphs = Maps.newHashMap();
 
     // And finally, we merge the two maps.
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       int source = instance.source();
       int target = instance.target();
       Pair<Integer, Integer> sourceTarget = Pair.makePair(source, target);

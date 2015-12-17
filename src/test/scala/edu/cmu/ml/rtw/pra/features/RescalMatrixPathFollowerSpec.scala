@@ -8,8 +8,8 @@ import scala.util.Random
 import breeze.linalg._
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -91,14 +91,17 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
 
   lazy val creator = {
     val graph = new GraphOnDisk("/graph/", fileUtil)
-    val config = new PraConfigBuilder().setGraph(graph).setNoChecks().build()
+    val config = new PraConfigBuilder[NodePairInstance]().setGraph(graph).setNoChecks().build()
     val negativesPerSource = 20
     new RescalMatrixPathFollower(
       config,
       path_types,
       "",
-      new Dataset(Seq(new Instance(1, 1, true, graph), new Instance(2, 1, true, graph),
-        new Instance(3, 1, true, graph))),
+      new Dataset[NodePairInstance](Seq(
+        new NodePairInstance(1, 1, true, graph),
+        new NodePairInstance(2, 1, true, graph),
+        new NodePairInstance(3, 1, true, graph)
+      )),
       negativesPerSource,
       MatrixRowPolicy.PAIRED_TARGETS_ONLY,
       fileUtil)

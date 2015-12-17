@@ -5,8 +5,8 @@ import org.scalatest._
 import edu.cmu.graphchi.walks.IntWalkArray
 import edu.cmu.graphchi.walks.IntWalkManager
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.features.FakeChiVertex
 import edu.cmu.ml.rtw.pra.features.FakeIntDrunkardContext
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom
@@ -17,7 +17,7 @@ class GraphChiPprComputerSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
   val graph = new GraphOnDisk("src/test/resources/")
   val random = new FakeRandom()
-  val dataset = new Dataset(Seq(new Instance(1, 2, true, null)))
+  val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
 
   "processWalksAtVertex" should "move walks the right way" in {
     val manager = new IntWalkManager(1, 1)
@@ -90,7 +90,7 @@ class InMemoryPprComputerSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
   val graph = new GraphOnDisk("src/test/resources/")
   val random = new FakeRandom()
-  val dataset = new Dataset(Seq(new Instance(1, 2, true, null)))
+  val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
 
   "computePersonalizedPageRank" should "actually work..." in {
     val computer = new InMemoryPprComputer(params, graph)

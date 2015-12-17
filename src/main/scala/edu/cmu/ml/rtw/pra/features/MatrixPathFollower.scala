@@ -15,8 +15,8 @@ import scala.collection.mutable
 import scala.collection.parallel.mutable.{ParSeq => MParSeq}
 import scala.util.control.Breaks._
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -28,7 +28,7 @@ class MatrixPathFollower(
     numNodes: Int,
     pathTypes: Seq[PathType],
     val matrixDir: String,
-    data: Dataset,
+    data: Dataset[NodePairInstance],
     allowedTargets: Set[Int],
     edgeExcluder: EdgeExcluder,
     val maxFanOut: Int,
@@ -121,9 +121,9 @@ class MatrixPathFollower(
       values += feature._2
     }
     val instance = if (positive_source_targets.contains((source, target))) {
-      new Instance(source, target, true, graph)
+      new NodePairInstance(source, target, true, graph)
     } else {
-      new Instance(source, target, false, graph)
+      new NodePairInstance(source, target, false, graph)
     }
     new MatrixRow(instance, pathTypes.toArray, values.toArray)
   }

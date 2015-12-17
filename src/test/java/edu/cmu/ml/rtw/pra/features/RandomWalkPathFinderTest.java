@@ -10,7 +10,7 @@ import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
 
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -23,7 +23,7 @@ public class RandomWalkPathFinderTest extends TestCase {
   private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
   private RandomWalkPathFinder finder;
   private GraphOnDisk graph;
-  private List<Instance> instances;
+  private List<NodePairInstance> instances;
 
   @Override
   public void setUp() {
@@ -31,7 +31,7 @@ public class RandomWalkPathFinderTest extends TestCase {
     addEdgeToExclude(1, 2, 1, edgesToExclude);
     graph = new GraphOnDisk("src/test/resources/", new FileUtil());
     instances = Lists.newArrayList();
-    instances.add(new Instance(1, 2, true, graph));
+    instances.add(new NodePairInstance(1, 2, true, graph));
     finder = new RandomWalkPathFinder(graph,
                                       instances,
                                       SingleEdgeExcluder.fromJava(edgesToExclude),
@@ -250,7 +250,7 @@ public class RandomWalkPathFinderTest extends TestCase {
   // crashing, which is what the code currently does as of writing this test.
   public void testIgnoresNewSources() {
     instances.clear();
-    instances.add(new Instance(10000, 20000, true, graph));
+    instances.add(new NodePairInstance(10000, 20000, true, graph));
     finder = new RandomWalkPathFinder(graph,
                                       instances,
                                       SingleEdgeExcluder.fromJava(edgesToExclude),

@@ -1,8 +1,8 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -18,13 +18,13 @@ trait FeatureGenerator {
    * online prediction.  Note that this could be _really_ inefficient for some kinds of feature
    * generators, and so far is only implemented for SFE.
    */
-  def constructMatrixRow(instance: Instance): Option[MatrixRow]
+  def constructMatrixRow(instance: NodePairInstance): Option[MatrixRow]
 
   /**
    * Takes the data, probably does some random walks (or maybe some matrix multiplications, or a
    * few other possibilities), and returns a FeatureMatrix.
    */
-  def createTrainingMatrix(data: Dataset): FeatureMatrix
+  def createTrainingMatrix(data: Dataset[NodePairInstance]): FeatureMatrix
 
   /**
    * For efficiency in creating the test matrix, we might drop some features if they have zero
@@ -42,7 +42,7 @@ trait FeatureGenerator {
    * should save that state internally, and use it to do this computation.  Not all implementations
    * need internal state to do this, but some do.
    */
-  def createTestMatrix(data: Dataset): FeatureMatrix
+  def createTestMatrix(data: Dataset[NodePairInstance]): FeatureMatrix
 
   /**
    * Returns a string representation of the features in the feature matrix.  This need only be
@@ -52,7 +52,10 @@ trait FeatureGenerator {
    */
   def getFeatureNames(): Array[String]
 
-  def createEdgesToExclude(instances: Seq[Instance], unallowedEdges: Seq[Int]): Seq[((Int, Int), Int)] = {
+  def createEdgesToExclude(
+    instances: Seq[NodePairInstance],
+    unallowedEdges: Seq[Int]
+  ): Seq[((Int, Int), Int)] = {
     // If there was no input data (e.g., if we are actually trying to predict new edges, not
     // just hide edges from ourselves to try to recover), then there aren't any edges to
     // exclude.  So return an empty list.
@@ -70,7 +73,7 @@ trait FeatureGenerator {
 object FeatureGenerator {
   def create(
       params: JValue,
-      config: PraConfig,
+      config: PraConfig[NodePairInstance],
       fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
     Outputter.info("feature type being used is " + featureType)

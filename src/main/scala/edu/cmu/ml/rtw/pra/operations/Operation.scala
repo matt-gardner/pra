@@ -1,8 +1,9 @@
 package edu.cmu.ml.rtw.pra.operations
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
@@ -20,14 +21,14 @@ import scala.collection.mutable
 import org.json4s._
 
 trait Operation {
-  def runRelation(configBuilder: PraConfigBuilder)
+  def runRelation(configBuilder: PraConfigBuilder[NodePairInstance])
 
   // TODO(matt): None of these methods should be here!  See note under TrainAndTest.runRelation
   // below.
   def initializeSplit(
       splitsDirectory: String,
       relationMetadataDirectory: String,
-      builder: PraConfigBuilder,
+      builder: PraConfigBuilder[NodePairInstance],
       fileUtil: FileUtil = new FileUtil) = {
     // The Dataset objects need access to the graph information, which is contained in PraConfig.
     // That's all that Dataset needs from PraConfig, so we can safely call builder.build() here and
@@ -41,12 +42,12 @@ trait Operation {
       val training = splitsDirectory + fixed + "/training.tsv"
       val testing = splitsDirectory + fixed + "/testing.tsv"
       if (fileUtil.fileExists(training)) {
-        builder.setTrainingData(Dataset.fromFile(training, config.graph, fileUtil))
+        builder.setTrainingData(Dataset.nodePairDatasetFromFile(training, config.graph, fileUtil))
       } else {
         Outputter.warn("WARNING: NO TRAINING FILE FOUND")
       }
       if (fileUtil.fileExists(testing)) {
-        builder.setTestingData(Dataset.fromFile(testing, config.graph, fileUtil))
+        builder.setTestingData(Dataset.nodePairDatasetFromFile(testing, config.graph, fileUtil))
       } else {
         Outputter.warn("WARNING: NO TESTING FILE FOUND")
       }
@@ -57,7 +58,7 @@ trait Operation {
           + "have a fixed split!")
       }
       builder.setAllData(
-        Dataset.fromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
+        Dataset.nodePairDatasetFromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
       val percent_training_file = splitsDirectory + "percent_training.tsv"
       builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file)(0))
       true
@@ -77,7 +78,7 @@ trait Operation {
   def parseRelationMetadata(
       directory: String,
       useRange: Boolean,
-      builder: PraConfigBuilder,
+      builder: PraConfigBuilder[NodePairInstance],
       fileUtil: FileUtil = new FileUtil) {
     val inverses = createInverses(directory, builder, fileUtil)
     val relation = builder.relation
@@ -121,7 +122,7 @@ trait Operation {
       relation: String,
       inverses: Map[Int, Int],
       embeddings: Map[String, Seq[String]],
-      builder: PraConfigBuilder): Seq[Int] = {
+      builder: PraConfigBuilder[NodePairInstance]): Seq[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
 
     // TODO(matt): I need a better way to specify this...  It's problematic when there is no shared
@@ -169,7 +170,7 @@ trait Operation {
    */
   def createInverses(
       directory: String,
-      builder: PraConfigBuilder,
+      builder: PraConfigBuilder[NodePairInstance],
       fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {
@@ -218,7 +219,7 @@ extends Operation {
   val paramKeys = Seq("type", "features", "learning")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
-  override def runRelation(configBuilder: PraConfigBuilder) {
+  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
     // TODO(matt): these first two statements really should be put into a Split object that gets
@@ -253,7 +254,7 @@ extends Operation {
     }
 
     // Then we train a model.
-    val model = BatchModel.create(params \ "learning", config)
+    val model = BatchModel.create[NodePairInstance](params \ "learning", config)
     val featureNames = generator.getFeatureNames()
     model.train(trainingMatrix, config.trainingData, featureNames)
 
@@ -275,7 +276,7 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
   val paramKeys = Seq("type", "explore", "data")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
-  override def runRelation(configBuilder: PraConfigBuilder) {
+  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     val config = configBuilder.setNoChecks().build()
 
     val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
@@ -283,10 +284,10 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
     val data = if (dataToUse == "both") {
       val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
       val trainingData = if (fileUtil.fileExists(trainingFile))
-        Dataset.fromFile(trainingFile, config.graph, fileUtil) else null
+        Dataset.nodePairDatasetFromFile(trainingFile, config.graph, fileUtil) else null
       val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
       val testingData = if (fileUtil.fileExists(testingFile))
-        Dataset.fromFile(testingFile, config.graph, fileUtil) else null
+        Dataset.nodePairDatasetFromFile(testingFile, config.graph, fileUtil) else null
       if (trainingData == null && testingData == null) {
         throw new IllegalStateException("Neither training file nor testing file exists for " +
           "relation " + config.relation)
@@ -300,7 +301,7 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
       }
     } else {
       val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      Dataset.fromFile(inputFile, config.graph, fileUtil)
+      Dataset.nodePairDatasetFromFile(inputFile, config.graph, fileUtil)
     }
 
     val explorer = new GraphExplorer(params \ "explore", config)
@@ -311,7 +312,7 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
 
 class CreateMatrices(params: JValue, splitsDirectory: String, metadataDirectory: String, fileUtil: FileUtil)
 extends Operation {
-  override def runRelation(configBuilder: PraConfigBuilder) {
+  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     val doCrossValidation = initializeSplit(
       splitsDirectory,
       metadataDirectory,
@@ -350,7 +351,7 @@ extends Operation {
   val cacheFeatureVectors = JsonHelper.extractWithDefault(params, "cache feature vectors", true)
   val random = new util.Random
 
-  override def runRelation(configBuilder: PraConfigBuilder) {
+  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
     // TODO(matt): these first two statements really should be put into a Split object that gets
@@ -446,5 +447,5 @@ extends Operation {
 // parameter, and if there is no operation present it should do a no op.  That would make this
 // class unnecessary.
 class NoOp extends Operation {
-  def runRelation(configBuilder: PraConfigBuilder) { }
+  def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) { }
 }

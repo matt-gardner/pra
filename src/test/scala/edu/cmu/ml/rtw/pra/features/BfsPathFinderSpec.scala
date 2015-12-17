@@ -7,8 +7,8 @@ import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -42,10 +42,10 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictContents)
 
   val graph = new GraphOnDisk("/graph/", fileUtil)
-  val instance = new Instance(5, 3, true, graph)
-  val config = new PraConfigBuilder()
+  val instance = new NodePairInstance(5, 3, true, graph)
+  val config = new PraConfigBuilder[NodePairInstance]()
     .setUnallowedEdges(Seq(1)).setGraph(graph).setNoChecks().build()
-  val data = new Dataset(Seq(instance), fileUtil)
+  val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
 
   def makeFinder(params: JValue = JNothing) = new BfsPathFinder(params, config, fileUtil)
 
@@ -107,8 +107,8 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   }
 
   it should "exclude edges when specified" in {
-    val instance = new Instance(1, 3, true, graph)
-    val data = new Dataset(Seq(instance), fileUtil)
+    val instance = new NodePairInstance(1, 3, true, graph)
+    val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
     val finder = makeFinder()
     finder.findPaths(config, data, Seq(((1, 3), 1)))
     val results13 = finder.results(instance)

@@ -9,8 +9,8 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -27,17 +27,17 @@ import scala.collection.mutable
  * classification time, or your model will be all messed up.
  */
 
-abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean, logLevel: Int) {
+abstract class BatchModel[T <: Instance](config: PraConfig[T], binarizeFeatures: Boolean, logLevel: Int) {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
    */
-  def train(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String])
+  def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String])
 
   // TODO(matt): this interface could probably be cleaned up a bit.
   def convertFeatureMatrixToMallet(
       featureMatrix: FeatureMatrix,
-      dataset: Dataset,
+      dataset: Dataset[T],
       featureNames: Seq[String],
       data: InstanceList,
       alphabet: Alphabet) {
@@ -115,11 +115,11 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean, logLevel
    * @return A map from source node to (target node, score) pairs, where the score is computed
    *     from the features in the feature matrix and the learned weights.
    */
-  def classifyInstances(featureMatrix: FeatureMatrix): Seq[(Instance, Double)] = {
+  def classifyInstances(featureMatrix: FeatureMatrix): Seq[(T, Double)] = {
     Outputter.outputAtLevel("Classifying instances", logLevel)
     featureMatrix.getRows().asScala.map(matrixRow => {
       val score = classifyMatrixRow(matrixRow)
-      (matrixRow.instance, score)
+      (matrixRow.instance.asInstanceOf[T], score)
     })
   }
 
@@ -129,16 +129,16 @@ abstract class BatchModel(config: PraConfig, binarizeFeatures: Boolean, logLevel
     val value = if (row.instance.isPositive) 1.0 else 0.0
     val rowValues = row.values.map(v => if (binarizeFeatures) 1 else v)
     val feature_vector = new FeatureVector(alphabet, row.featureTypes, rowValues)
-    new MalletInstance(feature_vector, value, row.instance.source + " " + row.instance.target, null)
+    new MalletInstance(feature_vector, value, row.instance.stringKey(), null)
   }
 }
 
 object BatchModel{
-  def create(params: JValue, config: PraConfig): BatchModel = {
+  def create[T <: Instance](params: JValue, config: PraConfig[T]): BatchModel[T] = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
-      case "logistic regression" => new LogisticRegressionModel(config, params)
-      case "svm" => new SVMModel(config, params)
+      case "logistic regression" => new LogisticRegressionModel[T](config, params)
+      case "svm" => new SVMModel[T](config, params)
       case other => throw new IllegalStateException("Unrecognized model type")
     }
   }

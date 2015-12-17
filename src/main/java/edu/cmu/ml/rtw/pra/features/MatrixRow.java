@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.util.Arrays;
 
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.Instance;
 
 public class MatrixRow {
   final public Instance instance;

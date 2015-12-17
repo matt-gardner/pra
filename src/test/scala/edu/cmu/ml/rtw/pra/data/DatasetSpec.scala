@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.experiments
+package edu.cmu.ml.rtw.pra.data
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -44,13 +44,13 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   "fromFile" should "crash on bad third column" in {
     TestUtil.expectError(classOf[IllegalStateException], "not formatted correctly", new Function() {
       override def call() {
-        Dataset.fromFile(badDatasetFilename, Some(graphOnDisk), fileUtil)
+        Dataset.nodePairDatasetFromFile(badDatasetFilename, Some(graphOnDisk), fileUtil)
       }
     })
   }
 
   it should "correctly read an instance dataset file" in {
-    val dataset = Dataset.fromFile(instanceFilename, Some(graphOnDisk), fileUtil)
+    val dataset = Dataset.nodePairDatasetFromFile(instanceFilename, Some(graphOnDisk), fileUtil)
     dataset.instances(0).source should be(graphOnDisk.getNodeIndex("node1"))
     dataset.instances(0).target should be(graphOnDisk.getNodeIndex("node2"))
     dataset.instances(0).isPositive should be(true)
@@ -60,7 +60,7 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   }
 
   it should "correctly read an instance-graph dataset file" in {
-    val dataset = Dataset.fromFile(instanceGraphFilename, None, fileUtil)
+    val dataset = Dataset.nodePairDatasetFromFile(instanceGraphFilename, None, fileUtil)
     val graph1 = dataset.instances(0).graph
 
     // There are three nodes in the graph, but four entries in the array, because we use the

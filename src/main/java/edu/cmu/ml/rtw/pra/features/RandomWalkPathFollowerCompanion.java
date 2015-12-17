@@ -18,7 +18,7 @@ import edu.cmu.graphchi.util.IdCount;
 import edu.cmu.graphchi.util.IntegerBuffer;
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
@@ -135,15 +135,15 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
     throw new RuntimeException("Accept policy not set to something recognizable: " + acceptPolicy);
   }
 
-  public FeatureMatrix getFeatureMatrix(List<Instance> instances) {
+  public FeatureMatrix getFeatureMatrix(List<NodePairInstance> instances) {
     Set<Pair<Integer, Integer>> positiveSourceTargets = Sets.newHashSet();
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       if (instance.isPositive()) {
         positiveSourceTargets.add(Pair.makePair(instance.source(), instance.target()));
       }
     }
     Map<Integer, Set<Integer>> sourcesMap = Maps.newHashMap();
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       MapUtil.addValueToKeySet(sourcesMap, instance.source(), instance.target());
     }
     logger.info("Waiting for execution to finish");
@@ -212,7 +212,7 @@ public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
       if (positiveSourceTargets.contains(nodePair)) {
         isPositive = true;
       }
-      Instance instance = new Instance(sourceNode, targetNode, isPositive, graph);
+      NodePairInstance instance = new NodePairInstance(sourceNode, targetNode, isPositive, graph);
       matrix.add(new MatrixRow(instance, pathTypes, values));
     }
     return new FeatureMatrix(matrix);

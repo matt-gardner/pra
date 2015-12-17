@@ -32,7 +32,7 @@ import edu.cmu.graphchi.walks.LongWalkManager;
 import edu.cmu.graphchi.walks.WalkArray;
 import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
@@ -51,14 +51,14 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
   private final int numIters;
   private final PathType[] pathTypes;
   private final Map<Integer, Set<Integer>> sourcesMap;
-  private final List<Instance> instances;
+  private final List<NodePairInstance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
   private final RandomWalkPathFollowerCompanion companion;
   private final Object printLock = new Object();
 
   public RandomWalkPathFollower(GraphOnDisk graph,
-                                List<Instance> instances,
+                                List<NodePairInstance> instances,
                                 Set<Integer> allowedTargets,
                                 EdgeExcluder edgeExcluder,
                                 List<PathType> paths,
@@ -68,12 +68,12 @@ public class RandomWalkPathFollower implements PathFollower, WalkUpdateFunction<
     this.numWalksPerPath = walksPerPath;
     this.instances = instances;
     sourcesMap = Maps.newHashMap();
-    for (Instance instance : instances) {
+    for (NodePairInstance instance : instances) {
       MapUtil.addValueToKeySet(sourcesMap, instance.source(), instance.target());
     }
     try {
-      this.drunkardMobEngine =
-          new DrunkardMobEngine<EmptyType, Integer>(graph.graphFile(), graph.numShards(), new Factory());
+      this.drunkardMobEngine = new DrunkardMobEngine<EmptyType, Integer>(
+          graph.graphFile(), graph.numShards(), new Factory());
       this.drunkardMobEngine.setEdataConverter(new IntConverter());
     } catch (IOException e) {
       throw new RuntimeException("IOException when creating DrunkardMobEngine", e);

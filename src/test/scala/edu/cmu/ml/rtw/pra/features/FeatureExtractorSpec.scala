@@ -9,7 +9,7 @@ import org.json4s.native.JsonMethods._
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -22,9 +22,9 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
     "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
   val graph = new GraphOnDisk("/graph/", fileUtil)
-  val config = new PraConfigBuilder().setPraBase("/").setNoChecks().build()
+  val config = new PraConfigBuilder[NodePairInstance]().setPraBase("/").setNoChecks().build()
 
-  val instance = new Instance(1, 2, true, graph)
+  val instance = new NodePairInstance(1, 2, true, graph)
 
   def getSubgraph(pathTypes: Seq[String], nodePairs: Seq[Set[(Int, Int)]]) = {
     val subgraph = new mutable.HashMap[PathType, Set[(Int, Int)]]

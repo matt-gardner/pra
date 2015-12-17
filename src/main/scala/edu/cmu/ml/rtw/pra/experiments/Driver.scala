@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.experiments
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
@@ -84,7 +85,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val start_time = System.currentTimeMillis
 
-    val baseBuilder = new PraConfigBuilder()
+    val baseBuilder = new PraConfigBuilder[NodePairInstance]()
     baseBuilder.setPraBase(praBase)
     var writer = fileUtil.getFileWriter(outputBase + "params.json")
     writer.write(pretty(render(params)))

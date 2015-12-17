@@ -2,6 +2,8 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import java.io.FileWriter
 
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -71,7 +73,7 @@ class SplitCreator(
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
       val relation_file = s"${relationMetadata}relations/${fixed}"
-      val all_instances = Dataset.fromFile(relation_file, Some(graph), fileUtil)
+      val all_instances = Dataset.nodePairDatasetFromFile(relation_file, Some(graph), fileUtil)
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {
@@ -114,10 +116,10 @@ class SplitCreator(
       val fixed = relation.replace("/", "_")
       val training_file = s"${fromSplitDir}${fixed}/training.tsv"
       val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
-      val training_instances = Dataset.fromFile(training_file, Some(graph), fileUtil)
+      val training_instances = Dataset.nodePairDatasetFromFile(training_file, Some(graph), fileUtil)
       val new_training_instances =
         addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
-      val testing_instances = Dataset.fromFile(testing_file, Some(graph), fileUtil)
+      val testing_instances = Dataset.nodePairDatasetFromFile(testing_file, Some(graph), fileUtil)
       val new_testing_instances =
         addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       val rel_dir = s"${splitDir}${fixed}/"
@@ -129,11 +131,11 @@ class SplitCreator(
   }
 
   def addNegativeExamples(
-      data: Dataset,
+      data: Dataset[NodePairInstance],
       relation: String,
       domains: Map[String, String],
       ranges: Map[String, String],
-      node_dict: Dictionary): Dataset = {
+      node_dict: Dictionary): Dataset[NodePairInstance] = {
     val domain = if (domains == null) null else domains(relation)
     val allowedSources = if (domain == null) null else {
       val fixed = domain.replace("/", "_")

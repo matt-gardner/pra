@@ -12,7 +12,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
@@ -40,8 +40,8 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
       new Pair<Integer, Integer>(sourceNode, targetNode);
   private int intermediateNode = 3;
   private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", new FileUtil());
-  private Instance instance = new Instance(sourceNode, targetNode, true, graph);
-  private List<Instance> instances = Lists.newArrayList();
+  private NodePairInstance instance = new NodePairInstance(sourceNode, targetNode, true, graph);
+  private List<NodePairInstance> instances = Lists.newArrayList();
 
   private void setDistributionsForTest(RandomWalkPathFinderCompanion companion) {
     // We'll have one source, one target, and one intermediate node in this test.
@@ -81,7 +81,7 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
     RandomWalkPathFinderCompanion companion = new RandomWalkPathFinderCompanion(
         graph, 1, 1024, new FakeVertexIdTranslate(), pathDict, factory, PathTypePolicy.PAIRED_ONLY);
     setDistributionsForTest(companion);
-    Map<Instance, Map<PathType, Integer>> pathCountMap =
+    Map<NodePairInstance, Map<PathType, Integer>> pathCountMap =
         companion.getPathCountMap(Arrays.asList(instance));
     assertEquals(1, pathCountMap.size());
     assertEquals(4, pathCountMap.get(instance).get(type1).intValue());

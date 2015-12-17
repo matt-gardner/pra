@@ -1,6 +1,8 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -94,12 +96,12 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "outputScores" should "produce a correct scores file" in {
     val filename = "/scores file"
-    val instance1 = new Instance(3, 7, false, graph)
-    val instance2 = new Instance(3, 8, true, graph)
-    val instance3 = new Instance(3, 4, true, graph)
-    val instance4 = new Instance(1, 2, false, graph)
-    val trainingData = new Dataset(Seq(instance2))
-    val testingData = new Dataset(Seq(instance1, instance3, instance4))
+    val instance1 = new NodePairInstance(3, 7, false, graph)
+    val instance2 = new NodePairInstance(3, 8, true, graph)
+    val instance3 = new NodePairInstance(3, 4, true, graph)
+    val instance4 = new NodePairInstance(1, 2, false, graph)
+    val trainingData = new Dataset[NodePairInstance](Seq(instance2))
+    val testingData = new Dataset[NodePairInstance](Seq(instance1, instance3, instance4))
     val config = new PraConfigBuilder()
         .setNoChecks()
         .setTrainingData(trainingData)
@@ -127,14 +129,16 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "outputSplitFiles" should "write two correct files" in {
     val baseDir = "/"
-    val trainingData = new Dataset(Seq(
-      new Instance(1, 4, true, graph),
-      new Instance(2, 5, true, graph),
-      new Instance(3, 6, true, graph),
-      new Instance(9, 10, false, graph)))
-    val testingData = new Dataset(Seq(
-      new Instance(7, 8, true, graph),
-      new Instance(1, 2, false, graph)))
+    val trainingData = new Dataset[NodePairInstance](Seq(
+      new NodePairInstance(1, 4, true, graph),
+      new NodePairInstance(2, 5, true, graph),
+      new NodePairInstance(3, 6, true, graph),
+      new NodePairInstance(9, 10, false, graph)
+    ))
+    val testingData = new Dataset[NodePairInstance](Seq(
+      new NodePairInstance(7, 8, true, graph),
+      new NodePairInstance(1, 2, false, graph)
+    ))
 
     val trainingFile = "/training_data.tsv"
     val expectedTrainingFileContents =
@@ -154,9 +158,9 @@ class OutputterSpec extends FlatSpecLike with Matchers {
   "outputPathCountMap" should "format data correctly" in {
     val baseDir = "/"
     val filename = "path count map"
-    val instance1 = new Instance(1, 2, true, graph)
-    val instance2 = new Instance(3, 4, false, graph)
-    val data = new Dataset(Seq(instance1, instance2))
+    val instance1 = new NodePairInstance(1, 2, true, graph)
+    val instance2 = new NodePairInstance(3, 4, false, graph)
+    val data = new Dataset[NodePairInstance](Seq(instance1, instance2))
 
     val pathCountMap = Map((instance1 -> Map((factory.fromString("-1-"), 22))))
 
@@ -194,7 +198,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
 
   "outputFeatureMatrix" should "format the matrix correctly" in {
     val filename = "/matrix file"
-    val instance = new Instance(1, 2, true, graph)
+    val instance = new NodePairInstance(1, 2, true, graph)
     val rows = Seq(new MatrixRow(instance, Array(0, 1), Array(0.1, 0.2))).asJava
     val featureNames = Seq("-1-", "-2-")
 

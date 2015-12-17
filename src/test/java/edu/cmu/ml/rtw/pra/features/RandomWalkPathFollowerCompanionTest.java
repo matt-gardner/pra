@@ -13,7 +13,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
-import edu.cmu.ml.rtw.pra.experiments.Instance;
+import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
@@ -96,32 +96,31 @@ public class RandomWalkPathFollowerCompanionTest extends TestCase {
     dists.get(sourceNode).put(pathType, targetNodeDist);
     companion.setDistributions(dists);
 
-    List<Instance> instances = Lists.newArrayList();
-    instances.add(new Instance(sourceNode, targetNode1, true, graph));
-    instances.add(new Instance(sourceNode, targetNode2, true, graph));
+    List<NodePairInstance> instances = Lists.newArrayList();
+    instances.add(new NodePairInstance(sourceNode, targetNode1, true, graph));
+    instances.add(new NodePairInstance(sourceNode, targetNode2, true, graph));
     FeatureMatrix matrix = companion.getFeatureMatrix(instances);
-    MatrixRow firstRow = new MatrixRow(instances.get(0),
-                                       new int[]{pathType},
-                                       new double[]{.75});
-    MatrixRow secondRow = new MatrixRow(instances.get(1),
-                                        new int[]{pathType},
-                                        new double[]{.25});
     assertEquals(2, matrix.size());
+    // This is a little complicated to test, because the rows could be in any order.  So we check
+    // on the target node for each row.  Both of the row tests below have the same values in the
+    // asserts, and one of the if/else blocks should be taken for each row.
     MatrixRow row = matrix.getRow(0);
-    if (row.instance.target() == targetNode1) {
+    NodePairInstance instance = (NodePairInstance) row.instance;
+    if (instance.target() == targetNode1) {
       assertEquals(1, row.columns);
       assertEquals(.75, row.values[0]);
     } else {
-      assertEquals(targetNode2, row.instance.target());
+      assertEquals(targetNode2, instance.target());
       assertEquals(1, row.columns);
       assertEquals(.25, row.values[0]);
     }
     row = matrix.getRow(1);
-    if (row.instance.target() == targetNode1) {
+    instance = (NodePairInstance) row.instance;
+    if (instance.target() == targetNode1) {
       assertEquals(1, row.columns);
       assertEquals(.75, row.values[0]);
     } else {
-      assertEquals(targetNode2, row.instance.target());
+      assertEquals(targetNode2, instance.target());
       assertEquals(1, row.columns);
       assertEquals(.25, row.values[0]);
     }

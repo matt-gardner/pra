@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.models
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -23,7 +24,7 @@ trait OnlineModel {
   def classifyInstance(instance: MatrixRow): Double
 }
 
-class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends OnlineModel {
+class SgdLogisticRegressionModel[T <: Instance](params: JValue, config: PraConfig[T]) extends OnlineModel {
   val paramKeys = Seq("type", "learning rate a", "learning rate b", "learning rate momentum",
     "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
@@ -137,7 +138,7 @@ class SgdLogisticRegressionModel(params: JValue, config: PraConfig) extends Onli
 }
 
 object OnlineModel{
-  def create(params: JValue, config: PraConfig): OnlineModel = {
+  def create[T <: Instance](params: JValue, config: PraConfig[T]): OnlineModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new SgdLogisticRegressionModel(params, config)

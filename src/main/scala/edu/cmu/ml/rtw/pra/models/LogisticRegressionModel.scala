@@ -8,7 +8,8 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -17,10 +18,14 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-class LogisticRegressionModel(config: PraConfig, params: JValue)
-    extends BatchModel(config,
-                       JsonHelper.extractWithDefault(params, "binarize features", false),
-                       JsonHelper.extractWithDefault(params, "log level", 3)) {
+class LogisticRegressionModel[T <: Instance](
+  config: PraConfig[T],
+  params: JValue
+) extends BatchModel[T](
+  config,
+  JsonHelper.extractWithDefault(params, "binarize features", false),
+  JsonHelper.extractWithDefault(params, "log level", 3)
+) {
   val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
@@ -35,7 +40,7 @@ class LogisticRegressionModel(config: PraConfig, params: JValue)
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instances is positive or negative, train a logistic regression classifier.
    */
-  override def train(featureMatrix: FeatureMatrix, dataset: Dataset, featureNames: Seq[String]) = {
+  override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
     Outputter.info("Learning feature weights")
     Outputter.info("Prepping training data")
 

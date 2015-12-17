@@ -9,15 +9,16 @@ import java.util.{List => JList}
 import java.util.{Set => JSet}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.util.Random
-import scalax.io.Resource
 
 import breeze.linalg._
 import com.google.common.collect.Lists
 import com.google.common.collect.Sets
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
-import edu.cmu.ml.rtw.pra.experiments.Instance
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -133,6 +134,14 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     }
   }
 
+  def getSourceTargetRow(featureMatrix: FeatureMatrix, source: Int, target: Int): MatrixRow = {
+    for (row <- featureMatrix.getRows.asScala) {
+      val instance = row.instance.asInstanceOf[NodePairInstance]
+      if (instance.source == source && instance.target == target) return row
+    }
+    return null
+  }
+
   lazy val creatorWithPathTypes = {
     val fileUtil = new FakeFileUtil()
     val matrixFile =
@@ -159,8 +168,11 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       numNodes,
       path_types,
       "/matrices/",
-      new Dataset(Seq(new Instance(1, 1, true, graph), new Instance(2, 1, true, graph),
-        new Instance(3, 1, true, graph))),
+      new Dataset[NodePairInstance](Seq(
+        new NodePairInstance(1, 1, true, graph),
+        new NodePairInstance(2, 1, true, graph),
+        new NodePairInstance(3, 1, true, graph)
+      )),
       Set(),
       new SingleEdgeExcluder(edgesToExclude),
       3,
@@ -186,17 +198,17 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   "getFeatureMatrix" should "get the right matrix rows for a source" in {
     val feature_matrix = creatorWithPathTypes.getFeatureMatrix(Set(1), Set(1, 3, 4, 5))
     feature_matrix.size should be (2)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 3), Seq((0, 1.0), (1, 1.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 3), Seq((0, 1.0), (1, 1.0)).toMap)
   }
 
   it should "get complete matrix rows for a list of pairs" in {
     val feature_matrix = creatorWithPathTypes.getFeatureMatrix(Seq((1, 1), (1, 2), (1, 3), (2, 2)))
     feature_matrix.size should be (4)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 2), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 3), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(2, 2), Seq((0, 0.0), (1, 0.0), (2, 0.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 2), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 3), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 2, 2), Seq((0, 0.0), (1, 0.0), (2, 0.0)).toMap)
   }
 
   it should "interface correctly with java" in {
@@ -204,18 +216,18 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
       Sets.newHashSet(1:Integer),
       Sets.newHashSet(1:Integer, 2:Integer, 3:Integer))
     feature_matrix.size should be (3)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 2), Seq((0, 1.0), (1, 1.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 3), Seq((0, 1.0), (1, 1.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 2), Seq((0, 1.0), (1, 1.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 3), Seq((0, 1.0), (1, 1.0)).toMap)
 
     feature_matrix = creatorWithPathTypes.getFeatureMatrix(Lists.newArrayList(
         Pair.makePair(1:Integer, 1:Integer),
         Pair.makePair(1:Integer, 2:Integer),
         Pair.makePair(1:Integer, 3:Integer)))
     feature_matrix.size should be (3)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 2), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
-    checkMatrixRow(feature_matrix.getSourceTargetRow(1, 3), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 1), Seq((0, 1.0), (1, 1.0), (2, 3.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 2), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
+    checkMatrixRow(getSourceTargetRow(feature_matrix, 1, 3), Seq((0, 1.0), (1, 1.0), (2, 0.0)).toMap)
   }
 
   "readMatricesFromFile" should "read a single-matrix file" in {

@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.config
 
-import edu.cmu.ml.rtw.pra.experiments.Dataset
+import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -27,7 +28,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
  * The Driver creates all of these objects, and passes them to the other parts of the code that
  * need them.
  */
-class PraConfig(builder: PraConfigBuilder) {
+class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Graph-related objects
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -126,13 +127,13 @@ class PraConfig(builder: PraConfigBuilder) {
   val praBase = builder.praBase
 }
 
-class PraConfigBuilder(config: PraConfig = null) {
+class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
   var relation: String = if (config != null) config.relation else null
   var graph: Option[Graph] = if (config != null) config.graph else None
-  var allData: Dataset = if (config != null) config.allData else null
+  var allData: Dataset[T] = if (config != null) config.allData else null
   var percentTraining: Double = if (config != null) config.percentTraining else -1.0
-  var trainingData: Dataset = if (config != null) config.trainingData else null
-  var testingData: Dataset = if (config != null) config.testingData else null
+  var trainingData: Dataset[T] = if (config != null) config.trainingData else null
+  var testingData: Dataset[T] = if (config != null) config.testingData else null
   var allowedTargets: Set[Int] = if (config != null) config.allowedTargets else null
   var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else Seq()
   var relationInverses: Map[Int, Int] = if (config != null) config.relationInverses else null
@@ -145,10 +146,10 @@ class PraConfigBuilder(config: PraConfig = null) {
 
   def setRelation(relation: String) = {this.relation = relation; this;}
   def setGraph(graph: Graph) = {this.graph = Some(graph);this;}
-  def setAllData(d: Dataset) = {this.allData = d;this;}
+  def setAllData(d: Dataset[T]) = {this.allData = d;this;}
   def setPercentTraining(p: Double) = {this.percentTraining = p;this;}
-  def setTrainingData(t: Dataset) = {this.trainingData = t;this;}
-  def setTestingData(t: Dataset) = {this.testingData = t;this;}
+  def setTrainingData(t: Dataset[T]) = {this.trainingData = t;this;}
+  def setTestingData(t: Dataset[T]) = {this.testingData = t;this;}
   def setAllowedTargets(a: Set[Int]) = {this.allowedTargets = a;this;}
   def setUnallowedEdges(e: Seq[Int]) = {this.unallowedEdges = e;this;}
   def setRelationInverses(i: Map[Int, Int]) = {relationInverses = i;this;}
@@ -157,7 +158,7 @@ class PraConfigBuilder(config: PraConfig = null) {
   def setOutputMatrices(o: Boolean) = {this.outputMatrices = o;this;}
   def setPraBase(o: String) = {this.praBase = o;this;}
 
-  def build(): PraConfig = {
+  def build(): PraConfig[T] = {
     if (outputter == null) {
       outputter = new Outputter(null, new FileUtil())
     }
