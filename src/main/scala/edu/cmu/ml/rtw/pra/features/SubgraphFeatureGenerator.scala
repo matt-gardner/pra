@@ -49,9 +49,9 @@ class SubgraphFeatureGenerator(
     createMatrixFromData(data)
 
   def createMatrixFromData(data: Dataset[NodePairInstance]) = {
-    val subgraphs = getLocalSubgraphs(data)
-    Outputter.outputAtLevel(s"Done getting subgraphs; extracting features", logLevel)
-    extractFeatures(subgraphs)
+    Outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
+    val rows = data.instances.par.map(constructMatrixRow).flatten.seq
+    new FeatureMatrix(rows.asJava)
   }
 
   override def getFeatureNames(): Array[String] = {

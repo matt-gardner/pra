@@ -20,7 +20,9 @@ load new_feature_experiment_base
   "operation": {
     "type": "train and test",
     "features": {
+      "type": "pra",
       "path finder": {
+        "type": "RandomWalkPathFinder",
         "walks per source": 100,
         "path finding iterations": 3,
         "path accept policy": "paired-only"
