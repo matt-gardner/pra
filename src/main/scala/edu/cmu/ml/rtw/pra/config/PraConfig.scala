@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.config
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -27,6 +28,8 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
  * Graph object that I pass around, a Split object, an Outputter, and a RelationMetadata object.
  * The Driver creates all of these objects, and passes them to the other parts of the code that
  * need them.
+ *
+ * Split is now done.
  */
 class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,20 +64,7 @@ class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
   // Split-related objects - what do we use to train and test?
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // A list of (source, target) pairs, to be split into training and testing data.  This is
-  // intended to be mutually exclusive with trainingData and testingData.  Either you specify
-  // allData and percentTraining, whereby we will take care of splitting it into training and
-  // testing, or you specify trainingData and testingData yourself and leave allData blank.
-  val allData = builder.allData
-
-  // How much of allData (after shuffling) should be used for training.
-  val percentTraining = builder.percentTraining
-
-  // A list of (source, target) training instances.
-  val trainingData = builder.trainingData
-
-  // A list of (source, target) testing instances.
-  val testingData = builder.testingData
+  val split = builder.split
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Relation-metadata-related objects - inverses, ranges, and the like
@@ -130,10 +120,7 @@ class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
 class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
   var relation: String = if (config != null) config.relation else null
   var graph: Option[Graph] = if (config != null) config.graph else None
-  var allData: Dataset[T] = if (config != null) config.allData else null
-  var percentTraining: Double = if (config != null) config.percentTraining else -1.0
-  var trainingData: Dataset[T] = if (config != null) config.trainingData else null
-  var testingData: Dataset[T] = if (config != null) config.testingData else null
+  var split: Split[T] = if (config != null) config.split else null
   var allowedTargets: Set[Int] = if (config != null) config.allowedTargets else null
   var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else Seq()
   var relationInverses: Map[Int, Int] = if (config != null) config.relationInverses else null
@@ -146,10 +133,7 @@ class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
 
   def setRelation(relation: String) = {this.relation = relation; this;}
   def setGraph(graph: Graph) = {this.graph = Some(graph);this;}
-  def setAllData(d: Dataset[T]) = {this.allData = d;this;}
-  def setPercentTraining(p: Double) = {this.percentTraining = p;this;}
-  def setTrainingData(t: Dataset[T]) = {this.trainingData = t;this;}
-  def setTestingData(t: Dataset[T]) = {this.testingData = t;this;}
+  def setSplit(s: Split[T]) = {this.split = s;this;}
   def setAllowedTargets(a: Set[Int]) = {this.allowedTargets = a;this;}
   def setUnallowedEdges(e: Seq[Int]) = {this.unallowedEdges = e;this;}
   def setRelationInverses(i: Map[Int, Int]) = {relationInverses = i;this;}
@@ -164,17 +148,8 @@ class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
     }
     if (noChecks) return new PraConfig(this)
 
-    // Check that we have a consistent state, with everything specified that is necessary for
-    // running PRA.  TODO(matt): actually, I'm not sure this is relevant anymore...  Should I
-    // just remove these checks?  Maybe it's just better to have tests that make sure everything
-    // is set up right in all of the various code paths...
+    // TODO(matt): Do we really need this check any more?  Probably not...
     if (relation == null) throw new IllegalStateException("relation must be set")
-    if (allData != null && percentTraining == -1.0) throw new IllegalStateException(
-        "Must give percent training when specifying allData")
-    if (allData != null && trainingData != null) throw new IllegalStateException(
-        "allData and trainingData are mutually exclusive")
-    if (allData == null && trainingData == null) throw new IllegalStateException(
-        "Must specify either allData or trainingData")
     new PraConfig(this)
   }
 

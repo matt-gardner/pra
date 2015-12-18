@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.operations
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureGenerator
@@ -20,50 +21,10 @@ import scala.collection.mutable
 
 import org.json4s._
 
-trait Operation {
+trait Operation[T <: Instance] {
   def runRelation(configBuilder: PraConfigBuilder[NodePairInstance])
 
-  // TODO(matt): None of these methods should be here!  See note under TrainAndTest.runRelation
-  // below.
-  def initializeSplit(
-      splitsDirectory: String,
-      relationMetadataDirectory: String,
-      builder: PraConfigBuilder[NodePairInstance],
-      fileUtil: FileUtil = new FileUtil) = {
-    // The Dataset objects need access to the graph information, which is contained in PraConfig.
-    // That's all that Dataset needs from PraConfig, so we can safely call builder.build() here and
-    // keep the PraConfig object.  Not the best solution, but it will work for now.
-    val config = builder.setNoChecks().build()
-    val relation = config.relation
-    val fixed = relation.replace("/", "_")
-    // We look in the splits directory for a fixed split if we don't find one, we do cross
-    // validation.
-    if (fileUtil.fileExists(splitsDirectory + fixed)) {
-      val training = splitsDirectory + fixed + "/training.tsv"
-      val testing = splitsDirectory + fixed + "/testing.tsv"
-      if (fileUtil.fileExists(training)) {
-        builder.setTrainingData(Dataset.nodePairDatasetFromFile(training, config.graph, fileUtil))
-      } else {
-        Outputter.warn("WARNING: NO TRAINING FILE FOUND")
-      }
-      if (fileUtil.fileExists(testing)) {
-        builder.setTestingData(Dataset.nodePairDatasetFromFile(testing, config.graph, fileUtil))
-      } else {
-        Outputter.warn("WARNING: NO TESTING FILE FOUND")
-      }
-      false
-    } else {
-      if (relationMetadataDirectory == null) {
-        throw new IllegalStateException("Must specify a relation metadata directory if you do not "
-          + "have a fixed split!")
-      }
-      builder.setAllData(
-        Dataset.nodePairDatasetFromFile(relationMetadataDirectory + "relations/" + fixed, config.graph, fileUtil))
-      val percent_training_file = splitsDirectory + "percent_training.tsv"
-      builder.setPercentTraining(fileUtil.readDoubleListFromFile(percent_training_file)(0))
-      true
-    }
-  }
+  // TODO(matt): These methods should be moved to a RelationMetadata object!
 
   /**
    * Here we set up the PraConfig items that have to do with the input KB files.  In particular,
@@ -197,55 +158,44 @@ trait Operation {
 }
 
 object Operation {
-  def create(
+  def create[T <: Instance](
       params: JValue,
-      splitsDirectory: String,
+      split: Split[T],
       metadataDirectory: String,
-      fileUtil: FileUtil): Operation = {
+      fileUtil: FileUtil): Option[Operation[T]] = {
     val operationType = JsonHelper.extractWithDefault(params, "type", "train and test")
     operationType match {
-      case "no op" => new NoOp()
-      case "train and test" => new TrainAndTest(params, splitsDirectory, metadataDirectory, fileUtil)
-      case "explore graph" => new ExploreGraph(params, splitsDirectory, fileUtil)
-      case "create matrices" => new CreateMatrices(params, splitsDirectory, metadataDirectory, fileUtil)
-      case "sgd train and test" => new SgdTrainAndTest(params, splitsDirectory, metadataDirectory, fileUtil)
+      case "no op" => None
+      case "train and test" => Some(new TrainAndTest(params, split, metadataDirectory, fileUtil))
+      case "explore graph" => Some(new ExploreGraph(params, split, fileUtil))
+      case "create matrices" => Some(new CreateMatrices(params, split, metadataDirectory, fileUtil))
+      case "sgd train and test" => Some(new SgdTrainAndTest(params, split, metadataDirectory, fileUtil))
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
   }
 }
 
-class TrainAndTest(params: JValue, splitsDirectory: String, metadataDirectory: String, fileUtil: FileUtil)
-extends Operation {
+class TrainAndTest[T <: Instance](
+  params: JValue,
+  split: Split[T],
+  metadataDirectory: String,
+  fileUtil: FileUtil
+) extends Operation[T] {
   val paramKeys = Seq("type", "features", "learning")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
   override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
-    // TODO(matt): these first two statements really should be put into a Split object that gets
-    // passed as input to this method (and to CreateMatrices).
-    val doCrossValidation = initializeSplit(
-      splitsDirectory,
-      metadataDirectory,
-      configBuilder,
-      fileUtil)
-
-    // Split the data if we're doing cross validation instead of a fixed split.
-    if (doCrossValidation) {
-      val config = configBuilder.build()
-      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
-      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
-      configBuilder.setAllData(null)
-      configBuilder.setPercentTraining(0)
-      configBuilder.setTrainingData(trainingData)
-      configBuilder.setTestingData(testingData)
-    }
-
     val config = configBuilder.build()
 
     // First we get features.
     val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
-    val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
+
+    // TODO(matt): remove the asInstanceOf
+    val trainingData = split.getTrainingData(config.relation, config.graph).asInstanceOf[Dataset[NodePairInstance]]
+    val trainingMatrix = generator.createTrainingMatrix(trainingData)
+
     // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
     // The outputter should have the parameters to decide whether to do anything or not.
     if (config.outputMatrices && config.outputBase != null) {
@@ -256,23 +206,26 @@ extends Operation {
     // Then we train a model.
     val model = BatchModel.create[NodePairInstance](params \ "learning", config)
     val featureNames = generator.getFeatureNames()
-    model.train(trainingMatrix, config.trainingData, featureNames)
+    model.train(trainingMatrix, trainingData, featureNames)
 
     // Then we test the model.
-    // TODO(matt): if we don't care about removing zero weight features anymore (and it's probably
-    // not worth it, anyway), we could feasibly just generate the training and test matrices at the
-    // same time, and because of how GraphChi works, that would save us considerable time.
-    val testMatrix = generator.createTestMatrix(config.testingData)
+    // TODO(matt): remove the asInstanceOf
+    val testingData = split.getTestingData(config.relation, config.graph).asInstanceOf[Dataset[NodePairInstance]]
+    val testMatrix = generator.createTestMatrix(testingData)
     if (config.outputMatrices && config.outputBase != null) {
       val output = config.outputBase + "test_matrix.tsv"
       config.outputter.outputFeatureMatrix(output, testMatrix, generator.getFeatureNames())
     }
     val scores = model.classifyInstances(testMatrix)
-    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
+    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, trainingData)
   }
 }
 
-class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) extends Operation {
+class ExploreGraph[T <: Instance](
+  params: JValue,
+  split: Split[T],
+  fileUtil: FileUtil
+) extends Operation[T] {
   val paramKeys = Seq("type", "explore", "data")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
@@ -280,14 +233,9 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
     val config = configBuilder.setNoChecks().build()
 
     val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
-    val fixed = config.relation.replace("/", "_")
     val data = if (dataToUse == "both") {
-      val trainingFile = s"${splitsDirectory}${fixed}/training.tsv"
-      val trainingData = if (fileUtil.fileExists(trainingFile))
-        Dataset.nodePairDatasetFromFile(trainingFile, config.graph, fileUtil) else null
-      val testingFile = s"${splitsDirectory}${fixed}/testing.tsv"
-      val testingData = if (fileUtil.fileExists(testingFile))
-        Dataset.nodePairDatasetFromFile(testingFile, config.graph, fileUtil) else null
+      val trainingData = split.getTrainingData(config.relation, config.graph)
+      val testingData = split.getTestingData(config.relation, config.graph)
       if (trainingData == null && testingData == null) {
         throw new IllegalStateException("Neither training file nor testing file exists for " +
           "relation " + config.relation)
@@ -300,41 +248,34 @@ class ExploreGraph(params: JValue, splitsDirectory: String, fileUtil: FileUtil) 
         trainingData.merge(testingData)
       }
     } else {
-      val inputFile = s"${splitsDirectory}${fixed}/${dataToUse}.tsv"
-      Dataset.nodePairDatasetFromFile(inputFile, config.graph, fileUtil)
+      dataToUse match {
+        case "training" => split.getTrainingData(config.relation, config.graph)
+        case "testing" => split.getTestingData(config.relation, config.graph)
+        case _ => throw new IllegalStateException(s"unrecognized data specification: $dataToUse")
+      }
     }
 
     val explorer = new GraphExplorer(params \ "explore", config)
-    val pathCountMap = explorer.findConnectingPaths(data)
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, data)
+    val castData = data.asInstanceOf[Dataset[NodePairInstance]]
+    val pathCountMap = explorer.findConnectingPaths(castData)
+    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, castData)
   }
 }
 
-class CreateMatrices(params: JValue, splitsDirectory: String, metadataDirectory: String, fileUtil: FileUtil)
-extends Operation {
+class CreateMatrices[T <: Instance](
+  params: JValue,
+  split: Split[T],
+  metadataDirectory: String,
+  fileUtil: FileUtil
+) extends Operation[T] {
   override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
-    val doCrossValidation = initializeSplit(
-      splitsDirectory,
-      metadataDirectory,
-      configBuilder,
-      fileUtil)
-
-    // Split the data if we're doing cross validation instead of a fixed split.
-    if (doCrossValidation) {
-      val config = configBuilder.build()
-      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
-      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
-      configBuilder.setAllData(null)
-      configBuilder.setPercentTraining(0)
-      configBuilder.setTrainingData(trainingData)
-      configBuilder.setTestingData(testingData)
-    }
-
     val config = configBuilder.build()
 
     // First we get features.
     val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
-    val trainingMatrix = generator.createTrainingMatrix(config.trainingData)
+    val trainingData = split.getTrainingData(config.relation, config.graph)
+    // TODO(matt): remove the asInstanceOf
+    val trainingMatrix = generator.createTrainingMatrix(trainingData.asInstanceOf[Dataset[NodePairInstance]])
     if (config.outputMatrices && config.outputBase != null) {
       val output = config.outputBase + "training_matrix.tsv"
       config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
@@ -343,8 +284,12 @@ extends Operation {
   }
 }
 
-class SgdTrainAndTest(params: JValue, splitsDirectory: String, metadataDirectory: String, fileUtil: FileUtil)
-extends Operation {
+class SgdTrainAndTest[T <: Instance](
+  params: JValue,
+  split: Split[T],
+  metadataDirectory: String,
+  fileUtil: FileUtil
+) extends Operation[T] {
   val paramKeys = Seq("type", "learning", "features", "cache feature vectors")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
@@ -354,25 +299,6 @@ extends Operation {
   override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
-    // TODO(matt): these first two statements really should be put into a Split object that gets
-    // passed as input to this method (and to CreateMatrices).
-    val doCrossValidation = initializeSplit(
-      splitsDirectory,
-      metadataDirectory,
-      configBuilder,
-      fileUtil)
-
-    // Split the data if we're doing cross validation instead of a fixed split.
-    if (doCrossValidation) {
-      val config = configBuilder.build()
-      val (trainingData, testingData) = config.allData.splitData(config.percentTraining)
-      config.outputter.outputSplitFiles(config.outputBase, trainingData, testingData)
-      configBuilder.setAllData(null)
-      configBuilder.setPercentTraining(0)
-      configBuilder.setTrainingData(trainingData)
-      configBuilder.setTestingData(testingData)
-    }
-
     val config = configBuilder.build()
 
     val featureVectors = new concurrent.TrieMap[Instance, Option[MatrixRow]]
@@ -380,16 +306,19 @@ extends Operation {
     val model = OnlineModel.create(params \ "learning", config)
     val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
 
+    val trainingData = split.getTrainingData(config.relation, config.graph)
+
     Outputter.info("Starting learning")
     val start = compat.Platform.currentTime
     for (iteration <- 1 to model.iterations) {
       Outputter.info(s"Iteration $iteration")
       model.nextIteration()
-      random.shuffle(config.trainingData.instances).par.foreach(instance => {
+      random.shuffle(trainingData.instances).par.foreach(instance => {
         val matrixRow = if (featureVectors.contains(instance)) {
           featureVectors(instance)
         } else {
-          val row = generator.constructMatrixRow(instance)
+          // TODO(matt): remove the asInstanceOf
+          val row = generator.constructMatrixRow(instance.asInstanceOf[NodePairInstance])
           if (cacheFeatureVectors) featureVectors(instance) = row
           row
         }
@@ -422,15 +351,17 @@ extends Operation {
     featureVectors.clear
 
     // Now we test the model.
-    val scores = config.testingData.instances.par.map(instance => {
-      val matrixRow = generator.constructMatrixRow(instance)
+    val testingData = split.getTestingData(config.relation, config.graph)
+    val scores = testingData.instances.par.map(instance => {
+      // TODO(matt): remove the asInstanceOf
+      val matrixRow = generator.constructMatrixRow(instance.asInstanceOf[NodePairInstance])
       if (cacheFeatureVectors) featureVectors(instance) = matrixRow
       matrixRow match {
         case Some(row) => (instance, model.classifyInstance(row))
         case None => (instance, 0.0)
       }
     }).seq
-    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, config)
+    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, trainingData)
 
     if (config.outputMatrices && config.outputBase != null) {
       val testingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
@@ -441,11 +372,4 @@ extends Operation {
       config.outputter.outputFeatureMatrix(output, testingMatrix, generator.getFeatureNames())
     }
   }
-}
-
-// TODO(matt): I think Driver should just check for the presence or absence of the "operation"
-// parameter, and if there is no operation present it should do a no op.  That would make this
-// class unnecessary.
-class NoOp extends Operation {
-  def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) { }
 }

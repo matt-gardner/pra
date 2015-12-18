@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.operations
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -10,6 +11,7 @@ import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import org.json4s.{JNothing, JString}
 import org.scalatest._
 
 class OperationSpec extends FlatSpecLike with Matchers {
@@ -30,7 +32,9 @@ class OperationSpec extends FlatSpecLike with Matchers {
   val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
   val builder = new PraConfigBuilder[NodePairInstance]().setGraph(graph)
   val fileUtil = new FakeFileUtil()
-  val operation = new NoOp()
+
+  val split = Split.create(JString("fake"), "/base/dir/", fileUtil)
+  val operation = Operation.create(JNothing, split, "/", fileUtil).get
 
   def expectCount[T](collection: Seq[T], element: T, count: Int) {
     val actualCount = collection.filter(_.equals(element)).size
@@ -88,23 +92,5 @@ class OperationSpec extends FlatSpecLike with Matchers {
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
-  }
-
-  "initializeSplit" should "not do cross validation when there's a fixed split" in {
-    fileUtil.addExistingFile(splitsDirectory + fixedSplitRelation.replace("/", "_"))
-    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/training.tsv",
-      "1\t1\n")
-    fileUtil.addFileToBeRead(splitsDirectory + fixedSplitRelation.replace("/", "_") + "/testing.tsv",
-      "2\t2\n")
-    builder.setRelation(fixedSplitRelation)
-    operation.initializeSplit(splitsDirectory, kbDirectory, builder, fileUtil) should be(false)
-  }
-
-  it should "do cross validation when there's no fixed split" in {
-    fileUtil.addFileToBeRead(splitsDirectory + "percent_training.tsv", "0.0\n")
-    fileUtil.addFileToBeRead(splitsDirectory + "relations/" + crossValidatedRelation.replace("/", "_"),
-      "1\t1\n2\t2\n")
-    builder.setRelation(crossValidatedRelation)
-    operation.initializeSplit(splitsDirectory, kbDirectory, builder, fileUtil) should be(true)
   }
 }

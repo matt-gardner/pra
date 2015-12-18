@@ -4,6 +4,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.SplitCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
@@ -12,7 +13,6 @@ import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 import edu.cmu.ml.rtw.pra.operations.Operation
-import edu.cmu.ml.rtw.pra.operations.NoOp
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
@@ -72,17 +72,15 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       case other => throw new IllegalStateException("relation metadata parameter must be either "
         + "a string or absent")
     }
-    val splitsDirectory = (params \ "split") match {
-      case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
-      case JString(name) => s"${praBase}splits/${name}/"
-      case jval => s"${praBase}splits/" + (jval \ "name").extract[String] + "/"
-    }
 
-    val operation = Operation.create(params \ "operation", splitsDirectory, metadataDirectory, fileUtil)
-    operation match {
-      case op: NoOp => { fileUtil.deleteFile(outputBase); return }
+    val split = Split.create(params \ "split", praBase, fileUtil)
+
+    val operationOption = Operation.create(params \ "operation", split, metadataDirectory, fileUtil)
+    operationOption match {
+      case None => { fileUtil.deleteFile(outputBase); return }
       case _ => { }
     }
+    val operation = operationOption.get
 
     val start_time = System.currentTimeMillis
 
@@ -110,8 +108,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val baseConfig = baseBuilder.setNoChecks().build()
 
-    val relationsFile = splitsDirectory + "relations_to_run.tsv"
-    for (relation <- fileUtil.readLinesFromFile(relationsFile)) {
+    for (relation <- split.relations()) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)

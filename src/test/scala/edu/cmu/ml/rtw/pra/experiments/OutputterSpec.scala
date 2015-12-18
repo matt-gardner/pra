@@ -102,11 +102,6 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     val instance4 = new NodePairInstance(1, 2, false, graph)
     val trainingData = new Dataset[NodePairInstance](Seq(instance2))
     val testingData = new Dataset[NodePairInstance](Seq(instance1, instance3, instance4))
-    val config = new PraConfigBuilder()
-        .setNoChecks()
-        .setTrainingData(trainingData)
-        .setTestingData(testingData)
-        .build()
 
     val scores = Seq((instance1, .1), (instance3, .6), (instance2, .3), (instance4, .1))
 
@@ -123,7 +118,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     fileUtil.onlyAllowExpectedFiles()
     fileUtil.addExpectedFileWritten(scoresFile, expectedScoresFileContents)
     val outputter = new Outputter(null, fileUtil)
-    outputter.outputScores(filename, scores, config)
+    outputter.outputScores(filename, scores, trainingData)
     fileUtil.expectFilesWritten()
   }
 

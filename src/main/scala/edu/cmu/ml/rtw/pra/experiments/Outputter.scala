@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
@@ -36,12 +36,29 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     pathType.encodeAsHumanReadableString(graph)
   }
 
-  def outputScores(
+  def outputScores[T <: Instance](
+    filename: String,
+    scores: Seq[(T, Double)],
+    trainingData: Dataset[T]
+  ) {
+    trainingData.instances(0) match {
+      case nodePairInstance: NodePairInstance =>  {
+        outputNodePairScores(
+          filename,
+          scores.asInstanceOf[Seq[(NodePairInstance, Double)]],
+          trainingData.asInstanceOf[Dataset[NodePairInstance]]
+        )
+      }
+      case _ => throw new NotImplementedError
+    }
+  }
+
+  def outputNodePairScores(
     filename: String,
     scores: Seq[(NodePairInstance, Double)],
-    config: PraConfig[NodePairInstance]
+    trainingData: Dataset[NodePairInstance]
   ) {
-    val trainingInstances = config.trainingData.instances.toSet
+    val trainingInstances = trainingData.instances.toSet
     val scoreStrings = scores.map(instanceScore => {
       val instance = instanceScore._1
       val score = instanceScore._2
