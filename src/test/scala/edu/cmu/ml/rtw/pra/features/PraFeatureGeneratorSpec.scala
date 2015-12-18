@@ -45,7 +45,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val path2 = factory.fromString("-1-2-3- INVERSE")
   val unallowedEdges = List(1, 3, 2)
   val graph = new GraphOnDisk("src/test/resources/")
-  val config = new PraConfigBuilder[NodePairInstance]().setNoChecks()
+  val config = new PraConfigBuilder().setNoChecks()
     .setGraph(graph).setUnallowedEdges(unallowedEdges).build()
 
   val node1 = "node1"

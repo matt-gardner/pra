@@ -25,7 +25,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val params: JValue = ("include bias" -> true)
   val graph = new GraphOnDisk("src/test/resources/")
-  val config = new PraConfigBuilder[NodePairInstance]().setOutputBase("/").setNoChecks()
+  val config = new PraConfigBuilder().setOutputBase("/").setNoChecks()
     .setGraph(graph).build()
   val fakeFileUtil = new FakeFileUtil
 

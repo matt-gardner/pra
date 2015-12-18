@@ -47,8 +47,15 @@ that license).  You can find the text of that license
 
 Version 3.2 (current snapshot):
 
-- Nothing major that I'm actively working on right now...  This version might include a working SGD
-  implementation, or actual remote Graph code.  We'll see.
+- Allow for feature extraction and classification over _nodes_ in the graph, instead of only _node
+  pairs_.  This means that in addition to classifying _relations_ between two entities, you can
+now also classify entity _types_ based on the features of your graph. (CURRENTLY IN PROGRESS)
+
+- Made a change in how feature matrices are computed with SubgraphFeatureGenerator, which saves a
+  whole lot of memory, especially on large datasets.  Previously, all of the intermediate graph
+structures for all training / test instances would be kept in memory when computing a feature
+matrix, and this could get very unwieldy.  Now we compute them one at a time, only keeping the
+final feature vector.
 
 Version 3.1 (released on 11/9/2015):
 

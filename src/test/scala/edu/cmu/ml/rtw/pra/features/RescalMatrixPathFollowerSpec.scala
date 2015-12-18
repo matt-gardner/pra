@@ -91,7 +91,7 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
 
   lazy val creator = {
     val graph = new GraphOnDisk("/graph/", fileUtil)
-    val config = new PraConfigBuilder[NodePairInstance]().setGraph(graph).setNoChecks().build()
+    val config = new PraConfigBuilder().setGraph(graph).setNoChecks().build()
     val negativesPerSource = 20
     new RescalMatrixPathFollower(
       config,

@@ -19,7 +19,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 class LogisticRegressionModel[T <: Instance](
-  config: PraConfig[T],
+  config: PraConfig,
   params: JValue
 ) extends BatchModel[T](
   config,

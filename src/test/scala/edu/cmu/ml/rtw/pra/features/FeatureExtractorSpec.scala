@@ -22,7 +22,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
     "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
   val graph = new GraphOnDisk("/graph/", fileUtil)
-  val config = new PraConfigBuilder[NodePairInstance]().setPraBase("/").setNoChecks().build()
+  val config = new PraConfigBuilder().setPraBase("/").setNoChecks().build()
 
   val instance = new NodePairInstance(1, 2, true, graph)
 

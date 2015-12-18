@@ -33,7 +33,7 @@ trait PathFinder {
 
   // Does whatever computation is necessary to find paths between nodes requested in the dataset.
   def findPaths(
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     data: Dataset[NodePairInstance],
     edgesToExclude: Seq[((Int, Int), Int)]
   )
@@ -49,7 +49,7 @@ trait PathFinder {
 object PathFinder {
   def create(
       params: JValue,
-      config: PraConfig[NodePairInstance],
+      config: PraConfig,
       fileUtil: FileUtil = new FileUtil): PathFinder = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
@@ -78,7 +78,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
   var inverses: Map[Int, Int] = null
 
   override def findPaths(
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     data: Dataset[NodePairInstance],
     edgesToExclude: Seq[((Int, Int), Int)]
   ) {
@@ -130,7 +130,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
       (pair.getLeft().toInt, pair.getRight().toInt)).toSet).toMap).toMap
   }
 
-  def createPathTypeFactory(params: JValue, config: PraConfig[NodePairInstance]): PathTypeFactory = {
+  def createPathTypeFactory(params: JValue, config: PraConfig): PathTypeFactory = {
     (params \ "name") match {
       case JNothing => new BasicPathTypeFactory()
       case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params, config)
@@ -138,7 +138,7 @@ class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) exte
     }
   }
 
-  def createVectorPathTypeFactory(params: JValue, config: PraConfig[NodePairInstance]) = {
+  def createVectorPathTypeFactory(params: JValue, config: PraConfig) = {
     Outputter.info("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]

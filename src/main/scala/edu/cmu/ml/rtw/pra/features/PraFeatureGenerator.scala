@@ -19,7 +19,7 @@ import org.json4s.native.JsonMethods._
 
 class PraFeatureGenerator(
   params: JValue,
-  config: PraConfig[NodePairInstance],
+  config: PraConfig,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator {
   implicit val formats = DefaultFormats

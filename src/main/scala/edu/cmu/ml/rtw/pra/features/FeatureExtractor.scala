@@ -23,7 +23,7 @@ trait FeatureExtractor {
 object FeatureExtractor {
   def create(
     params: JValue,
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     fileUtil: FileUtil
   ): FeatureExtractor = {
     params match {
@@ -160,7 +160,7 @@ class PathBigramsFeatureExtractor extends FeatureExtractor {
 
 class VectorSimilarityFeatureExtractor(
     val params: JValue,
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
   implicit val formats = DefaultFormats
 

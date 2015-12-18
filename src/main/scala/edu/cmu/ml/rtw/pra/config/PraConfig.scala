@@ -31,7 +31,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
  *
  * Split is now done.
  */
-class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
+class PraConfig(builder: PraConfigBuilder) {
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Graph-related objects
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,12 +59,6 @@ class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
   // recommend leaving this as false (the default), unless you need to debug something or do some
   // error analysis, then you can set it to true.
   val outputMatrices = builder.outputMatrices
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  // Split-related objects - what do we use to train and test?
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
-  val split = builder.split
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Relation-metadata-related objects - inverses, ranges, and the like
@@ -117,10 +111,9 @@ class PraConfig[T <: Instance](builder: PraConfigBuilder[T]) {
   val praBase = builder.praBase
 }
 
-class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
+class PraConfigBuilder(config: PraConfig = null) {
   var relation: String = if (config != null) config.relation else null
   var graph: Option[Graph] = if (config != null) config.graph else None
-  var split: Split[T] = if (config != null) config.split else null
   var allowedTargets: Set[Int] = if (config != null) config.allowedTargets else null
   var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else Seq()
   var relationInverses: Map[Int, Int] = if (config != null) config.relationInverses else null
@@ -133,7 +126,6 @@ class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
 
   def setRelation(relation: String) = {this.relation = relation; this;}
   def setGraph(graph: Graph) = {this.graph = Some(graph);this;}
-  def setSplit(s: Split[T]) = {this.split = s;this;}
   def setAllowedTargets(a: Set[Int]) = {this.allowedTargets = a;this;}
   def setUnallowedEdges(e: Seq[Int]) = {this.unallowedEdges = e;this;}
   def setRelationInverses(i: Map[Int, Int]) = {relationInverses = i;this;}
@@ -142,7 +134,7 @@ class PraConfigBuilder[T <: Instance](config: PraConfig[T] = null) {
   def setOutputMatrices(o: Boolean) = {this.outputMatrices = o;this;}
   def setPraBase(o: String) = {this.praBase = o;this;}
 
-  def build(): PraConfig[T] = {
+  def build(): PraConfig = {
     if (outputter == null) {
       outputter = new Outputter(null, new FileUtil())
     }

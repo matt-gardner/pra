@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.data
 
-import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
@@ -41,16 +40,16 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n")
   val graphOnDisk = new GraphOnDisk("/graph/", fileUtil)
 
-  "fromFile" should "crash on bad third column" in {
+  "DatasetReader.readNodePairFile" should "crash on bad third column" in {
     TestUtil.expectError(classOf[IllegalStateException], "not formatted correctly", new Function() {
       override def call() {
-        Dataset.nodePairDatasetFromFile(badDatasetFilename, Some(graphOnDisk), fileUtil)
+        DatasetReader.readNodePairFile(badDatasetFilename, Some(graphOnDisk), fileUtil)
       }
     })
   }
 
   it should "correctly read an instance dataset file" in {
-    val dataset = Dataset.nodePairDatasetFromFile(instanceFilename, Some(graphOnDisk), fileUtil)
+    val dataset = DatasetReader.readNodePairFile(instanceFilename, Some(graphOnDisk), fileUtil)
     dataset.instances(0).source should be(graphOnDisk.getNodeIndex("node1"))
     dataset.instances(0).target should be(graphOnDisk.getNodeIndex("node2"))
     dataset.instances(0).isPositive should be(true)
@@ -60,7 +59,7 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   }
 
   it should "correctly read an instance-graph dataset file" in {
-    val dataset = Dataset.nodePairDatasetFromFile(instanceGraphFilename, None, fileUtil)
+    val dataset = DatasetReader.readNodePairFile(instanceGraphFilename, None, fileUtil)
     val graph1 = dataset.instances(0).graph
 
     // There are three nodes in the graph, but four entries in the array, because we use the

@@ -114,7 +114,7 @@ class GraphDensifier(
   def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
     // TODO(matt): ugly!  oh well...  I need to migrate this code to using the new Graph object.
     // But this code was experimental anyway, and didn't really work, so why bother?
-    val builder = new PraConfigBuilder[NodePairInstance]
+    val builder = new PraConfigBuilder
     builder.setGraph(new GraphOnDisk(graph_dir, fileUtil))
     Outputter.info(s"Metadata directory: $metadata")
     val inverses = createInverses(metadata, builder, fileUtil)
@@ -211,7 +211,7 @@ class GraphDensifier(
   // But, this code is basically dead at this point, so it's not worth fixing just for this.
   def createInverses(
       directory: String,
-      builder: PraConfigBuilder[NodePairInstance],
+      builder: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {

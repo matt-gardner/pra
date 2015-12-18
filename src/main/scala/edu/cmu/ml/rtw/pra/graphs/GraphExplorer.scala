@@ -23,7 +23,7 @@ import org.json4s.native.JsonMethods._
  * but it does not actually produce a feature matrix.  The idea here is just to see what
  * connections there are between a set of nodes in a graph, and that's it.
  */
-class GraphExplorer(params: JValue, config: PraConfig[NodePairInstance]) {
+class GraphExplorer(params: JValue, config: PraConfig) {
   val paramKeys = Seq("path finder")
   JsonHelper.ensureNoExtras(params, "operation -> explore", paramKeys)
 

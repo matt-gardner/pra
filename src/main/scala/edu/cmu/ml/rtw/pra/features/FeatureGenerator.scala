@@ -73,7 +73,7 @@ trait FeatureGenerator {
 object FeatureGenerator {
   def create(
       params: JValue,
-      config: PraConfig[NodePairInstance],
+      config: PraConfig,
       fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
     Outputter.info("feature type being used is " + featureType)

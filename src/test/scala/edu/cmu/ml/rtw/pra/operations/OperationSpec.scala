@@ -30,7 +30,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
   val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
-  val builder = new PraConfigBuilder[NodePairInstance]().setGraph(graph)
+  val builder = new PraConfigBuilder().setGraph(graph)
   val fileUtil = new FakeFileUtil()
 
   val split = Split.create(JString("fake"), "/base/dir/", fileUtil)

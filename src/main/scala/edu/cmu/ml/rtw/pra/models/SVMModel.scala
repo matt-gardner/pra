@@ -33,7 +33,7 @@ import ca.uwo.csd.ai.nlp.libsvm.svm_node
 import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel[T <: Instance](
-  config: PraConfig[T],
+  config: PraConfig,
   params: JValue
 ) extends BatchModel[T](
   config,

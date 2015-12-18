@@ -84,7 +84,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val start_time = System.currentTimeMillis
 
-    val baseBuilder = new PraConfigBuilder[NodePairInstance]()
+    val baseBuilder = new PraConfigBuilder()
     baseBuilder.setPraBase(praBase)
     var writer = fileUtil.getFileWriter(outputBase + "params.json")
     writer.write(pretty(render(params)))

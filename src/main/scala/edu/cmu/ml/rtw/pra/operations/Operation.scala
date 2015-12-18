@@ -22,7 +22,7 @@ import scala.collection.mutable
 import org.json4s._
 
 trait Operation[T <: Instance] {
-  def runRelation(configBuilder: PraConfigBuilder[NodePairInstance])
+  def runRelation(configBuilder: PraConfigBuilder)
 
   // TODO(matt): These methods should be moved to a RelationMetadata object!
 
@@ -39,7 +39,7 @@ trait Operation[T <: Instance] {
   def parseRelationMetadata(
       directory: String,
       useRange: Boolean,
-      builder: PraConfigBuilder[NodePairInstance],
+      builder: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil) {
     val inverses = createInverses(directory, builder, fileUtil)
     val relation = builder.relation
@@ -83,7 +83,7 @@ trait Operation[T <: Instance] {
       relation: String,
       inverses: Map[Int, Int],
       embeddings: Map[String, Seq[String]],
-      builder: PraConfigBuilder[NodePairInstance]): Seq[Int] = {
+      builder: PraConfigBuilder): Seq[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
 
     // TODO(matt): I need a better way to specify this...  It's problematic when there is no shared
@@ -131,7 +131,7 @@ trait Operation[T <: Instance] {
    */
   def createInverses(
       directory: String,
-      builder: PraConfigBuilder[NodePairInstance],
+      builder: PraConfigBuilder,
       fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
     val inverses = new mutable.HashMap[Int, Int]
     if (directory == null) {
@@ -184,7 +184,7 @@ class TrainAndTest[T <: Instance](
   val paramKeys = Seq("type", "features", "learning")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
-  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
+  override def runRelation(configBuilder: PraConfigBuilder) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
     val config = configBuilder.build()
@@ -229,7 +229,7 @@ class ExploreGraph[T <: Instance](
   val paramKeys = Seq("type", "explore", "data")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
-  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
+  override def runRelation(configBuilder: PraConfigBuilder) {
     val config = configBuilder.setNoChecks().build()
 
     val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
@@ -268,7 +268,7 @@ class CreateMatrices[T <: Instance](
   metadataDirectory: String,
   fileUtil: FileUtil
 ) extends Operation[T] {
-  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
+  override def runRelation(configBuilder: PraConfigBuilder) {
     val config = configBuilder.build()
 
     // First we get features.
@@ -296,7 +296,7 @@ class SgdTrainAndTest[T <: Instance](
   val cacheFeatureVectors = JsonHelper.extractWithDefault(params, "cache feature vectors", true)
   val random = new util.Random
 
-  override def runRelation(configBuilder: PraConfigBuilder[NodePairInstance]) {
+  override def runRelation(configBuilder: PraConfigBuilder) {
     parseRelationMetadata(metadataDirectory, true, configBuilder)
 
     val config = configBuilder.build()

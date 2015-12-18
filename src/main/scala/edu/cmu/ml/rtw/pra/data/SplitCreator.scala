@@ -72,7 +72,7 @@ class SplitCreator(
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
       val relation_file = s"${relationMetadata}relations/${fixed}"
-      val all_instances = Dataset.nodePairDatasetFromFile(relation_file, Some(graph), fileUtil)
+      val all_instances = DatasetReader.readNodePairFile(relation_file, Some(graph), fileUtil)
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {
@@ -115,10 +115,10 @@ class SplitCreator(
       val fixed = relation.replace("/", "_")
       val training_file = s"${fromSplitDir}${fixed}/training.tsv"
       val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
-      val training_instances = Dataset.nodePairDatasetFromFile(training_file, Some(graph), fileUtil)
+      val training_instances = DatasetReader.readNodePairFile(training_file, Some(graph), fileUtil)
       val new_training_instances =
         addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
-      val testing_instances = Dataset.nodePairDatasetFromFile(testing_file, Some(graph), fileUtil)
+      val testing_instances = DatasetReader.readNodePairFile(testing_file, Some(graph), fileUtil)
       val new_testing_instances =
         addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       val rel_dir = s"${splitDir}${fixed}/"

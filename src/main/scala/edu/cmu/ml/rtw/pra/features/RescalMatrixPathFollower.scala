@@ -23,7 +23,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 // that are specified from params.  TODO(matt): change this to take a JValue as input for those
 // params.
 class RescalMatrixPathFollower(
-  config: PraConfig[NodePairInstance],
+  config: PraConfig,
   pathTypes: Seq[PathType],
   val rescalDir: String,
   data: Dataset[NodePairInstance],

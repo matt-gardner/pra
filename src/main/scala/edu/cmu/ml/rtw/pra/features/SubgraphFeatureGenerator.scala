@@ -22,7 +22,7 @@ import org.json4s.JsonDSL.WithDouble._
 
 class SubgraphFeatureGenerator(
   params: JValue,
-  config: PraConfig[NodePairInstance],
+  config: PraConfig,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator {
   implicit val formats = DefaultFormats

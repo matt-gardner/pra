@@ -24,7 +24,7 @@ trait OnlineModel {
   def classifyInstance(instance: MatrixRow): Double
 }
 
-class SgdLogisticRegressionModel[T <: Instance](params: JValue, config: PraConfig[T]) extends OnlineModel {
+class SgdLogisticRegressionModel[T <: Instance](params: JValue, config: PraConfig) extends OnlineModel {
   val paramKeys = Seq("type", "learning rate a", "learning rate b", "learning rate momentum",
     "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
@@ -138,7 +138,7 @@ class SgdLogisticRegressionModel[T <: Instance](params: JValue, config: PraConfi
 }
 
 object OnlineModel{
-  def create[T <: Instance](params: JValue, config: PraConfig[T]): OnlineModel = {
+  def create[T <: Instance](params: JValue, config: PraConfig): OnlineModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new SgdLogisticRegressionModel(params, config)

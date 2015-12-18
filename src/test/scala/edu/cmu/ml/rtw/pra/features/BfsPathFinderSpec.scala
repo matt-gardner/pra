@@ -43,7 +43,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   val graph = new GraphOnDisk("/graph/", fileUtil)
   val instance = new NodePairInstance(5, 3, true, graph)
-  val config = new PraConfigBuilder[NodePairInstance]()
+  val config = new PraConfigBuilder()
     .setUnallowedEdges(Seq(1)).setGraph(graph).setNoChecks().build()
   val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
 

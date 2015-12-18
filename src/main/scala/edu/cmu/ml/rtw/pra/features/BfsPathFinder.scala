@@ -24,7 +24,7 @@ import scala.collection.parallel.ParMap
 
 class BfsPathFinder(
     params: JValue,
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     fileUtil: FileUtil = new FileUtil)  extends PathFinder {
   implicit val formats = DefaultFormats
 
@@ -55,7 +55,7 @@ class BfsPathFinder(
   }
 
   override def findPaths(
-    config: PraConfig[NodePairInstance],
+    config: PraConfig,
     data: Dataset[NodePairInstance],
     edgesToExclude: Seq[((Int, Int), Int)]
   ) {

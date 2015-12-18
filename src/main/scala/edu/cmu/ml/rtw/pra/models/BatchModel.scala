@@ -27,7 +27,7 @@ import scala.collection.mutable
  * classification time, or your model will be all messed up.
  */
 
-abstract class BatchModel[T <: Instance](config: PraConfig[T], binarizeFeatures: Boolean, logLevel: Int) {
+abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Boolean, logLevel: Int) {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
@@ -134,7 +134,7 @@ abstract class BatchModel[T <: Instance](config: PraConfig[T], binarizeFeatures:
 }
 
 object BatchModel{
-  def create[T <: Instance](params: JValue, config: PraConfig[T]): BatchModel[T] = {
+  def create[T <: Instance](params: JValue, config: PraConfig): BatchModel[T] = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new LogisticRegressionModel[T](config, params)
