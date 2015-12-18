@@ -8,6 +8,7 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -24,37 +25,37 @@ import scala.collection.JavaConverters._
 // datatypes (do the conversion in the GraphChiPathFinder class below).  If it turns out that we
 // move away from the RandomWalkPathFinder, then we can take the second option.  Otherwise, the
 // first.
-trait PathFinder {
+trait PathFinder[T <: Instance] {
   // Constructs a local subgraph for a single instance.  This is for SGD-style training, as opposed
   // to a batch computation.  Some PathFinders may not support this mode of operation (it's
   // incredibly inefficient with GraphChi, for instance).  This getLocalSubgraphs method does not
   // require first running findPaths.
-  def getLocalSubgraph(instance: NodePairInstance, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph
+  def getLocalSubgraph(instance: T, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph
 
   // Does whatever computation is necessary to find paths between nodes requested in the dataset.
   def findPaths(
     config: PraConfig,
-    data: Dataset[NodePairInstance],
+    data: Dataset[T],
     edgesToExclude: Seq[((Int, Int), Int)]
   )
 
   // These look at the paths found during findPaths and output different results.  Behavior is
   // undefined if called before findPaths, and can either crash or give empty results.
   def getPathCounts(): JavaMap[PathType, Integer]
-  def getPathCountMap(): JavaMap[NodePairInstance, JavaMap[PathType, Integer]]
-  def getLocalSubgraphs(): Map[NodePairInstance, Map[PathType, Set[(Int, Int)]]]
+  def getPathCountMap(): JavaMap[T, JavaMap[PathType, Integer]]
+  def getLocalSubgraphs(): Map[T, Map[PathType, Set[(Int, Int)]]]
   def finished()
 }
 
-object PathFinder {
+object NodePairPathFinder {
   def create(
       params: JValue,
       config: PraConfig,
-      fileUtil: FileUtil = new FileUtil): PathFinder = {
+      fileUtil: FileUtil = new FileUtil): PathFinder[NodePairInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
       case "RandomWalkPathFinder" => new GraphChiPathFinder(params, fileUtil)
-      case "BfsPathFinder" => new BfsPathFinder(params, config, fileUtil)
+      case "BfsPathFinder" => new NodePairBfsPathFinder(params, config, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder")
     }
   }
@@ -63,7 +64,10 @@ object PathFinder {
 // A simple wrapper around RandomWalkPathFinder, which is a java class, to make the interface with
 // this new PathFinder trait a little cleaner.  If we move RandomWalkPathFinder to scala, this
 // class can go away.
-class GraphChiPathFinder(params: JValue, fileUtil: FileUtil = new FileUtil) extends PathFinder {
+class GraphChiPathFinder(
+  params: JValue,
+  fileUtil: FileUtil = new FileUtil
+) extends PathFinder[NodePairInstance] {
   implicit val formats = DefaultFormats
   val allowedKeys = Seq("type", "walks per source", "path accept policy", "path type factory",
     "path finding iterations", "reset probability")

@@ -5,6 +5,7 @@ import java.util.{Set => JavaSet}
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -22,10 +23,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.parallel.ParMap
 
-class BfsPathFinder(
-    params: JValue,
-    config: PraConfig,
-    fileUtil: FileUtil = new FileUtil)  extends PathFinder {
+abstract class BfsPathFinder[T <: Instance](
+  params: JValue,
+  config: PraConfig,
+  fileUtil: FileUtil = new FileUtil
+)  extends PathFinder[T] {
   implicit val formats = DefaultFormats
 
   val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory", "log level")
@@ -42,10 +44,10 @@ class BfsPathFinder(
   val factory = createPathTypeFactory(params \ "path type factory")
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
-  var results: Map[NodePairInstance, Subgraph] = null
+  var results: Map[T, Subgraph] = null
 
   override def getLocalSubgraph(
-    instance: NodePairInstance,
+    instance: T,
     edgesToExclude: Seq[((Int, Int), Int)]
   ): Subgraph = {
     // We're going to ignore the edgesToExclude here, and just use the unallowedEdges from the
@@ -56,7 +58,7 @@ class BfsPathFinder(
 
   override def findPaths(
     config: PraConfig,
-    data: Dataset[NodePairInstance],
+    data: Dataset[T],
     edgesToExclude: Seq[((Int, Int), Int)]
   ) {
     Outputter.outputAtLevel("Running BFS...  ", logLevel)
@@ -71,16 +73,16 @@ class BfsPathFinder(
     throw new NotImplementedError
   }
 
-  override def getPathCountMap(): JavaMap[NodePairInstance, JavaMap[PathType, Integer]] = {
+  override def getPathCountMap(): JavaMap[T, JavaMap[PathType, Integer]] = {
     results.map(subgraphInstance => {
       val instance = subgraphInstance._1
       val subgraph = subgraphInstance._2
       val converted = subgraph.flatMap(entry => {
-        val key = entry._1
-        val s = entry._2
-        val t = s.filter(i => i._1 == instance.source && i._2 == instance.target)
-        if (t.size > 0) {
-          Seq(key -> Integer.valueOf(t.size))
+        val pathType = entry._1
+        val nodePairSet = entry._2
+        val keptNodePairs = nodePairSet.filter(pair => nodePairMatchesInstance(pair, instance))
+        if (keptNodePairs.size > 0) {
+          Seq(pathType -> Integer.valueOf(keptNodePairs.size))
         } else {
           Seq()
         }
@@ -89,11 +91,14 @@ class BfsPathFinder(
     }).asJava
   }
 
+  def nodePairMatchesInstance(pair: (Int, Int), instance: T): Boolean
+
   override def getLocalSubgraphs() = results
+  def getSubgraphForInstance(instance: T, unallowedEdges: Set[Int]): Subgraph
 
   override def finished() { }
 
-  def runBfs(data: Dataset[NodePairInstance], unallowedEdges: Set[Int]) = {
+  def runBfs(data: Dataset[T], unallowedEdges: Set[Int]) = {
     val instances = data.instances
     // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
     // the data is using a shared graph.
@@ -109,26 +114,6 @@ class BfsPathFinder(
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
     instances.par.map(instance => (instance -> getSubgraphForInstance(instance, unallowedEdges))).seq.toMap
-  }
-
-  def getSubgraphForInstance(instance: NodePairInstance, unallowedEdges: Set[Int]) = {
-    val graph = instance.graph
-    val source = instance.source
-    val target = instance.target
-    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-    val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
-    val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
-    val sourceKeys = sourceSubgraph.keys.toSet
-    val targetKeys = targetSubgraph.keys.toSet
-    val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
-    for (intermediateNode <- keysToUse) {
-      for (sourcePath <- sourceSubgraph(intermediateNode);
-           targetPath <- targetSubgraph(intermediateNode)) {
-         val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
-         result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
-       }
-    }
-    result.mapValues(_.toSet).toMap
   }
 
   // The return value here is a map of (end node -> path types).  The resultsByPathType is
@@ -218,5 +203,35 @@ class BfsPathFinder(
       case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory(JNothing)
       case other => throw new IllegalStateException("Unrecognized path type factory specification")
     }
+  }
+}
+
+class NodePairBfsPathFinder(
+  params: JValue,
+  config: PraConfig,
+  fileUtil: FileUtil = new FileUtil
+) extends BfsPathFinder[NodePairInstance](params, config, fileUtil) {
+  def getSubgraphForInstance(instance: NodePairInstance, unallowedEdges: Set[Int]) = {
+    val graph = instance.graph
+    val source = instance.source
+    val target = instance.target
+    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+    val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
+    val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
+    val sourceKeys = sourceSubgraph.keys.toSet
+    val targetKeys = targetSubgraph.keys.toSet
+    val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
+    for (intermediateNode <- keysToUse) {
+      for (sourcePath <- sourceSubgraph(intermediateNode);
+           targetPath <- targetSubgraph(intermediateNode)) {
+         val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
+         result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
+       }
+    }
+    result.mapValues(_.toSet).toMap
+  }
+
+  override def nodePairMatchesInstance(pair: (Int, Int), instance: NodePairInstance): Boolean = {
+    pair._1 == instance.source && pair._2 == instance.target
   }
 }

@@ -11,6 +11,7 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
@@ -134,7 +135,8 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
 }
 
 object BatchModel{
-  def create[T <: Instance](params: JValue, config: PraConfig): BatchModel[T] = {
+  // The Split object is necessary here to nail down a specific type.
+  def create[T <: Instance](params: JValue, split: Split[T], config: PraConfig): BatchModel[T] = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
       case "logistic regression" => new LogisticRegressionModel[T](config, params)

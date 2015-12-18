@@ -2,6 +2,10 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.Split
+import edu.cmu.ml.rtw.pra.data.NodePairSplit
+import edu.cmu.ml.rtw.pra.data.NodeSplit
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -11,20 +15,20 @@ import scala.collection.JavaConverters._
 
 import org.json4s._
 
-trait FeatureGenerator {
+trait FeatureGenerator[T <: Instance] {
 
   /**
    * Constructs a MatrixRow for a single instance.  This is intended for SGD-style training or
    * online prediction.  Note that this could be _really_ inefficient for some kinds of feature
    * generators, and so far is only implemented for SFE.
    */
-  def constructMatrixRow(instance: NodePairInstance): Option[MatrixRow]
+  def constructMatrixRow(instance: T): Option[MatrixRow]
 
   /**
    * Takes the data, probably does some random walks (or maybe some matrix multiplications, or a
    * few other possibilities), and returns a FeatureMatrix.
    */
-  def createTrainingMatrix(data: Dataset[NodePairInstance]): FeatureMatrix
+  def createTrainingMatrix(data: Dataset[T]): FeatureMatrix
 
   /**
    * For efficiency in creating the test matrix, we might drop some features if they have zero
@@ -42,7 +46,7 @@ trait FeatureGenerator {
    * should save that state internally, and use it to do this computation.  Not all implementations
    * need internal state to do this, but some do.
    */
-  def createTestMatrix(data: Dataset[NodePairInstance]): FeatureMatrix
+  def createTestMatrix(data: Dataset[T]): FeatureMatrix
 
   /**
    * Returns a string representation of the features in the feature matrix.  This need only be
@@ -53,7 +57,7 @@ trait FeatureGenerator {
   def getFeatureNames(): Array[String]
 
   def createEdgesToExclude(
-    instances: Seq[NodePairInstance],
+    instances: Seq[T],
     unallowedEdges: Seq[Int]
   ): Seq[((Int, Int), Int)] = {
     // If there was no input data (e.g., if we are actually trying to predict new edges, not
@@ -62,24 +66,42 @@ trait FeatureGenerator {
     if (unallowedEdges == null) {
       return Seq()
     }
-    instances.flatMap(instance => {
-      unallowedEdges.map(edge => {
-        ((instance.source, instance.target), edge.toInt)
-      })
+    instances.flatMap(_ match {
+      case instance: NodePairInstance => {
+        unallowedEdges.map(edge => {
+          ((instance.source, instance.target), edge.toInt)
+        })
+      }
+      case _ => throw new NotImplementedError
     })
   }
 }
 
 object FeatureGenerator {
-  def create(
+  // We need to take the split as input here because it's what contains the type information.  I
+  // need a concrete object to match type on.
+  def create[T <: Instance](
       params: JValue,
       config: PraConfig,
-      fileUtil: FileUtil = new FileUtil): FeatureGenerator = {
+      split: Split[T],
+      fileUtil: FileUtil = new FileUtil): FeatureGenerator[T] = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
     Outputter.info("feature type being used is " + featureType)
     featureType match {
-      case "pra" => new PraFeatureGenerator(params, config, fileUtil)
-      case "subgraphs" => new SubgraphFeatureGenerator(params, config, fileUtil)
+      case "pra" => {
+        split match {
+          case s: NodePairSplit => { new PraFeatureGenerator(params, config, fileUtil) }
+          case s: NodeSplit => { throw new IllegalStateException("Can't use PRA features with just nodes") }
+          case _ => throw new IllegalStateException("How did you get a split that doesn't match?")
+        }
+      }
+      case "subgraphs" => {
+        split match {
+          case s: NodePairSplit => { new NodePairSubgraphFeatureGenerator(params, config, fileUtil) }
+          case s: NodeSplit => { throw new NotImplementedError }
+          case _ => throw new IllegalStateException("How did you get a split that doesn't match?")
+        }
+      }
       case other => throw new IllegalStateException("Illegal feature type!")
     }
   }

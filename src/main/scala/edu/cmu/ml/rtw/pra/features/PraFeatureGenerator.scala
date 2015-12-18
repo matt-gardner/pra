@@ -21,7 +21,7 @@ class PraFeatureGenerator(
   params: JValue,
   config: PraConfig,
   fileUtil: FileUtil = new FileUtil()
-) extends FeatureGenerator {
+) extends FeatureGenerator[NodePairInstance] {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "path selector", "path follower")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
@@ -78,7 +78,7 @@ class PraFeatureGenerator(
   def selectPathFeatures(data: Dataset[NodePairInstance]): Seq[PathType] = {
     Outputter.info("Selecting path features with " + data.instances.size + " training instances")
 
-    val finder = PathFinder.create(params \ "path finder", config)
+    val finder = NodePairPathFinder.create(params \ "path finder", config)
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     finder.findPaths(config, data, edgesToExclude)
 
@@ -199,7 +199,7 @@ class PraFeatureGenerator(
     }
   }
 
-  def createPathTypeSelector(selectorParams: JValue, finder: PathFinder): PathTypeSelector = {
+  def createPathTypeSelector(selectorParams: JValue, finder: PathFinder[NodePairInstance]): PathTypeSelector = {
     val name = JsonHelper.extractWithDefault(selectorParams, "name", "MostFrequentPathTypeSelector")
     if (name.equals("MostFrequentPathTypeSelector")) {
       new MostFrequentPathTypeSelector()

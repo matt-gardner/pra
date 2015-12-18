@@ -2,7 +2,9 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -20,11 +22,11 @@ import org.json4s.Formats
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonDSL.WithDouble._
 
-class SubgraphFeatureGenerator(
+abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
   config: PraConfig,
   fileUtil: FileUtil = new FileUtil()
-) extends FeatureGenerator {
+) extends FeatureGenerator[T] {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
     "include bias", "log level")
@@ -35,20 +37,22 @@ class SubgraphFeatureGenerator(
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
-  lazy val pathFinder = PathFinder.create(params \ "path finder", config)
+  lazy val pathFinder = createPathFinder()
 
-  override def constructMatrixRow(instance: NodePairInstance) =
+  def createPathFinder(): PathFinder[T]
+
+  override def constructMatrixRow(instance: T) =
     extractFeatures(instance, getLocalSubgraph(instance))
 
-  override def createTrainingMatrix(data: Dataset[NodePairInstance]): FeatureMatrix =
+  override def createTrainingMatrix(data: Dataset[T]): FeatureMatrix =
     createMatrixFromData(data)
 
   override def removeZeroWeightFeatures(weights: Seq[Double]): Seq[Double] = weights
 
-  override def createTestMatrix(data: Dataset[NodePairInstance]): FeatureMatrix =
+  override def createTestMatrix(data: Dataset[T]): FeatureMatrix =
     createMatrixFromData(data)
 
-  def createMatrixFromData(data: Dataset[NodePairInstance]) = {
+  def createMatrixFromData(data: Dataset[T]) = {
     Outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
     val rows = data.instances.par.map(constructMatrixRow).flatten.seq
     new FeatureMatrix(rows.asJava)
@@ -78,7 +82,9 @@ class SubgraphFeatureGenerator(
 
   val featureExtractors = createExtractors(params)
 
-  def getLocalSubgraphs(data: Dataset[NodePairInstance]): Map[NodePairInstance, Subgraph] = {
+  def createExtractors(params: JValue): Seq[FeatureExtractor[T]]
+
+  def getLocalSubgraphs(data: Dataset[T]): Map[T, Subgraph] = {
     Outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
       logLevel)
 
@@ -88,12 +94,12 @@ class SubgraphFeatureGenerator(
     pathFinder.getLocalSubgraphs
   }
 
-  def getLocalSubgraph(instance: NodePairInstance): Subgraph = {
+  def getLocalSubgraph(instance: T): Subgraph = {
     val edgesToExclude = createEdgesToExclude(Seq(instance), config.unallowedEdges)
     pathFinder.getLocalSubgraph(instance, edgesToExclude)
   }
 
-  def extractFeatures(instance: NodePairInstance, subgraph: Subgraph): Option[MatrixRow] = {
+  def extractFeatures(instance: T, subgraph: Subgraph): Option[MatrixRow] = {
     val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
     if (features.size > 0) {
       Some(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
@@ -102,7 +108,7 @@ class SubgraphFeatureGenerator(
     }
   }
 
-  def extractFeatures(subgraphs: Map[NodePairInstance, Subgraph]): FeatureMatrix = {
+  def extractFeatures(subgraphs: Map[T, Subgraph]): FeatureMatrix = {
     val matrix_rows = subgraphs.par.flatMap(entry => {
       extractFeatures(entry._1, entry._2) match {
         case Some(row) => Seq(row)
@@ -110,12 +116,6 @@ class SubgraphFeatureGenerator(
       }
     }).seq.toList
     new FeatureMatrix(matrix_rows.asJava)
-  }
-
-  def createExtractors(params: JValue): Seq[FeatureExtractor] = {
-    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
-      List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => FeatureExtractor.create(params, config, fileUtil))
   }
 
   def hashFeature(feature: String): Int = {
@@ -130,7 +130,7 @@ class SubgraphFeatureGenerator(
     }
   }
 
-  def createMatrixRow(instance: NodePairInstance, features: Seq[Int]): MatrixRow = {
+  def createMatrixRow(instance: T, features: Seq[Int]): MatrixRow = {
     val size = if (includeBias) features.size + 1 else features.size
     val values = new Array[Double](size)
     for (i <- 0 until size) {
@@ -139,4 +139,18 @@ class SubgraphFeatureGenerator(
     val featureIndices = if (includeBias) features :+ 0 else features
     new MatrixRow(instance, featureIndices.toArray, values)
   }
+}
+
+class NodePairSubgraphFeatureGenerator(
+  params: JValue,
+  config: PraConfig,
+  fileUtil: FileUtil = new FileUtil()
+) extends SubgraphFeatureGenerator[NodePairInstance](params, config, fileUtil) {
+  def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
+    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
+      List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
+    extractorNames.map(params => NodePairFeatureExtractor.create(params, config, fileUtil))
+  }
+
+  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", config)
 }

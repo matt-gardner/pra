@@ -5,8 +5,8 @@ import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
+import edu.cmu.ml.rtw.pra.features.NodePairPathFinder
 import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
-import edu.cmu.ml.rtw.pra.features.PathFinder
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluder
@@ -30,7 +30,7 @@ class GraphExplorer(params: JValue, config: PraConfig) {
   def findConnectingPaths(data: Dataset[NodePairInstance]): Map[NodePairInstance, Map[PathType, Int]] = {
     Outputter.info("Finding connecting paths")
 
-    val finder = PathFinder.create(params \ "path finder", config)
+    val finder = NodePairPathFinder.create(params \ "path finder", config)
     finder.findPaths(config, data, Seq())
 
     val pathCountMap = finder.getPathCountMap().asScala.mapValues(

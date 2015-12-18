@@ -190,10 +190,9 @@ class TrainAndTest[T <: Instance](
     val config = configBuilder.build()
 
     // First we get features.
-    val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
+    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
 
-    // TODO(matt): remove the asInstanceOf
-    val trainingData = split.getTrainingData(config.relation, config.graph).asInstanceOf[Dataset[NodePairInstance]]
+    val trainingData = split.getTrainingData(config.relation, config.graph)
     val trainingMatrix = generator.createTrainingMatrix(trainingData)
 
     // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
@@ -204,13 +203,12 @@ class TrainAndTest[T <: Instance](
     }
 
     // Then we train a model.
-    val model = BatchModel.create[NodePairInstance](params \ "learning", config)
+    val model = BatchModel.create(params \ "learning", split, config)
     val featureNames = generator.getFeatureNames()
     model.train(trainingMatrix, trainingData, featureNames)
 
     // Then we test the model.
-    // TODO(matt): remove the asInstanceOf
-    val testingData = split.getTestingData(config.relation, config.graph).asInstanceOf[Dataset[NodePairInstance]]
+    val testingData = split.getTestingData(config.relation, config.graph)
     val testMatrix = generator.createTestMatrix(testingData)
     if (config.outputMatrices && config.outputBase != null) {
       val output = config.outputBase + "test_matrix.tsv"
@@ -272,10 +270,9 @@ class CreateMatrices[T <: Instance](
     val config = configBuilder.build()
 
     // First we get features.
-    val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
+    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
     val trainingData = split.getTrainingData(config.relation, config.graph)
-    // TODO(matt): remove the asInstanceOf
-    val trainingMatrix = generator.createTrainingMatrix(trainingData.asInstanceOf[Dataset[NodePairInstance]])
+    val trainingMatrix = generator.createTrainingMatrix(trainingData)
     if (config.outputMatrices && config.outputBase != null) {
       val output = config.outputBase + "training_matrix.tsv"
       config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
@@ -304,7 +301,7 @@ class SgdTrainAndTest[T <: Instance](
     val featureVectors = new concurrent.TrieMap[Instance, Option[MatrixRow]]
 
     val model = OnlineModel.create(params \ "learning", config)
-    val generator = FeatureGenerator.create(params \ "features", config, fileUtil)
+    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
 
     val trainingData = split.getTrainingData(config.relation, config.graph)
 
@@ -317,8 +314,7 @@ class SgdTrainAndTest[T <: Instance](
         val matrixRow = if (featureVectors.contains(instance)) {
           featureVectors(instance)
         } else {
-          // TODO(matt): remove the asInstanceOf
-          val row = generator.constructMatrixRow(instance.asInstanceOf[NodePairInstance])
+          val row = generator.constructMatrixRow(instance)
           if (cacheFeatureVectors) featureVectors(instance) = row
           row
         }
@@ -353,8 +349,7 @@ class SgdTrainAndTest[T <: Instance](
     // Now we test the model.
     val testingData = split.getTestingData(config.relation, config.graph)
     val scores = testingData.instances.par.map(instance => {
-      // TODO(matt): remove the asInstanceOf
-      val matrixRow = generator.constructMatrixRow(instance.asInstanceOf[NodePairInstance])
+      val matrixRow = generator.constructMatrixRow(instance)
       if (cacheFeatureVectors) featureVectors(instance) = matrixRow
       matrixRow match {
         case Some(row) => (instance, model.classifyInstance(row))

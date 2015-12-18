@@ -1,7 +1,9 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.config.PraConfig
+import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -16,16 +18,16 @@ import scala.io.Source
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-trait FeatureExtractor {
-  def extractFeatures(instance: NodePairInstance, subgraph: Subgraph): Seq[String]
+trait FeatureExtractor[T <: Instance] {
+  def extractFeatures(instance: T, subgraph: Subgraph): Seq[String]
 }
 
-object FeatureExtractor {
+object NodePairFeatureExtractor {
   def create(
     params: JValue,
     config: PraConfig,
     fileUtil: FileUtil
-  ): FeatureExtractor = {
+  ): FeatureExtractor[NodePairInstance] = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
@@ -47,7 +49,7 @@ object FeatureExtractor {
   }
 }
 
-class PraFeatureExtractor extends FeatureExtractor {
+class PraFeatureExtractor extends FeatureExtractor[NodePairInstance] {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
@@ -61,7 +63,7 @@ class PraFeatureExtractor extends FeatureExtractor {
   }
 }
 
-class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor {
+class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor[NodePairInstance] {
   val filter = PathTypeFilterCreator.create(params \ "filter")
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
@@ -77,7 +79,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor {
   }
 }
 
-class OneSidedFeatureExtractor extends FeatureExtractor {
+class OneSidedFeatureExtractor extends FeatureExtractor[NodePairInstance] {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -103,7 +105,7 @@ class OneSidedFeatureExtractor extends FeatureExtractor {
   }
 }
 
-class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
+class CategoricalComparisonFeatureExtractor extends FeatureExtractor[NodePairInstance]{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -116,7 +118,7 @@ class CategoricalComparisonFeatureExtractor extends FeatureExtractor{
   }
 }
 
-class NumericalComparisonFeatureExtractor extends FeatureExtractor{
+class NumericalComparisonFeatureExtractor extends FeatureExtractor[NodePairInstance]{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -134,7 +136,7 @@ class NumericalComparisonFeatureExtractor extends FeatureExtractor{
   def isDoubleNumber(s: String): Boolean = (allCatch opt s.toDouble).isDefined
 }
 
-class PathBigramsFeatureExtractor extends FeatureExtractor {
+class PathBigramsFeatureExtractor extends FeatureExtractor[NodePairInstance] {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
@@ -161,7 +163,7 @@ class PathBigramsFeatureExtractor extends FeatureExtractor {
 class VectorSimilarityFeatureExtractor(
     val params: JValue,
     config: PraConfig,
-    fileUtil: FileUtil = new FileUtil) extends FeatureExtractor{
+    fileUtil: FileUtil = new FileUtil) extends FeatureExtractor[NodePairInstance]{
   implicit val formats = DefaultFormats
 
   val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
@@ -207,7 +209,7 @@ class VectorSimilarityFeatureExtractor(
   }
 }
 
-class AnyRelFeatureExtractor extends FeatureExtractor{
+class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
@@ -233,7 +235,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor{
   }
 }
 
-class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor{
+class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]{
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
@@ -264,3 +266,20 @@ class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor{
     }).toSeq
   }
 }
+
+object NodeFeatureExtractor {
+  def create(
+    params: JValue,
+    config: PraConfig,
+    fileUtil: FileUtil
+  ): FeatureExtractor[NodeInstance] = {
+    params match {
+      case jval: JValue => {
+        (jval \ "name") match {
+          case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
+        }
+      }
+    }
+  }
+}
+
