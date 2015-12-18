@@ -6,6 +6,7 @@ import java.util.{Set => JavaSet}
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -233,5 +234,25 @@ class NodePairBfsPathFinder(
 
   override def nodePairMatchesInstance(pair: (Int, Int), instance: NodePairInstance): Boolean = {
     pair._1 == instance.source && pair._2 == instance.target
+  }
+}
+
+class NodeBfsPathFinder(
+  params: JValue,
+  config: PraConfig,
+  fileUtil: FileUtil = new FileUtil
+) extends BfsPathFinder[NodeInstance](params, config, fileUtil) {
+  def getSubgraphForInstance(instance: NodeInstance, unallowedEdges: Set[Int]) = {
+    val graph = instance.graph
+    val node = instance.node
+    // There's no target to watch out for if we only have a NodeInstance.
+    val fakeTarget = -1
+    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+    val subgraph = bfsFromNode(graph, node, fakeTarget, unallowedEdges, result)
+    result.mapValues(_.toSet).toMap
+  }
+
+  override def nodePairMatchesInstance(pair: (Int, Int), instance: NodeInstance): Boolean = {
+    pair._1 == instance.node
   }
 }

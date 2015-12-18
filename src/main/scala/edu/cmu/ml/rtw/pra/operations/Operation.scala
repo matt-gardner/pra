@@ -158,21 +158,29 @@ trait Operation[T <: Instance] {
 }
 
 object Operation {
+  // I had this returning an Option[Operation[T]], and I liked that, because it removes the need
+  // for NoOp.  However, it gave me a compiler warning about inferred existential types, and
+  // leaving it without the Option doesn't give me that warning.  So, I'll take the slightly more
+  // ugly design instead of the compiler warning.
   def create[T <: Instance](
       params: JValue,
       split: Split[T],
       metadataDirectory: String,
-      fileUtil: FileUtil): Option[Operation[T]] = {
+      fileUtil: FileUtil): Operation[T] = {
     val operationType = JsonHelper.extractWithDefault(params, "type", "train and test")
     operationType match {
-      case "no op" => None
-      case "train and test" => Some(new TrainAndTest(params, split, metadataDirectory, fileUtil))
-      case "explore graph" => Some(new ExploreGraph(params, split, fileUtil))
-      case "create matrices" => Some(new CreateMatrices(params, split, metadataDirectory, fileUtil))
-      case "sgd train and test" => Some(new SgdTrainAndTest(params, split, metadataDirectory, fileUtil))
+      case "no op" => new NoOp[T]
+      case "train and test" => new TrainAndTest(params, split, metadataDirectory, fileUtil)
+      case "explore graph" => new ExploreGraph(params, split, fileUtil)
+      case "create matrices" => new CreateMatrices(params, split, metadataDirectory, fileUtil)
+      case "sgd train and test" => new SgdTrainAndTest(params, split, metadataDirectory, fileUtil)
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
   }
+}
+
+class NoOp[T <: Instance] extends Operation[T] {
+  override def runRelation(configBuilder: PraConfigBuilder) { }
 }
 
 class TrainAndTest[T <: Instance](

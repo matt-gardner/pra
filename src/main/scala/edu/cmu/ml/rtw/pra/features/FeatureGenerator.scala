@@ -3,10 +3,11 @@ package edu.cmu.ml.rtw.pra.features
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
-import edu.cmu.ml.rtw.pra.data.Split
+import edu.cmu.ml.rtw.pra.data.NodeInstance
+import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodePairSplit
 import edu.cmu.ml.rtw.pra.data.NodeSplit
-import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -72,7 +73,10 @@ trait FeatureGenerator[T <: Instance] {
           ((instance.source, instance.target), edge.toInt)
         })
       }
-      case _ => throw new NotImplementedError
+      case instance: NodeInstance => {
+        Outputter.warn("EDGES TO EXCLUDE NOT IMPLEMENTED FOR NODE INSTANCES YET!  YOU COULD BE CHEATING!")
+        Seq.empty
+      }
     })
   }
 }
@@ -92,14 +96,12 @@ object FeatureGenerator {
         split match {
           case s: NodePairSplit => { new PraFeatureGenerator(params, config, fileUtil) }
           case s: NodeSplit => { throw new IllegalStateException("Can't use PRA features with just nodes") }
-          case _ => throw new IllegalStateException("How did you get a split that doesn't match?")
         }
       }
       case "subgraphs" => {
         split match {
           case s: NodePairSplit => { new NodePairSubgraphFeatureGenerator(params, config, fileUtil) }
-          case s: NodeSplit => { throw new NotImplementedError }
-          case _ => throw new IllegalStateException("How did you get a split that doesn't match?")
+          case s: NodeSplit => { new NodeSubgraphFeatureGenerator(params, config, fileUtil) }
         }
       }
       case other => throw new IllegalStateException("Illegal feature type!")

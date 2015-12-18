@@ -9,6 +9,7 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -56,7 +57,20 @@ object NodePairPathFinder {
     finderType match {
       case "RandomWalkPathFinder" => new GraphChiPathFinder(params, fileUtil)
       case "BfsPathFinder" => new NodePairBfsPathFinder(params, config, fileUtil)
-      case other => throw new IllegalStateException("Unrecognized path finder")
+      case other => throw new IllegalStateException("Unrecognized path finder for NodePairInstances")
+    }
+  }
+}
+
+object NodePathFinder {
+  def create(
+      params: JValue,
+      config: PraConfig,
+      fileUtil: FileUtil = new FileUtil): PathFinder[NodeInstance] = {
+    val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
+    finderType match {
+      case "BfsPathFinder" => new NodeBfsPathFinder(params, config, fileUtil)
+      case other => throw new IllegalStateException("Unrecognized path finder for NodeInstances")
     }
   }
 }

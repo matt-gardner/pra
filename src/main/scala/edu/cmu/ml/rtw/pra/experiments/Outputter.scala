@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
+import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
@@ -49,7 +50,13 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
           trainingData.asInstanceOf[Dataset[NodePairInstance]]
         )
       }
-      case _ => throw new NotImplementedError
+      case nodeInstance: NodeInstance => {
+        outputNodeScores(
+          filename,
+          scores.asInstanceOf[Seq[(NodeInstance, Double)]],
+          trainingData.asInstanceOf[Dataset[NodeInstance]]
+        )
+      }
     }
   }
 
@@ -86,6 +93,39 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
           writer.write("^")
         }
         writer.write("\n")
+      }
+      writer.write("\n")
+    })
+    writer.close()
+  }
+
+  def outputNodeScores(
+    filename: String,
+    scores: Seq[(NodeInstance, Double)],
+    trainingData: Dataset[NodeInstance]
+  ) {
+    val trainingInstances = trainingData.instances.toSet
+    val scoreStrings = scores.map(instanceScore => {
+      val instance = instanceScore._1
+      val score = instanceScore._2
+      val node = getNode(instance.node, instance.graph)
+      val isPositive = instance.isPositive
+      (node, isPositive, score, instance)
+    })
+
+    val writer = fileUtil.getFileWriter(filename)
+
+    scoreStrings.sortBy(-_._3).foreach(scoreString => {
+      val node = scoreString._1
+      val isPositive = scoreString._2
+      val score = scoreString._3
+      val instance = scoreString._4
+      writer.write(node + "\t" + score + "\t")
+      if (isPositive) {
+        writer.write("*")
+      }
+      if (trainingInstances.contains(instance)) {
+        writer.write("^")
       }
       writer.write("\n")
     })

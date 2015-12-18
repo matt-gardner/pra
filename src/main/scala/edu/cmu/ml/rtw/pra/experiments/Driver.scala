@@ -12,6 +12,7 @@ import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
 import edu.cmu.ml.rtw.pra.operations.Operation
+import edu.cmu.ml.rtw.pra.operations.NoOp
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
@@ -73,12 +74,11 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val split = Split.create(params \ "split", praBase, fileUtil)
 
-    val operationOption = Operation.create(params \ "operation", split, metadataDirectory, fileUtil)
-    operationOption match {
-      case None => { fileUtil.deleteFile(outputBase); return }
+    val operation = Operation.create(params \ "operation", split, metadataDirectory, fileUtil)
+    operation match {
+      case o: NoOp[_] => { fileUtil.deleteFile(outputBase); return }
       case _ => { }
     }
-    val operation = operationOption.get
 
     val start_time = System.currentTimeMillis
 

@@ -8,7 +8,7 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import org.json4s._
 
-abstract class Split[T <: Instance](params: JValue, baseDir: String, fileUtil: FileUtil) {
+sealed abstract class Split[T <: Instance](params: JValue, baseDir: String, fileUtil: FileUtil) {
   implicit val formats = DefaultFormats
 
   val directory = params match {
@@ -124,7 +124,7 @@ class NodeSplit(
 }
 
 object Split {
-  def create(params: JValue, baseDir: String, fileUtil: FileUtil = new FileUtil) = {
+  def create(params: JValue, baseDir: String, fileUtil: FileUtil = new FileUtil): Split[_ <: Instance] = {
     val instanceType = JsonHelper.extractWithDefault(params, "type", "node pair")
     instanceType match {
       case "node pair" => new NodePairSplit(params, baseDir, fileUtil)

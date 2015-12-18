@@ -36,6 +36,7 @@ object NodePairFeatureExtractor {
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
       case JString("AnyRelAliasOnlyFeatureExtractor") => new AnyRelAliasOnlyFeatureExtractor
+      case JString(other) => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
@@ -273,7 +274,11 @@ object NodeFeatureExtractor {
     config: PraConfig,
     fileUtil: FileUtil
   ): FeatureExtractor[NodeInstance] = {
+    println(pretty(render(params)))
     params match {
+      case JString("PathAndEndNodeFeatureExtractor") => new PathAndEndNodeFeatureExtractor
+      case JString("PathOnlyFeatureExtractor") => new PathOnlyFeatureExtractor
+      case JString(other) => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
       case jval: JValue => {
         (jval \ "name") match {
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
@@ -283,3 +288,47 @@ object NodeFeatureExtractor {
   }
 }
 
+class PathAndEndNodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
+  override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    subgraph.flatMap(entry => {
+      entry._2.map(nodePair => {
+        val (start, end) = nodePair
+        val path = entry._1.encodeAsHumanReadableString(graph)
+        val endNode = graph.getNodeName(end)
+        if (start == instance.node) {
+          path + ":" + endNode
+        } else {
+          Outputter.fatal(s"node: ${instance.node}")
+          Outputter.fatal(s"Left node: ${start}")
+          Outputter.fatal(s"Right node: ${end}")
+          Outputter.fatal(s"path: ${path}")
+          throw new IllegalStateException("Something is wrong with the subgraph - " +
+            "the first node should always be the instance node")
+        }
+      })
+    }).toSeq
+  }
+}
+
+class PathOnlyFeatureExtractor extends FeatureExtractor[NodeInstance] {
+  override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    subgraph.flatMap(entry => {
+      entry._2.map(nodePair => {
+        val (start, end) = nodePair
+        val path = entry._1.encodeAsHumanReadableString(graph)
+        if (start == instance.node) {
+          path
+        } else {
+          Outputter.fatal(s"node: ${instance.node}")
+          Outputter.fatal(s"Left node: ${start}")
+          Outputter.fatal(s"Right node: ${end}")
+          Outputter.fatal(s"path: ${path}")
+          throw new IllegalStateException("Something is wrong with the subgraph - " +
+            "the first node should always be the instance node")
+        }
+      })
+    }).toSeq
+  }
+}

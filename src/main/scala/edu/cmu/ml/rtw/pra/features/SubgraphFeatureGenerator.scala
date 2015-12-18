@@ -154,3 +154,17 @@ class NodePairSubgraphFeatureGenerator(
 
   def createPathFinder() = NodePairPathFinder.create(params \ "path finder", config)
 }
+
+class NodeSubgraphFeatureGenerator(
+  params: JValue,
+  config: PraConfig,
+  fileUtil: FileUtil = new FileUtil()
+) extends SubgraphFeatureGenerator[NodeInstance](params, config, fileUtil) {
+  def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
+    val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
+      List(JString("PathOnlyFeatureExtractor").asInstanceOf[JValue]))
+    extractorNames.map(params => NodeFeatureExtractor.create(params, config, fileUtil))
+  }
+
+  def createPathFinder() = NodePathFinder.create(params \ "path finder", config)
+}
