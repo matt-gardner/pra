@@ -34,8 +34,9 @@ import org.json4s.native.JsonMethods.{pretty,render,parse}
 // computation.  This Driver is the top-level object, and its main computation is an Operation.
 //
 // TODO(matt): The design paradigm mentioned above isn't quite finished yet.  I think all that is
-// left is the relation metadata, though, so it's close.  Then I should probably revisit the
-// "create all of the necessary input files" job, and see if I can design it better...
+// left is the relation metadata, though, so it's close (oh, and the Outputter).  Then I should
+// probably revisit the "create all of the necessary input files" job, and see if I can design it
+// better...
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 

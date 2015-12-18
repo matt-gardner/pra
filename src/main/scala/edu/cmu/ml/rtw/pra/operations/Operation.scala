@@ -172,7 +172,7 @@ object Operation {
       case "no op" => new NoOp[T]
       case "train and test" => new TrainAndTest(params, split, metadataDirectory, fileUtil)
       case "explore graph" => new ExploreGraph(params, split, fileUtil)
-      case "create matrices" => new CreateMatrices(params, split, metadataDirectory, fileUtil)
+      case "create matrices" => new CreateMatrices(params, split, fileUtil)
       case "sgd train and test" => new SgdTrainAndTest(params, split, metadataDirectory, fileUtil)
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
@@ -271,21 +271,32 @@ class ExploreGraph[T <: Instance](
 class CreateMatrices[T <: Instance](
   params: JValue,
   split: Split[T],
-  metadataDirectory: String,
   fileUtil: FileUtil
 ) extends Operation[T] {
+  val paramKeys = Seq("type", "features", "data")
+  val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
+
   override def runRelation(configBuilder: PraConfigBuilder) {
     val config = configBuilder.build()
 
-    // First we get features.
     val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
-    val trainingData = split.getTrainingData(config.relation, config.graph)
-    val trainingMatrix = generator.createTrainingMatrix(trainingData)
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "training_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-    }
 
+    if (dataToUse == "training" || dataToUse == "both") {
+      val trainingData = split.getTrainingData(config.relation, config.graph)
+      val trainingMatrix = generator.createTrainingMatrix(trainingData)
+      if (config.outputMatrices && config.outputBase != null) {
+        val output = config.outputBase + "training_matrix.tsv"
+        config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
+      }
+    }
+    if (dataToUse == "testing" || dataToUse == "both") {
+      val testingData = split.getTestingData(config.relation, config.graph)
+      val testingMatrix = generator.createTestMatrix(testingData)
+      if (config.outputMatrices && config.outputBase != null) {
+        val output = config.outputBase + "testing_matrix.tsv"
+        config.outputter.outputFeatureMatrix(output, testingMatrix, generator.getFeatureNames())
+      }
+    }
   }
 }
 
