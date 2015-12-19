@@ -172,7 +172,7 @@ object Operation {
       case "no op" => new NoOp[T]
       case "train and test" => new TrainAndTest(params, split, metadataDirectory, fileUtil)
       case "explore graph" => new ExploreGraph(params, split, fileUtil)
-      case "create matrices" => new CreateMatrices(params, split, fileUtil)
+      case "create matrices" => new CreateMatrices(params, split, metadataDirectory, fileUtil)
       case "sgd train and test" => new SgdTrainAndTest(params, split, metadataDirectory, fileUtil)
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
@@ -271,12 +271,14 @@ class ExploreGraph[T <: Instance](
 class CreateMatrices[T <: Instance](
   params: JValue,
   split: Split[T],
+  metadataDirectory: String,
   fileUtil: FileUtil
 ) extends Operation[T] {
   val paramKeys = Seq("type", "features", "data")
   val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
 
   override def runRelation(configBuilder: PraConfigBuilder) {
+    parseRelationMetadata(metadataDirectory, true, configBuilder)
     val config = configBuilder.build()
 
     val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
