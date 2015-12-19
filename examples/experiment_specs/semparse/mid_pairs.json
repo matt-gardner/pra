@@ -1,0 +1,18 @@
+{
+  "graph": "freebase",
+  "split": "semparse_mid_pairs",
+  "operation": {
+    "type": "create matrices",
+    "features": {
+      "type": "subgraphs",
+      "path finder": {
+        "type": "BfsPathFinder",
+        "number of steps": 2
+      },
+      "feature extractors": [
+        "PraFeatureExtractor"
+      ],
+      "feature size": -1
+    }
+  }
+}
