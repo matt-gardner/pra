@@ -198,9 +198,13 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
   def outputFeatureMatrix(filename: String, matrix: FeatureMatrix, featureNames: Seq[String]) {
     val writer = fileUtil.getFileWriter(filename)
     for (row <- matrix.getRows().asScala) {
-      val instance = row.instance.asInstanceOf[NodePairInstance]
-      writer.write(getNode(instance.source, instance.graph) + "," +
-        getNode(instance.target, instance.graph) + "\t")
+      val key = row.instance match {
+        case npi: NodePairInstance => {
+          getNode(npi.source, npi.graph) + "," + getNode(npi.target, npi.graph)
+        }
+        case ni: NodeInstance => { getNode(ni.node, ni.graph) }
+      }
+      writer.write(key + "\t")
       for (i <- 0 until row.columns) {
         val featureName = featureNames(row.featureTypes(i))
         writer.write(featureName + "," + row.values(i))
