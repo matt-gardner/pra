@@ -1,0 +1,21 @@
+{
+  "graph": "freebase",
+  "split": {
+    "name": "semparse_mids",
+    "type": "node"
+  },
+  "operation": {
+    "type": "create matrices",
+    "features": {
+      "type": "subgraphs",
+      "path finder": {
+        "type": "BfsPathFinder",
+        "number of steps": 2
+      },
+      "feature extractors": [
+        "PathOnlyFeatureExtractor"
+      ],
+      "feature size": -1
+    }
+  }
+}
