@@ -8,7 +8,6 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.mutable
 
-import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -24,7 +23,6 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
     "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
-  val config = new PraConfigBuilder().setPraBase("/").setNoChecks().build()
 
   val instance = new NodePairInstance(1, 2, true, graph)
 
@@ -95,9 +93,9 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val jval: JValue =
       ("name" -> "VectorSimilarityFeatureExtractor") ~
-      ("matrix name" -> "test") ~
+      ("matrix path" -> matrixFile) ~
       ("max similar vectors" -> 10)
-    val extractor = new VectorSimilarityFeatureExtractor(jval, config, fileUtil)
+    val extractor = new VectorSimilarityFeatureExtractor(jval, fileUtil)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     println(features)
     features.size should be(6)
@@ -117,9 +115,9 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val jval: JValue =
       ("name" -> "VectorSimilarityFeatureExtractor") ~
-      ("matrix name" -> "test") ~
+      ("matrix path" -> matrixFile) ~
       ("max similar vectors" -> 1)
-    val extractor = new VectorSimilarityFeatureExtractor(jval, config, fileUtil)
+    val extractor = new VectorSimilarityFeatureExtractor(jval, fileUtil)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     println(features)
     features.size should be(5)

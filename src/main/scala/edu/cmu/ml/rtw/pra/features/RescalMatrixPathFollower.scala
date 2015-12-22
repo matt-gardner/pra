@@ -12,10 +12,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.parallel.ParSeq
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
@@ -23,7 +24,9 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 // that are specified from params.  TODO(matt): change this to take a JValue as input for those
 // params.
 class RescalMatrixPathFollower(
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
+  graph: Graph,
   pathTypes: Seq[PathType],
   outputter: Outputter,
   val rescalDir: String,
@@ -33,15 +36,16 @@ class RescalMatrixPathFollower(
   fileUtil: FileUtil = new FileUtil
 ) extends PathFollower {
 
-  val allowedTargets =
-    if (config.allowedTargets == null) {
+  val allowedTargets = {
+    val t = relationMetadata.getAllowedTargets(relation, Some(graph))
+    if (t == null) {
       data.instances.map(_.target).toSet
     } else {
-      config.allowedTargets.map(_.toInt).toSet
+      t
     }
+  }
   val source_nodes = data.instances.map(_.source).toSet
   val positive_source_target_pairs = data.getPositiveInstances.map(i => (i.source, i.target)).toSet
-  val graph = config.graph.get
 
   override def execute = {}
   override def shutDown = {}

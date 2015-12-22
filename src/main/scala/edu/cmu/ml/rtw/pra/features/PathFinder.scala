@@ -6,12 +6,12 @@ import java.util.{Set => JavaSet}
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -31,14 +31,10 @@ trait PathFinder[T <: Instance] {
   // to a batch computation.  Some PathFinders may not support this mode of operation (it's
   // incredibly inefficient with GraphChi, for instance).  This getLocalSubgraphs method does not
   // require first running findPaths.
-  def getLocalSubgraph(instance: T, edgesToExclude: Seq[((Int, Int), Int)]): Subgraph
+  def getLocalSubgraph(instance: T): Subgraph
 
   // Does whatever computation is necessary to find paths between nodes requested in the dataset.
-  def findPaths(
-    config: PraConfig,
-    data: Dataset[T],
-    edgesToExclude: Seq[((Int, Int), Int)]
-  )
+  def findPaths(data: Dataset[T])
 
   // These look at the paths found during findPaths and output different results.  Behavior is
   // undefined if called before findPaths, and can either crash or give empty results.
@@ -50,14 +46,18 @@ trait PathFinder[T <: Instance] {
 
 object NodePairPathFinder {
   def create(
-      params: JValue,
-      config: PraConfig,
-      outputter: Outputter,
-      fileUtil: FileUtil = new FileUtil): PathFinder[NodePairInstance] = {
+    params: JValue,
+    relation: String,
+    relationMetadata: RelationMetadata,
+    outputter: Outputter,
+    fileUtil: FileUtil = new FileUtil
+  ): PathFinder[NodePairInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
-      case "RandomWalkPathFinder" => new GraphChiPathFinder(params, outputter, fileUtil)
-      case "BfsPathFinder" => new NodePairBfsPathFinder(params, config, outputter, fileUtil)
+      case "RandomWalkPathFinder" =>
+        new GraphChiPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+      case "BfsPathFinder" =>
+        new NodePairBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodePairInstances")
     }
   }
@@ -65,13 +65,16 @@ object NodePairPathFinder {
 
 object NodePathFinder {
   def create(
-      params: JValue,
-      config: PraConfig,
-      outputter: Outputter,
-      fileUtil: FileUtil = new FileUtil): PathFinder[NodeInstance] = {
+    params: JValue,
+    relation: String,
+    relationMetadata: RelationMetadata,
+    outputter: Outputter,
+    fileUtil: FileUtil = new FileUtil
+  ): PathFinder[NodeInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
-      case "BfsPathFinder" => new NodeBfsPathFinder(params, config, outputter, fileUtil)
+      case "BfsPathFinder" =>
+        new NodeBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodeInstances")
     }
   }
@@ -82,6 +85,8 @@ object NodePathFinder {
 // class can go away.
 class GraphChiPathFinder(
   params: JValue,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 ) extends PathFinder[NodePairInstance] {
@@ -95,32 +100,37 @@ class GraphChiPathFinder(
   val resetProbability = JsonHelper.extractWithDefault(params, "reset probability", 0.0)
 
   var finder: RandomWalkPathFinder = null
-  var pathTypeFactory: PathTypeFactory = null
-  var inverses: Map[Int, Int] = null
 
-  override def findPaths(
-    config: PraConfig,
-    data: Dataset[NodePairInstance],
-    edgesToExclude: Seq[((Int, Int), Int)]
-  ) {
-    // A little ugly, but this is to save some state that needs access to the config object before
-    // it can be built.  We'll need these things later when calling getPathCounts and related
-    // methods.
-    pathTypeFactory = createPathTypeFactory(params \ "path type factory", config)
-    inverses = if (config.relationInverses != null) {
-      config.relationInverses.map(x => (x._1.toInt, x._2.toInt)).toMap
-    } else {
-      Map()
+  // This is an ugly var because of a poor design in PraFeatureGenerator.  In order to create a
+  // VectorClusteringPathTypeSelector, I need access to the pathTypeFactory, which doesn't get
+  // created until I have a Graph object in findPaths...  This could be done better, but it's not
+  // worth the refactoring, because I don't use this code anymore.
+  var pathTypeFactory: PathTypeFactory = null
+
+  override def findPaths(data: Dataset[NodePairInstance]) {
+    val graph = data.instances(0).graph.asInstanceOf[GraphOnDisk]
+
+    val edgesToExclude = {
+      val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph)
+      if (unallowedEdges == null) {
+        Seq[((Int, Int), Int)]()
+      }
+      data.instances.flatMap(instance => {
+        unallowedEdges.map(edge => {
+          ((instance.source, instance.target), edge.toInt)
+        })
+      })
     }
+    pathTypeFactory = createPathTypeFactory(params \ "path type factory", graph)
 
     // Now we create and run the path finder.
-    val graph = config.graph.get.asInstanceOf[GraphOnDisk]
     finder = new RandomWalkPathFinder(graph,
       data.instances.asJava,
       new SingleEdgeExcluder(edgesToExclude),
       walksPerSource,
       PathTypePolicy.parseFromString(pathAcceptPolicy),
-      pathTypeFactory)
+      pathTypeFactory
+    )
     finder.setResetProbability(resetProbability)
     finder.execute(numIters)
     // This seems to be necessary on small graphs, at least, and maybe larger graphs, for some
@@ -130,20 +140,17 @@ class GraphChiPathFinder(
 
   override def finished() { finder.shutDown() }
 
-  override def getLocalSubgraph(
-    instance: NodePairInstance,
-    edgesToExclude: Seq[((Int, Int), Int)]
-  ): Subgraph = {
+  override def getLocalSubgraph(instance: NodePairInstance): Subgraph = {
     throw new RuntimeException("This method is not implemented for this PathFinder, " +
       "and would be incredibly inefficient to use anyway.")
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
-    GraphChiPathFinder.collapseInverses(finder.getPathCounts(), inverses, pathTypeFactory)
+    finder.getPathCounts()
   }
 
   override def getPathCountMap(): JavaMap[NodePairInstance, JavaMap[PathType, Integer]] = {
-    GraphChiPathFinder.collapseInversesInCountMap(finder.getPathCountMap(), inverses, pathTypeFactory)
+    finder.getPathCountMap()
   }
 
   override def getLocalSubgraphs() = {
@@ -151,15 +158,15 @@ class GraphChiPathFinder(
       (pair.getLeft().toInt, pair.getRight().toInt)).toSet).toMap).toMap
   }
 
-  def createPathTypeFactory(params: JValue, config: PraConfig): PathTypeFactory = {
+  def createPathTypeFactory(params: JValue, graph: GraphOnDisk): PathTypeFactory = {
     (params \ "name") match {
       case JNothing => new BasicPathTypeFactory()
-      case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params, config)
+      case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params, graph)
       case other => throw new IllegalStateException("Unregonized path type factory")
     }
   }
 
-  def createVectorPathTypeFactory(params: JValue, config: PraConfig) = {
+  def createVectorPathTypeFactory(params: JValue, graph: GraphOnDisk) = {
     outputter.info("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
@@ -167,22 +174,19 @@ class GraphChiPathFinder(
     val embeddingsFiles = (params \ "embeddings") match {
       case JNothing => Nil
       case JString(path) if (path.startsWith("/")) => List(path)
-      case JString(name) => List(s"${config.praBase}embeddings/${name}/embeddings.tsv")
       case JArray(list) => {
         list.map(_ match {
           case JString(path) if (path.startsWith("/")) => path
-          case JString(name) => s"${config.praBase}embeddings/${name}/embeddings.tsv"
-          case other => throw new IllegalStateException("Error specifying embeddings")
+          case other => throw new IllegalStateException("Error specifying embeddings (you must "
+            + "give full paths to embedding files)")
         })
       }
-      case jval => {
-        val name = (jval \ "name").extract[String]
-        List(s"${config.praBase}embeddings/${name}/embeddings.tsv")
-      }
+      case other => throw new IllegalStateException("Error specifying embeddings (you must "
+        + "give full paths to embedding files)")
     }
-    val embeddings = readEmbeddingsVectors(embeddingsFiles, config.graph.get)
+    val embeddings = readEmbeddingsVectors(embeddingsFiles, graph)
     val javaEmbeddings = embeddings.map(entry => (Integer.valueOf(entry._1), entry._2)).asJava
-    new VectorPathTypeFactory(config.graph.get, javaEmbeddings, spikiness, resetWeight)
+    new VectorPathTypeFactory(graph, javaEmbeddings, spikiness, resetWeight)
   }
 
   def readEmbeddingsVectors(embeddingsFiles: Seq[String], graph: Graph) = {
@@ -202,24 +206,4 @@ class GraphChiPathFinder(
       (relationIndex, new Vector(vector))
     }).toMap
   }
-}
-
-object GraphChiPathFinder {
-  def collapseInverses(
-      pathCounts: JavaMap[PathType, Integer],
-      inverses: Map[Int, Int],
-      pathTypeFactory: PathTypeFactory) = {
-    val javaInverses = inverses.map(x => (Integer.valueOf(x._1), Integer.valueOf(x._2))).asJava
-    pathCounts.asScala.toSeq.map(pathCount => {
-      (pathTypeFactory.collapseEdgeInverses(pathCount._1, javaInverses), pathCount._2)
-    }).groupBy(_._1).mapValues(x => Integer.valueOf(x.map(_._2.toInt).sum)).toMap.asJava
-  }
-
-  def collapseInversesInCountMap(
-      pathCountMap: JavaMap[NodePairInstance, JavaMap[PathType, Integer]],
-      inverses: Map[Int, Int],
-      pathTypeFactory: PathTypeFactory) = {
-    pathCountMap.asScala.mapValues(m => collapseInverses(m, inverses, pathTypeFactory)).asJava
-  }
-
 }

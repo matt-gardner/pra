@@ -53,13 +53,6 @@ public class BasicPathTypeFactoryTest extends TestCase {
         assertEquals(pathTypes[0], factory.fromString("-_1-2-3-"));
     }
 
-    public void testCollapseEdgeInverses() {
-        // This method should be an identity.
-        PathType pathType = factory.fromString("-1-");
-        Map<Integer, Integer> inverses = Maps.newHashMap();
-        assertTrue(pathType == factory.collapseEdgeInverses(pathType, inverses));
-    }
-
     public void testNextHop() {
         PathType pathType = factory.fromString("-1-2-");
 

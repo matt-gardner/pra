@@ -11,10 +11,10 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 
-import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -45,10 +45,10 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val path1 = factory.fromString("-1-2-3-")
   val path2 = factory.fromString("-1-2-3- INVERSE")
+  val relation = "fake relation"
+  val relationMetadata = RelationMetadata.empty
   val unallowedEdges = List(1, 3, 2)
   val graph = new GraphOnDisk("src/test/resources/", outputter)
-  val config = new PraConfigBuilder().setNoChecks()
-    .setGraph(graph).setUnallowedEdges(unallowedEdges).build()
 
   val node1 = "node1"
   val node2 = "node2"
@@ -66,23 +66,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")
-  val generator = new PraFeatureGenerator(params, config, outputter, fileUtil)
-
-  "createEdgesToExclude" should "handle the basic case" in {
-    val edgesToExclude = generator.createEdgesToExclude(data.instances, unallowedEdges)
-    edgesToExclude.size should be(6)
-    edgesToExclude.count(_ == ((node1Index, node2Index), 1)) should be(1)
-    edgesToExclude.count(_ == ((node1Index, node2Index), 3)) should be(1)
-    edgesToExclude.count(_ == ((node1Index, node2Index), 2)) should be(1)
-    edgesToExclude.count(_ == ((node3Index, node4Index), 1)) should be(1)
-    edgesToExclude.count(_ == ((node3Index, node4Index), 3)) should be(1)
-    edgesToExclude.count(_ == ((node3Index, node4Index), 2)) should be(1)
-  }
-
-  it should "work with an empty dataset" in {
-    val edgesToExclude = generator.createEdgesToExclude(Seq(), unallowedEdges)
-    edgesToExclude.size should be(0)
-  }
+  val generator = new PraFeatureGenerator(params, graph, relation, relationMetadata, outputter, fileUtil)
 
   // TODO(matt): this method should move to a PathFollower object, after PathFollower is moved from
   // java to scala.

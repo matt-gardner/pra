@@ -1,11 +1,11 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -24,7 +24,6 @@ import org.json4s.JsonDSL.WithDouble._
 
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
-  config: PraConfig,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator[T] {
@@ -89,15 +88,13 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
       logLevel)
 
-    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
-    pathFinder.findPaths(config, data, edgesToExclude)
+    pathFinder.findPaths(data)
 
     pathFinder.getLocalSubgraphs
   }
 
   def getLocalSubgraph(instance: T): Subgraph = {
-    val edgesToExclude = createEdgesToExclude(Seq(instance), config.unallowedEdges)
-    pathFinder.getLocalSubgraph(instance, edgesToExclude)
+    pathFinder.getLocalSubgraph(instance)
   }
 
   def extractFeatures(instance: T, subgraph: Subgraph): Option[MatrixRow] = {
@@ -144,30 +141,34 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
 class NodePairSubgraphFeatureGenerator(
   params: JValue,
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodePairInstance](params, config, outputter, fileUtil) {
+) extends SubgraphFeatureGenerator[NodePairInstance](params, outputter, fileUtil) {
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodePairFeatureExtractor.create(params, config, outputter, fileUtil))
+    extractorNames.map(params => NodePairFeatureExtractor.create(params, outputter, fileUtil))
   }
 
-  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", config, outputter)
+  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", relation,
+    relationMetadata, outputter, fileUtil)
 }
 
 class NodeSubgraphFeatureGenerator(
   params: JValue,
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodeInstance](params, config, outputter, fileUtil) {
+) extends SubgraphFeatureGenerator[NodeInstance](params, outputter, fileUtil) {
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PathOnlyFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodeFeatureExtractor.create(params, config, outputter, fileUtil))
+    extractorNames.map(params => NodeFeatureExtractor.create(params, outputter, fileUtil))
   }
 
-  def createPathFinder() = NodePathFinder.create(params \ "path finder", config, outputter)
+  def createPathFinder() =
+    NodePathFinder.create(params \ "path finder", relation, relationMetadata, outputter)
 }

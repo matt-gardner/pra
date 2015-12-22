@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -114,10 +113,9 @@ class GraphDensifier(
   }
 
   def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
-    // TODO(matt): ugly!  oh well...  I need to migrate this code to using the new Graph object.
-    // But this code was experimental anyway, and didn't really work, so why bother?
-    val builder = new PraConfigBuilder
-    builder.setGraph(new GraphOnDisk(graph_dir, outputter, fileUtil))
+    outputter.fatal("THIS CODE IS BROKEN AND NEEDS TO BE UPDATED!")
+    throw new RuntimeException("Dead code...")
+    /*
     outputter.info(s"Metadata directory: $metadata")
     val inverses = createInverses(metadata, builder, fileUtil)
     outputter.info(s"Inverses size: ${inverses.size}")
@@ -143,6 +141,7 @@ class GraphDensifier(
         }
       })
     }).toSet
+    */
   }
 
   def readGraphEdges(edge_file: String, test_edges: Set[(Int, Int, Int)]): Map[(Int, Int), SparseVector[Double]] = {
@@ -205,35 +204,6 @@ class GraphDensifier(
     params match {
       case JString(name) => name
       case jval => (params \ "name").extract[String]
-    }
-  }
-
-  // BAD!  I just copied this code from somewhere else because exposing it from that other location
-  // became ugly.  I really need a better design for how to pass this kind of information around.
-  // But, this code is basically dead at this point, so it's not worth fixing just for this.
-  def createInverses(
-      directory: String,
-      builder: PraConfigBuilder,
-      fileUtil: FileUtil = new FileUtil): Map[Int, Int] = {
-    val inverses = new mutable.HashMap[Int, Int]
-    if (directory == null) {
-      inverses.toMap
-    } else {
-      val graph = builder.graph.get
-      val filename = directory + "inverses.tsv"
-      if (!fileUtil.fileExists(filename)) {
-        inverses.toMap
-      } else {
-        for (line <- fileUtil.readLinesFromFile(filename)) {
-          val parts = line.split("\t")
-          val rel1 = graph.getEdgeIndex(parts(0))
-          val rel2 = graph.getEdgeIndex(parts(1))
-          inverses.put(rel1, rel2)
-          // Just for good measure, in case the file only lists each relation once.
-          inverses.put(rel2, rel1)
-        }
-        inverses.toMap
-      }
     }
   }
 }

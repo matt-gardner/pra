@@ -46,18 +46,4 @@ public interface PathTypeFactory extends ObjectParser<PathType> {
    * an intermediate node.  pathFromTarget should be reversed, then appended to pathToSource.
    */
   public PathType addToPathType(PathType pathType, int relation, int node, boolean reverse);
-
-  /**
-   * Given a PathType that may have redundantly encoded edge types, collapse the inverses into a
-   * less redundant version.
-   *
-   * Note that the only effect this has is to reduce redundancy in the feature space.  You should
-   * not rely on this inverse collapsing to handle the proper exclusion of edges (see
-   * EdgeExcluder).  Depending on the graph encoding, this could also be a bad idea - the only time
-   * this could actually be a good idea is when you are guaranteed to have an inverse edge for
-   * every edge in the graph.  So the default handling of this method is actually an identity.  But
-   * you have the option to reduce some redundancy, if you know some things about how your graph is
-   * constructed.
-   */
-  public PathType collapseEdgeInverses(PathType pathType, Map<Integer, Integer> edgeInverses);
 }

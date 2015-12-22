@@ -3,12 +3,12 @@ package edu.cmu.ml.rtw.pra.features
 import java.util.{Map => JavaMap}
 import java.util.{Set => JavaSet}
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
@@ -26,7 +26,8 @@ import scala.collection.parallel.ParMap
 
 abstract class BfsPathFinder[T <: Instance](
   params: JValue,
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 )  extends PathFinder[T] {
@@ -48,24 +49,14 @@ abstract class BfsPathFinder[T <: Instance](
 
   var results: Map[T, Subgraph] = null
 
-  override def getLocalSubgraph(
-    instance: T,
-    edgesToExclude: Seq[((Int, Int), Int)]
-  ): Subgraph = {
-    // We're going to ignore the edgesToExclude here, and just use the unallowedEdges from the
-    // config object.  I'm not sure how I ended up with two different ways to get the same input,
-    // but that needs to be fixed somewhere...
-    getSubgraphForInstance(instance, config.unallowedEdges.toSet)
+  override def getLocalSubgraph(instance: T): Subgraph = {
+    getSubgraphForInstance(instance)
   }
 
-  override def findPaths(
-    config: PraConfig,
-    data: Dataset[T],
-    edgesToExclude: Seq[((Int, Int), Int)]
-  ) {
+  override def findPaths(data: Dataset[T]) {
     outputter.outputAtLevel("Running BFS...  ", logLevel)
     val start = compat.Platform.currentTime
-    results = runBfs(data, config.unallowedEdges.toSet)
+    results = runBfs(data)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
     outputter.outputAtLevel(s"Took ${seconds} seconds", logLevel)
@@ -96,11 +87,11 @@ abstract class BfsPathFinder[T <: Instance](
   def nodePairMatchesInstance(pair: (Int, Int), instance: T): Boolean
 
   override def getLocalSubgraphs() = results
-  def getSubgraphForInstance(instance: T, unallowedEdges: Set[Int]): Subgraph
+  def getSubgraphForInstance(instance: T): Subgraph
 
   override def finished() { }
 
-  def runBfs(data: Dataset[T], unallowedEdges: Set[Int]) = {
+  def runBfs(data: Dataset[T]) = {
     val instances = data.instances
     // This line is just to make sure the graph gets loaded (lazily) before the parallel calls, if
     // the data is using a shared graph.
@@ -115,7 +106,7 @@ abstract class BfsPathFinder[T <: Instance](
     // BFS for each instance holding out just a _single_ edge from the graph - the training edge
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
-    instances.par.map(instance => (instance -> getSubgraphForInstance(instance, unallowedEdges))).seq.toMap
+    instances.par.map(instance => (instance -> getSubgraphForInstance(instance))).seq.toMap
   }
 
   // The return value here is a map of (end node -> path types).  The resultsByPathType is
@@ -210,12 +201,14 @@ abstract class BfsPathFinder[T <: Instance](
 
 class NodePairBfsPathFinder(
   params: JValue,
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodePairInstance](params, config, outputter, fileUtil) {
-  def getSubgraphForInstance(instance: NodePairInstance, unallowedEdges: Set[Int]) = {
+) extends BfsPathFinder[NodePairInstance](params, relation, relationMetadata, outputter, fileUtil) {
+  def getSubgraphForInstance(instance: NodePairInstance) = {
     val graph = instance.graph
+    val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val source = instance.source
     val target = instance.target
     val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
@@ -241,12 +234,14 @@ class NodePairBfsPathFinder(
 
 class NodeBfsPathFinder(
   params: JValue,
-  config: PraConfig,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodeInstance](params, config, outputter, fileUtil) {
-  def getSubgraphForInstance(instance: NodeInstance, unallowedEdges: Set[Int]) = {
+) extends BfsPathFinder[NodeInstance](params, relation, relationMetadata, outputter, fileUtil) {
+  def getSubgraphForInstance(instance: NodeInstance) = {
     val graph = instance.graph
+    val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val node = instance.node
     // There's no target to watch out for if we only have a NodeInstance.
     val fakeTarget = -1

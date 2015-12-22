@@ -279,5 +279,10 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
 }
 
 object Outputter {
-  val justLogger = new Outputter(JNothing, "/dev/null", "/dev/null")
+  val justLogger = new Outputter(JNothing, "/dev/null", "/dev/null") {
+    override def logToFile(message: String) {
+      println("NOT LOGGING TO FILE, THIS JUST LOGS TO STDOUT!")
+      println("Message was: " + message)
+    }
+  }
 }

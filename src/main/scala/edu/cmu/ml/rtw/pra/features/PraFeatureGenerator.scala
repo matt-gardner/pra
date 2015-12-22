@@ -1,9 +1,9 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -19,7 +19,9 @@ import org.json4s.native.JsonMethods._
 
 class PraFeatureGenerator(
   params: JValue,
-  config: PraConfig,
+  graph: GraphOnDisk,
+  relation: String,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator[NodePairInstance] {
@@ -28,9 +30,6 @@ class PraFeatureGenerator(
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
   var pathTypes: Seq[PathType] = null
-
-  // With PraFeatureGenerator, we assume a single shared graph.
-  val graph = config.graph.get.asInstanceOf[GraphOnDisk]
 
   override def constructMatrixRow(instance: NodePairInstance): Option[MatrixRow] = {
     // The reason this would be complicated is because we can't do this without having first
@@ -78,9 +77,8 @@ class PraFeatureGenerator(
   def selectPathFeatures(data: Dataset[NodePairInstance]): Seq[PathType] = {
     outputter.info("Selecting path features with " + data.instances.size + " training instances")
 
-    val finder = NodePairPathFinder.create(params \ "path finder", config, outputter)
-    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
-    finder.findPaths(config, data, edgesToExclude)
+    val finder = NodePairPathFinder.create(params \ "path finder", relation, relationMetadata, outputter)
+    finder.findPaths(data)
 
     // Next we get the resultant path counts.
     val pathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
@@ -110,9 +108,6 @@ class PraFeatureGenerator(
    *
    * @param pathTypes A list of {@link PathType} objects specifying the path types to follow from
    *     each source node.
-   * @param outputFile If not null, the location to save the computed feature matrix.  We can't
-   *     just use config.outputBase here, because this method gets called from several places,
-   *     with potentially different filenames under config.outputBase.
    *
    * @return A feature matrix encoded as a list of {@link MatrixRow} objects.  Note that this
    *     feature matrix may not have rows corresponding to every source in sourcesMap if there
@@ -125,7 +120,6 @@ class PraFeatureGenerator(
     isTraining: Boolean
   ) = {
     outputter.info("Computing feature values")
-    val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
     val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
     follower.execute()
     if (follower.usesGraphChi()) {
@@ -147,7 +141,20 @@ class PraFeatureGenerator(
     isTraining: Boolean
   ): PathFollower = {
     val name = JsonHelper.extractWithDefault(followerParams, "name", "random walks")
-    val edgeExcluder = new SingleEdgeExcluder(createEdgesToExclude(data.instances, config.unallowedEdges))
+    val edgesToExclude = {
+      val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph)
+      if (unallowedEdges == null) {
+        Seq[((Int, Int), Int)]()
+      }
+      data.instances.flatMap(instance => {
+        unallowedEdges.map(edge => {
+          ((instance.source, instance.target), edge.toInt)
+        })
+      })
+    }
+    val edgeExcluder = new SingleEdgeExcluder(edgesToExclude)
+    val allowedTargets = relationMetadata.getAllowedTargets(relation, Some(graph))
+
     if (name.equals("random walks")) {
       val followerParamKeys = Seq("name", "walks per path", "matrix accept policy",
         "matrix accept policy: training", "matrix accept policy: test", "normalize walk probabilities")
@@ -159,7 +166,7 @@ class PraFeatureGenerator(
       new RandomWalkPathFollower(
         graph,
         data.instances.asJava,
-        if (config.allowedTargets == null) null else config.allowedTargets.map(x => Integer.valueOf(x)).asJava,
+        if (allowedTargets == null) null else allowedTargets.map(x => Integer.valueOf(x)).asJava,
         edgeExcluder,
         pathTypes.asJava,
         walksPerPath,
@@ -180,7 +187,7 @@ class PraFeatureGenerator(
         outputter,
         matrix_dir,
         data,
-        if (config.allowedTargets == null) null else config.allowedTargets.toSet,
+        allowedTargets,
         edgeExcluder,
         max_fan_out,
         normalize,
@@ -193,7 +200,18 @@ class PraFeatureGenerator(
       val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
       val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
       val negativesPerSource = JsonHelper.extractWithDefault(followerParams, "negatives per source", 15)
-      new RescalMatrixPathFollower(config, pathTypes, outputter, rescal_dir, data, negativesPerSource, acceptPolicy, fileUtil)
+      new RescalMatrixPathFollower(
+        relation,
+        relationMetadata,
+        graph,
+        pathTypes,
+        outputter,
+        rescal_dir,
+        data,
+        negativesPerSource,
+        acceptPolicy,
+        fileUtil
+      )
     } else {
       throw new IllegalStateException("Unrecognized path follower")
     }

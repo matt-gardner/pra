@@ -1,8 +1,6 @@
 package edu.cmu.ml.rtw.pra.experiments
 
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.pra.config.PraConfig
-import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.SplitCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
@@ -57,17 +55,23 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     createDenserMatricesIfNecessary(params, outputter)
     createSplitIfNecessary(params \ "split", outputter)
 
-    val metadataDirectory: String = (params \ "relation metadata") match {
-      case JNothing => null
-      case JString(path) if (path.startsWith("/")) => fileUtil.addDirectorySeparatorIfNecessary(path)
-      case JString(name) => s"${praBase}relation_metadata/${name}/"
-      case other => throw new IllegalStateException("relation metadata parameter must be either "
-        + "a string or absent")
-    }
-
+    val relationMetadata =
+      new RelationMetadata(params \ "relation metadata", praBase, outputter, fileUtil)
     val split = Split.create(params \ "split", praBase, outputter, fileUtil)
 
-    val operation = Operation.create(params \ "operation", split, metadataDirectory, outputter, fileUtil)
+    val graphDirectory = (params \ "graph") match {
+      case JNothing => None
+      case JString(path) if (path.startsWith("/")) => Some(path)
+      case JString(name) => Some(praBase + "/graphs/" + name + "/")
+      case jval => Some(praBase + "/graphs/" + (jval \ "name").extract[String] + "/")
+    }
+    val graph = graphDirectory match {
+      case None => None
+      case Some(dir) => Some(new GraphOnDisk(dir, outputter))
+    }
+
+    val operation =
+      Operation.create(params \ "operation", graph, split, relationMetadata, outputter, fileUtil)
     operation match {
       case o: NoOp[_] => { outputter.clean(); return }
       case _ => { }
@@ -75,28 +79,15 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val start_time = System.currentTimeMillis
 
-    val baseBuilder = new PraConfigBuilder()
-    baseBuilder.setPraBase(praBase)
     outputter.writeGlobalParams(params)
-
-    val graphDirectory = getGraphDirectory(params)
-    if (graphDirectory != null) {
-      val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-      val graph = new GraphOnDisk(dir, outputter)
-      baseBuilder.setGraph(graph)
-    }
-
-    val baseConfig = baseBuilder.setNoChecks().build()
 
     for (relation <- split.relations()) {
       val relation_start = System.currentTimeMillis
-      val builder = new PraConfigBuilder(baseConfig)
-      builder.setRelation(relation)
       outputter.info("\n\n\n\nRunning PRA for relation " + relation)
 
       outputter.setRelation(relation)
 
-      operation.runRelation(builder)
+      operation.runRelation(relation)
 
       val relation_end = System.currentTimeMillis
       val millis = relation_end - relation_start
@@ -298,15 +289,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         val creator = new SplitCreator(params, praBase, split_dir, outputter, fileUtil)
         creator.createSplit()
       }
-    }
-  }
-
-  def getGraphDirectory(params: JValue): String = {
-    (params \ "graph") match {
-      case JNothing => null
-      case JString(path) if (path.startsWith("/")) => path
-      case JString(name) => praBase + "/graphs/" + name + "/"
-      case jval => praBase + "/graphs/" + (jval \ "name").extract[String] + "/"
     }
   }
 }

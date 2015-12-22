@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
@@ -25,7 +24,6 @@ trait FeatureExtractor[T <: Instance] {
 object NodePairFeatureExtractor {
   def create(
     params: JValue,
-    config: PraConfig,
     outputter: Outputter,
     fileUtil: FileUtil
   ): FeatureExtractor[NodePairInstance] = {
@@ -41,7 +39,7 @@ object NodePairFeatureExtractor {
       case jval: JValue => {
         (jval \ "name") match {
           case JString("VectorSimilarityFeatureExtractor") => {
-            new VectorSimilarityFeatureExtractor(jval, config, fileUtil)
+            new VectorSimilarityFeatureExtractor(jval, fileUtil)
           }
           case JString("PraFeatureExtractorWithFilter") => new PraFeatureExtractorWithFilter(jval)
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
@@ -164,16 +162,14 @@ class PathBigramsFeatureExtractor extends FeatureExtractor[NodePairInstance] {
 
 class VectorSimilarityFeatureExtractor(
     val params: JValue,
-    config: PraConfig,
     fileUtil: FileUtil = new FileUtil) extends FeatureExtractor[NodePairInstance]{
   implicit val formats = DefaultFormats
 
-  val allowedParamKeys = Seq("name", "matrix name", "max similar vectors")
+  val allowedParamKeys = Seq("name", "matrix path", "max similar vectors")
   JsonHelper.ensureNoExtras(params, "VectorSimilarityFeatureExtractor", allowedParamKeys)
-  val matrixName = (params \ "matrix name").extract[String]
+  val matrixPath = (params \ "matrix path").extract[String]
   val maxSimilarVectors = JsonHelper.extractWithDefault(params, "max similar vectors", 10)
   // build similarity matrix in memory
-  val matrixPath = s"${config.praBase}embeddings/${matrixName}/matrix.tsv"
   val lines = fileUtil.readLinesFromFile(matrixPath)
   val pairs = lines.map(line => {
     val words = line.split("\t")
@@ -272,7 +268,6 @@ class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]
 object NodeFeatureExtractor {
   def create(
     params: JValue,
-    config: PraConfig,
     outputter: Outputter,
     fileUtil: FileUtil
   ): FeatureExtractor[NodeInstance] = {

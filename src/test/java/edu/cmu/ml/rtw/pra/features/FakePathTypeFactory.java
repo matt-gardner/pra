@@ -40,13 +40,6 @@ public class FakePathTypeFactory implements PathTypeFactory {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public PathType collapseEdgeInverses(PathType pathType, Map<Integer, Integer> edgeInverses) {
-        String description = pathType.encodeAsString();
-        if (description.contains("INVERSE")) return pathType;
-        return new FakePathType(description + " INVERSE");
-    }
-
     public static class FakePathType implements PathType {
 
         private String description;

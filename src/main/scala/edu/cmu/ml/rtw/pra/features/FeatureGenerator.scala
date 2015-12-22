@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
@@ -9,6 +8,9 @@ import edu.cmu.ml.rtw.pra.data.NodePairSplit
 import edu.cmu.ml.rtw.pra.data.NodeSplit
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
+import edu.cmu.ml.rtw.pra.graphs.Graph
+import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -57,53 +59,43 @@ trait FeatureGenerator[T <: Instance] {
    */
   def getFeatureNames(): Array[String]
 
-  def createEdgesToExclude(
-    instances: Seq[T],
-    unallowedEdges: Seq[Int]
-  ): Seq[((Int, Int), Int)] = {
-    // If there was no input data (e.g., if we are actually trying to predict new edges, not
-    // just hide edges from ourselves to try to recover), then there aren't any edges to
-    // exclude.  So return an empty list.
-    if (unallowedEdges == null) {
-      return Seq()
-    }
-    instances.flatMap(_ match {
-      case instance: NodePairInstance => {
-        unallowedEdges.map(edge => {
-          ((instance.source, instance.target), edge.toInt)
-        })
-      }
-      case instance: NodeInstance => {
-        // TODO(matt): implement something here, and remove the println
-        println("EDGES TO EXCLUDE NOT IMPLEMENTED FOR NODE INSTANCES YET!  YOU COULD BE CHEATING!")
-        Seq.empty
-      }
-    })
-  }
 }
 
 object FeatureGenerator {
   // We need to take the split as input here because it's what contains the type information.  I
   // need a concrete object to match type on.
   def create[T <: Instance](
-      params: JValue,
-      config: PraConfig,
-      split: Split[T],
-      outputter: Outputter,
-      fileUtil: FileUtil = new FileUtil): FeatureGenerator[T] = {
+    params: JValue,
+    graph: Option[Graph],
+    split: Split[T],
+    relation: String,
+    relationMetadata: RelationMetadata,
+    outputter: Outputter,
+    fileUtil: FileUtil = new FileUtil
+  ): FeatureGenerator[T] = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
     outputter.info("feature type being used is " + featureType)
     featureType match {
       case "pra" => {
         split match {
-          case s: NodePairSplit => { new PraFeatureGenerator(params, config, outputter, fileUtil) }
+          case s: NodePairSplit =>
+            new PraFeatureGenerator(
+              params,
+              graph.get.asInstanceOf[GraphOnDisk],
+              relation,
+              relationMetadata,
+              outputter,
+              fileUtil
+            )
           case s: NodeSplit => { throw new IllegalStateException("Can't use PRA features with just nodes") }
         }
       }
       case "subgraphs" => {
         split match {
-          case s: NodePairSplit => { new NodePairSubgraphFeatureGenerator(params, config, outputter, fileUtil) }
-          case s: NodeSplit => { new NodeSubgraphFeatureGenerator(params, config, outputter, fileUtil) }
+          case s: NodePairSplit =>
+            new NodePairSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, fileUtil)
+          case s: NodeSplit =>
+            new NodeSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, fileUtil)
         }
       }
       case other => throw new IllegalStateException("Illegal feature type!")

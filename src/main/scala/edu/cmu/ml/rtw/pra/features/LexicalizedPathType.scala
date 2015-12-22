@@ -238,12 +238,4 @@ class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
     }
     new LexicalizedPathType(combinedEdgeTypes, combinedNodes, combinedReverse, params)
   }
-
-  /**
-   * We don't try to handle this by default, because it can cause problems if the graph isn't
-   * constructed in a specific way.  But you can subclass this and change that, if you want.
-   */
-  override def collapseEdgeInverses(pathType: PathType, edgeInverses: java.util.Map[Integer, Integer]) = {
-    pathType
-  }
 }

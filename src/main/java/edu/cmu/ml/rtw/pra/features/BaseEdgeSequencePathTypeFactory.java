@@ -74,13 +74,4 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
     combinedReverse[totalHops - 1] = reverse;
     return newInstance(combinedEdgeTypes, combinedReverse);
   }
-
-  /**
-   * We don't try to handle this by default, because it can cause problems if the graph isn't
-   * constructed in a specific way.  But you can subclass this and change that, if you want.
-   */
-  @Override
-  public PathType collapseEdgeInverses(PathType pathType, Map<Integer, Integer> edgeInverses) {
-    return pathType;
-  }
 }
