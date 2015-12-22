@@ -74,7 +74,8 @@ trait FeatureGenerator[T <: Instance] {
         })
       }
       case instance: NodeInstance => {
-        Outputter.warn("EDGES TO EXCLUDE NOT IMPLEMENTED FOR NODE INSTANCES YET!  YOU COULD BE CHEATING!")
+        // TODO(matt): implement something here, and remove the println
+        println("EDGES TO EXCLUDE NOT IMPLEMENTED FOR NODE INSTANCES YET!  YOU COULD BE CHEATING!")
         Seq.empty
       }
     })
@@ -88,20 +89,21 @@ object FeatureGenerator {
       params: JValue,
       config: PraConfig,
       split: Split[T],
+      outputter: Outputter,
       fileUtil: FileUtil = new FileUtil): FeatureGenerator[T] = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
-    Outputter.info("feature type being used is " + featureType)
+    outputter.info("feature type being used is " + featureType)
     featureType match {
       case "pra" => {
         split match {
-          case s: NodePairSplit => { new PraFeatureGenerator(params, config, fileUtil) }
+          case s: NodePairSplit => { new PraFeatureGenerator(params, config, outputter, fileUtil) }
           case s: NodeSplit => { throw new IllegalStateException("Can't use PRA features with just nodes") }
         }
       }
       case "subgraphs" => {
         split match {
-          case s: NodePairSplit => { new NodePairSubgraphFeatureGenerator(params, config, fileUtil) }
-          case s: NodeSplit => { new NodeSubgraphFeatureGenerator(params, config, fileUtil) }
+          case s: NodePairSplit => { new NodePairSubgraphFeatureGenerator(params, config, outputter, fileUtil) }
+          case s: NodeSplit => { new NodeSubgraphFeatureGenerator(params, config, outputter, fileUtil) }
         }
       }
       case other => throw new IllegalStateException("Illegal feature type!")

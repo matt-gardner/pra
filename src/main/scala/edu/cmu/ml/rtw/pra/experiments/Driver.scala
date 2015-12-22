@@ -40,30 +40,22 @@ import org.json4s.native.JsonMethods.{pretty,render,parse}
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
-  def runPra(_outputBase: String, params: JValue) {
-    // The "create" key is special - it's not used for anything here, but if there's some object
-    // you want to create with a PRA mode of "no op", and can't or don't want to put the object in
-    // the proper nested place, you can put it under "create", and it will be found by the
-    // "filterField" calls below.  This will work for creating embeddings, similarity matrices, and
-    // (maybe) denser matrices.
-    val baseKeys = Seq("graph", "split", "relation metadata", "operation", "output matrices", "create")
+  def runPra(methodName: String, params: JValue) {
+    val baseKeys = Seq("graph", "split", "relation metadata", "operation", "output")
     JsonHelper.ensureNoExtras(params, "base", baseKeys)
-    val outputBase = fileUtil.addDirectorySeparatorIfNecessary(_outputBase)
-    fileUtil.mkdirOrDie(outputBase)
 
-    // We create the graph first here, because we allow a "no op" PRA mode, which means just create
-    // the graph and quit.  But we have to do this _after_ we create the output directory, or we
-    // could get two threads trying to do the same experiment when one of them has to create a
-    // graph first.  We'll delete the output directory in the case of a no op.
-    createGraphIfNecessary(params \ "graph")
-
-    // And these are all part of "creating the graph", basically, they just deal with augmenting
-    // the graph by doing some factorization.
-    createEmbeddingsIfNecessary(params)
-    createSimilarityMatricesIfNecessary(params)
-    createDenserMatricesIfNecessary(params)
-
-    createSplitIfNecessary(params \ "split")
+    // We create the these auxiliary input files first here, because we allow a "no op" operation,
+    // which means just create all of the generated input files and then quit.  But we have to do
+    // this _after_ we create the output directory with outputter.begin(), so that two experiments
+    // needing the same graph won't both try to create it, or think that it's done while it's still
+    // being made.  We'll delete the output directory in the case of a no op.
+    val outputter = new Outputter(params \ "output", praBase, methodName, fileUtil)
+    outputter.begin()
+    createGraphIfNecessary(params \ "graph", outputter)
+    createEmbeddingsIfNecessary(params, outputter)
+    createSimilarityMatricesIfNecessary(params, outputter)
+    createDenserMatricesIfNecessary(params, outputter)
+    createSplitIfNecessary(params \ "split", outputter)
 
     val metadataDirectory: String = (params \ "relation metadata") match {
       case JNothing => null
@@ -73,11 +65,11 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         + "a string or absent")
     }
 
-    val split = Split.create(params \ "split", praBase, fileUtil)
+    val split = Split.create(params \ "split", praBase, outputter, fileUtil)
 
-    val operation = Operation.create(params \ "operation", split, metadataDirectory, fileUtil)
+    val operation = Operation.create(params \ "operation", split, metadataDirectory, outputter, fileUtil)
     operation match {
-      case o: NoOp[_] => { fileUtil.deleteFile(outputBase); return }
+      case o: NoOp[_] => { outputter.clean(); return }
       case _ => { }
     }
 
@@ -85,25 +77,14 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
 
     val baseBuilder = new PraConfigBuilder()
     baseBuilder.setPraBase(praBase)
-    var writer = fileUtil.getFileWriter(outputBase + "params.json")
-    writer.write(pretty(render(params)))
-    writer.close()
+    outputter.writeGlobalParams(params)
 
     val graphDirectory = getGraphDirectory(params)
     if (graphDirectory != null) {
       val dir = fileUtil.addDirectorySeparatorIfNecessary(graphDirectory)
-      val graph = new GraphOnDisk(dir)
+      val graph = new GraphOnDisk(dir, outputter)
       baseBuilder.setGraph(graph)
     }
-
-    val nodeNames =
-      if (metadataDirectory != null && fileUtil.fileExists(metadataDirectory + "node_names.tsv")) {
-        fileUtil.readMapFromTsvFile(metadataDirectory + "node_names.tsv", true)
-      } else null
-    baseBuilder.setOutputter(new Outputter(nodeNames))
-    // TODO(matt): move this parameter to the outputter.
-    baseBuilder.setOutputMatrices(JsonHelper.extractWithDefault(params, "output matrices", false))
-    Outputter.info(s"Outputting matrices: ${baseBuilder.outputMatrices}")
 
     val baseConfig = baseBuilder.setNoChecks().build()
 
@@ -111,11 +92,9 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val relation_start = System.currentTimeMillis
       val builder = new PraConfigBuilder(baseConfig)
       builder.setRelation(relation)
-      Outputter.info("\n\n\n\nRunning PRA for relation " + relation)
+      outputter.info("\n\n\n\nRunning PRA for relation " + relation)
 
-      val outdir = fileUtil.addDirectorySeparatorIfNecessary(outputBase + relation)
-      fileUtil.mkdirs(outdir)
-      builder.setOutputBase(outdir)
+      outputter.setRelation(relation)
 
       operation.runRelation(builder)
 
@@ -124,23 +103,19 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       var seconds = (millis / 1000).toInt
       val minutes = seconds / 60
       seconds = seconds - minutes * 60
-      writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append to the file.
-      writer.write(s"Time for relation $relation: $minutes minutes and $seconds seconds\n")
-      writer.close()
+      outputter.logToFile(s"Time for relation $relation: $minutes minutes and $seconds seconds\n")
     }
     val end_time = System.currentTimeMillis
     val millis = end_time - start_time
     var seconds = (millis / 1000).toInt
     val minutes = seconds / 60
     seconds = seconds - minutes * 60
-    writer = fileUtil.getFileWriter(outputBase + "log.txt", true)  // true -> append to the file.
-    writer.write("PRA appears to have finished all relations successfully\n")
-    writer.write(s"Total time: $minutes minutes and $seconds seconds\n")
-    writer.close()
-    Outputter.info(s"Took $minutes minutes and $seconds seconds")
+    outputter.logToFile("PRA appears to have finished all relations successfully\n")
+    outputter.logToFile(s"Total time: $minutes minutes and $seconds seconds\n")
+    outputter.info(s"Total time: $minutes minutes and $seconds seconds")
   }
 
-  def createGraphIfNecessary(params: JValue) {
+  def createGraphIfNecessary(params: JValue, outputter: Outputter) {
     var graph_name = ""
     var params_specified = false
     // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
@@ -162,14 +137,14 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       // Here we need to see if the graph has already been created, and (if so) whether the graph
       // as specified matches what's already been created.
       val graph_dir = s"${praBase}graphs/${graph_name}/"
-      val creator = new GraphCreator(praBase, graph_dir, fileUtil)
+      val creator = new GraphCreator(praBase, graph_dir, outputter, fileUtil)
       if (fileUtil.fileExists(graph_dir)) {
         fileUtil.blockOnFileDeletion(creator.inProgressFile)
         val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
         if (params_specified == true && !graphParamsMatch(current_params, params)) {
-          Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-          Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
-          Outputter.fatal(s"Difference: ${current_params.diff(params)}")
+          outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+          outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
+          outputter.fatal(s"Difference: ${current_params.diff(params)}")
           throw new IllegalStateException("Graph parameters don't match!")
         }
       } else {
@@ -188,7 +163,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       params2.removeField(_._1.equals("denser matrices"))
   }
 
-  def createEmbeddingsIfNecessary(params: JValue) {
+  def createEmbeddingsIfNecessary(params: JValue, outputter: Outputter) {
     val embeddings = params.filterField(field => field._1.equals("embeddings")).flatMap(_._2 match {
       case JArray(list) => list
       case other => List(other)
@@ -196,13 +171,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     embeddings.filter(_ match {case JString(name) => false; case other => true })
       .par.map(embedding_params => {
         val name = (embedding_params \ "name").extract[String]
-        Outputter.info(s"Checking for embeddings with name ${name}")
+        outputter.info(s"Checking for embeddings with name ${name}")
         val embeddingsDir = s"${praBase}embeddings/$name/"
         val paramFile = embeddingsDir + "params.json"
         val graph = praBase + "graphs/" + (embedding_params \ "graph").extract[String] + "/"
-        val decomposer = new PcaDecomposer(graph, embeddingsDir)
+        val decomposer = new PcaDecomposer(graph, embeddingsDir, outputter)
         if (!fileUtil.fileExists(embeddingsDir)) {
-          Outputter.info(s"Creating embeddings with name ${name}")
+          outputter.info(s"Creating embeddings with name ${name}")
           val dims = (embedding_params \ "dims").extract[Int]
           decomposer.createPcaRelationEmbeddings(dims)
           val out = fileUtil.getFileWriter(paramFile)
@@ -212,16 +187,16 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
           fileUtil.blockOnFileDeletion(decomposer.in_progress_file)
           val current_params = parse(fileUtil.readLinesFromFile(paramFile).mkString("\n"))
           if (current_params != embedding_params) {
-            Outputter.fatal(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
-            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
-            Outputter.fatal(s"Difference: ${current_params.diff(embedding_params)}")
+            outputter.fatal(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
+            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
+            outputter.fatal(s"Difference: ${current_params.diff(embedding_params)}")
             throw new IllegalStateException("Embedding parameters don't match!")
           }
         }
     })
   }
 
-  def createSimilarityMatricesIfNecessary(params: JValue) {
+  def createSimilarityMatricesIfNecessary(params: JValue, outputter: Outputter) {
     val matrices = params.filterField(field => field._1.equals("similarity matrix")).flatMap(_._2 match {
       case JArray(list) => list
       case other => List(other)
@@ -230,16 +205,16 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       .par.map(matrixParams => {
         val embeddingsDir = getEmbeddingsDir(matrixParams \ "embeddings")
         val name = (matrixParams \ "name").extract[String]
-        val creator = new SimilarityMatrixCreator(embeddingsDir, name)
+        val creator = new SimilarityMatrixCreator(embeddingsDir, name, outputter)
         if (!fileUtil.fileExists(creator.matrixDir)) {
           creator.createSimilarityMatrix(matrixParams)
         } else {
           fileUtil.blockOnFileDeletion(creator.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
-            Outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            Outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
+            outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Similarity matrix parameters don't match!")
           }
         }
@@ -257,7 +232,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     }
   }
 
-  def createDenserMatricesIfNecessary(params: JValue) {
+  def createDenserMatricesIfNecessary(params: JValue, outputter: Outputter) {
     val matrices = params.filterField(field => field._1.equals("denser matrices")).flatMap(_._2 match {
       case JArray(list) => list
       case other => List(other)
@@ -267,23 +242,23 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
         val graphName = (params \ "graph" \ "name").extract[String]
         val graphDir = s"${praBase}/graphs/${graphName}/"
         val name = (matrixParams \ "name").extract[String]
-        val densifier = new GraphDensifier(praBase, graphDir, name)
+        val densifier = new GraphDensifier(praBase, graphDir, name, outputter)
         if (!fileUtil.fileExists(densifier.matrixDir)) {
           densifier.densifyGraph(matrixParams)
         } else {
           fileUtil.blockOnFileDeletion(densifier.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
-            Outputter.fatal(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
-            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            Outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
+            outputter.fatal(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
+            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Denser matrix parameters don't match!")
           }
         }
     })
   }
 
-  def createSplitIfNecessary(params: JValue) {
+  def createSplitIfNecessary(params: JValue, outputter: Outputter) {
     var split_name = ""
     var params_specified = false
     // First, is this just a path, or do the params specify a split name?  If it's a path, we'll
@@ -307,20 +282,20 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       val in_progress_file = SplitCreator.inProgressFile(split_dir)
       val param_file = SplitCreator.paramFile(split_dir)
       if (fileUtil.fileExists(split_dir)) {
-        Outputter.info(s"Split found in ${split_dir}")
+        outputter.info(s"Split found in ${split_dir}")
         fileUtil.blockOnFileDeletion(in_progress_file)
         if (fileUtil.fileExists(param_file)) {
           val current_params = parse(fileUtil.readLinesFromFile(param_file).mkString("\n"))
           if (params_specified == true && current_params != params) {
-            Outputter.fatal(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
-            Outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
-            Outputter.fatal(s"Difference: ${current_params.diff(params)}")
+            outputter.fatal(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
+            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
+            outputter.fatal(s"Difference: ${current_params.diff(params)}")
             throw new IllegalStateException("Split parameters don't match!")
           }
         }
       } else {
-        Outputter.info(s"Split not found at ${split_dir}; creating it...")
-        val creator = new SplitCreator(params, praBase, split_dir, fileUtil)
+        outputter.info(s"Split not found at ${split_dir}; creating it...")
+        val creator = new SplitCreator(params, praBase, split_dir, outputter, fileUtil)
         creator.createSplit()
       }
     }

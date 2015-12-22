@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.data
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
@@ -38,7 +39,7 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(badDatasetFilename, badDatasetFile)
   fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n")
-  val graphOnDisk = new GraphOnDisk("/graph/", fileUtil)
+  val graphOnDisk = new GraphOnDisk("/graph/", Outputter.justLogger, fileUtil)
 
   "DatasetReader.readNodePairFile" should "crash on bad third column" in {
     TestUtil.expectError(classOf[IllegalStateException], "not formatted correctly", new Function() {

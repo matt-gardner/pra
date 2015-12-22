@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import org.scalatest._
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileWriter
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -21,7 +22,6 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val aliasesOnly = false
   val aliasRelation = "alias"
   val aliasFileFormat = "nell"
-  val embeddingsFile = "test embeddings file"
   val prefix = "prefix-"
   val keepOriginalEdges = false
   val alias1 = "alias1"
@@ -62,10 +62,14 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val kbRelationFileContents =
     concept1 + "\t" + concept2 + "\t" + relation1 + "\n" +
     concept1 + "\t" + concept2 + "\t" + relation2 + "\n"
+  val embeddingsFile = "test embeddings file"
+  val embeddingsFileContents =
+    verb1 + "\t" + embedded1 + "\t" + embedded2 + "\n"
+  val kbEmbeddingsFile = "test kb embeddings file"
+  val kbEmbeddingsFileContents =
+    relation1 + "\t" + embedded1 + "\t" + embedded2 + "\n"
 
 
-  val embeddings = Map(verb1 -> List(embedded1, embedded2))
-  val kbEmbeddings = Map(relation1 -> List(embedded1, embedded2))
   val aliasesSet = Map(np1 -> List(concept1), np2 -> List(concept1, concept2))
   val aliases = List(("alias", aliasesSet))
 
@@ -93,14 +97,16 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     ("aliases only" -> aliasesOnly) ~
     ("alias relation" -> aliasRelation) ~
     ("alias file format" -> aliasFileFormat) ~
-    ("embeddings file" -> embeddingsFile) ~
     ("keep original edges" -> keepOriginalEdges)
 
+  val outputter = Outputter.justLogger
   val fileUtil = new FakeFileUtil()
   fileUtil.addFileToBeRead(relationFile, relationFileContents)
   fileUtil.addFileToBeRead(kbRelationFile, kbRelationFileContents)
   fileUtil.addFileToBeRead(aliasFile, aliasFileContents)
   fileUtil.addFileToBeRead(freebaseAliasFile, freebaseAliasFileContents)
+  fileUtil.addFileToBeRead(embeddingsFile, embeddingsFileContents)
+  fileUtil.addFileToBeRead(kbEmbeddingsFile, kbEmbeddingsFileContents)
 
   def expectCount[T](collection: Seq[T], element: T, count: Int) {
     val actualCount = collection.filter(_.equals(element)).size
@@ -109,7 +115,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   "getAliases" should "read NELL formatted aliases" in {
     val params: JValue = ("alias file format" -> "nell") ~ ("alias file" -> aliasFile)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val aliases = relationSet.getAliases
     expectCount(aliases(np1), concept1, 1)
@@ -119,7 +125,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "read freebase formatted aliases" in {
     val params: JValue = ("alias file format" -> "freebase") ~ ("alias file" -> freebaseAliasFile)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val aliases = relationSet.getAliases()
     aliases.size should be(3)
@@ -133,7 +139,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     TestUtil.expectError(classOf[IllegalStateException], "Unrecognized alias file format", new Function() {
       override def call() {
         val params: JValue = ("alias file format" -> "unknown")
-        val relationSet = new RelationSet(defaultParams merge params)
+        val relationSet = new RelationSet(defaultParams merge params, outputter)
         val aliases = relationSet.getAliases()
       }
     })
@@ -141,7 +147,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   "getEmbeddedRelations" should "just return the relation with empty embeddings map" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params)
+    val relationSet = new RelationSet(defaultParams merge params, outputter)
 
     val result = relationSet.getEmbeddedRelations(relation1, Map())
     result.size should be(1)
@@ -150,7 +156,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "just return the relation with null embeddings map" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params)
+    val relationSet = new RelationSet(defaultParams merge params, outputter)
 
     val result = relationSet.getEmbeddedRelations(relation1, null)
     result.size should be(1)
@@ -159,7 +165,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "return embeddings with they are present" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params)
+    val relationSet = new RelationSet(defaultParams merge params, outputter)
     val embeddings = Map(relation1 -> List(embedded1, embedded2))
 
     val result = relationSet.getEmbeddedRelations(relation1, embeddings)
@@ -170,7 +176,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "keep original edges when requested" in {
     val params: JValue = ("is kb" -> false) ~ ("keep original edges" -> true)
-    val relationSet = new RelationSet(defaultParams merge params)
+    val relationSet = new RelationSet(defaultParams merge params, outputter)
     val embeddings = Map(relation1 -> List(embedded1, embedded2))
     val result = relationSet.getEmbeddedRelations(relation1, embeddings)
     result.size should be(3)
@@ -180,11 +186,12 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   }
 
   "writeRelationEdges" should "write surface relation sets correctly" in {
-    val relationFile = "/relation/file"
+    val relationFile = "test relation file"
     val fileUtil = new FakeFileUtil()
     fileUtil.addFileToBeRead(relationFile, relationFileContents)
-    val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    fileUtil.addFileToBeRead(embeddingsFile, embeddingsFileContents)
+    val params: JValue = ("is kb" -> false) ~ ("embeddings file" -> embeddingsFile)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -198,15 +205,15 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       np1Index + "\t" + np2Index + "\t" + embedded1Index + "\n",
       np1Index + "\t" + np2Index + "\t" + embedded2Index + "\n",
       np1Index + "\t" + np2Index + "\t" + verb2Index + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      relationFile, embeddings, null, prefix, seenNps, aliases, writer, nodeDict, edgeDict)
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 
   it should "replace edge labels when requested to" in {
     val params: JValue = ("is kb" -> false) ~ ("replace relations with" -> replaced)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -219,15 +226,15 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       // And verb edges.
       np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n",
       np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      relationFile, embeddings, null, prefix, seenNps, aliases, writer, nodeDict, edgeDict)
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 
   it should "write aliases only correctly" in {
     val params: JValue = ("is kb" -> false ) ~ ("aliases only" -> true)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -237,15 +244,17 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       np1Index + "\t" + concept1Index + "\t" + aliasRelationIndex + "\n",
       np2Index + "\t" + concept1Index + "\t" + aliasRelationIndex + "\n",
       np2Index + "\t" + concept2Index + "\t" + aliasRelationIndex + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      relationFile, embeddings, null, prefix, seenNps, aliases, writer, nodeDict, edgeDict)
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 
   it should "write KB relations correctly" in {
-    val params: JValue = ("is kb" -> true)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val params: JValue = ("is kb" -> true) ~
+      ("embeddings file" -> kbEmbeddingsFile) ~
+      ("relation file" -> kbRelationFile)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -254,40 +263,43 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       concept1Index + "\t" + concept2Index + "\t" + embedded1Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + embedded2Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + relation2Index + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      kbRelationFile, kbEmbeddings, null, prefix, seenNps, aliases, writer, nodeDict, edgeDict)
+    println("IN THIS TEST")
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
+    println("DONE WITH THIS TEST")
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 
   it should "handle prefixes correctly" in {
-    val params: JValue = ("is kb" -> true) ~ ("relation prefix" -> prefix)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val params: JValue = ("is kb" -> true) ~
+      ("relation file" -> kbRelationFile) ~
+      ("relation prefix" -> prefix)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
 
     val expected = List(concept1Index + "\t" + concept2Index + "\t" + relation1Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + relation2Index + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      kbRelationFile, Map(), null, null, seenNps, aliases, writer, nodeDict, edgeDict)
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, null, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 
   it should "handle the absense of prefixes correctly" in {
-    val params: JValue = ("is kb" -> true)
-    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
+    val params: JValue = ("is kb" -> true) ~ ("relation file" -> kbRelationFile)
+    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
 
     val expected = List(concept1Index + "\t" + concept2Index + "\t" + relationNoPrefix1Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + relationNoPrefix2Index + "\n")
-    val numEdges = relationSet.writeRelationEdgesFromFile(
-      kbRelationFile, Map(), null, null, seenNps, aliases, writer, nodeDict, edgeDict)
+    val numEdges = relationSet.writeRelationEdgesToGraphFile(
+      writer, null, null, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
 }
-

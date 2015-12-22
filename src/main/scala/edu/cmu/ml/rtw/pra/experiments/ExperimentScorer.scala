@@ -38,9 +38,11 @@ object ExperimentScorer {
   val relationMetrics_ = List("AP")
   val significanceThreshold = 0.05
 
+  val outputter = Outputter.justLogger
+
   def main(args: Array[String]) {
     if (args.length < 1) {
-      Outputter.fatal("Must supply a base directory as the first argument to ExperimentScorer")
+      outputter.fatal("Must supply a base directory as the first argument to ExperimentScorer")
       return
     }
     val pra_base = args(0)
@@ -211,7 +213,7 @@ object ExperimentScorer {
       displayNameSplit: String,
       saved_metrics: Option[MutableRelationMetrics],
       metricComputers: Seq[MetricComputer]): MutableRelationMetrics = {
-    Outputter.info(s"Getting metrics for experiment $experiment_dir, using computers $metricComputers")
+    outputter.info(s"Getting metrics for experiment $experiment_dir, using computers $metricComputers")
     val metrics = EmptyRelationMetricsWithDefaults
     // Getting the split dir and relations first.
     val split_dir = findSplitDir(pra_base, experiment_dir)
@@ -233,14 +235,14 @@ object ExperimentScorer {
             || !saved_metrics.get(relation).isDefinedAt(TIMESTAMP)
             || saved_metrics.get(relation)(TIMESTAMP) < timestamp) {
           metrics(relation)(TIMESTAMP) = timestamp
-          Outputter.info(s"Computing metrics for relation $relation")
+          outputter.info(s"Computing metrics for relation $relation")
           for (metricComputer <- metricComputers) {
             val fixed = relation.replace("/", "_")
             var test_split_file = s"$split_dir/$fixed/testing.tsv"
             if (!new File(test_split_file).exists()) {
-              Outputter.error(s"Couldn't find testing file in split dir $split_dir - this is probably an "
+              outputter.error(s"Couldn't find testing file in split dir $split_dir - this is probably an "
                 + "error")
-              Outputter.error(s"Filename I was looking for was this: $test_split_file")
+              outputter.error(s"Filename I was looking for was this: $test_split_file")
               test_split_file = s"$experiment_dir/$relation/testing_positive_examples.tsv"
             }
             val relation_metrics = metricComputer.computeRelationMetrics(results_file, test_split_file)
@@ -266,7 +268,7 @@ object ExperimentScorer {
       timestamp = saved_metrics.get(DATASET_RELATION)(TIMESTAMP)
     }
     if (last_timestamp > timestamp) {
-      Outputter.info("Computing dataset metrics")
+      outputter.info("Computing dataset metrics")
       metrics(DATASET_RELATION)(TIMESTAMP) = last_timestamp
       val relation_metrics = metrics.filter(x => x._1 != DATASET_RELATION && x._1 != DISPLAY_NAME)
 

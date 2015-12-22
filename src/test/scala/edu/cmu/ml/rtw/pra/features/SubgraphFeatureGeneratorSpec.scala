@@ -24,12 +24,12 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val params: JValue = ("include bias" -> true)
-  val graph = new GraphOnDisk("src/test/resources/")
-  val config = new PraConfigBuilder().setOutputBase("/").setNoChecks()
-    .setGraph(graph).build()
+  val outputter = Outputter.justLogger
+  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val config = new PraConfigBuilder().setNoChecks().setGraph(graph).build()
   val fakeFileUtil = new FakeFileUtil
 
-  val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil)
+  val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil)
   generator.featureDict.getIndex("feature1")
   generator.featureDict.getIndex("feature2")
   generator.featureDict.getIndex("feature3")
@@ -48,7 +48,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   "createMatrixFromData" should "return call constructMatrixRow on all instances" in {
     val subgraph = getSubgraph(instance)
     val row = new MatrixRow(instance, Array[Int](), Array[Double]())
-    val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil) {
+    val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil) {
       override def constructMatrixRow(_instance: NodePairInstance) = {
         if (_instance != instance) throw new RuntimeException()
         Some(row)
@@ -86,7 +86,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {
-    val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil) {
+    val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil) {
       override def createExtractors(params: JValue) = {
         Seq(new FeatureExtractor[NodePairInstance]() {
           override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
@@ -107,13 +107,13 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   "createExtractors" should "create PraFeatureExtractors correctly" in {
     val params: JValue = ("feature extractors" -> List("PraFeatureExtractor"))
-    val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil)
+    val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil)
     generator.featureExtractors(0).getClass should be(classOf[PraFeatureExtractor])
   }
 
   it should "create OneSidedFeatureExtractors correctly" in {
     val params: JValue = ("feature extractors" -> List("OneSidedFeatureExtractor"))
-    val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil)
+    val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil)
     generator.featureExtractors(0).getClass should be(classOf[OneSidedFeatureExtractor])
   }
 
@@ -121,7 +121,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val params: JValue = ("feature extractors" -> List("non-existant extractor"))
     TestUtil.expectError(classOf[IllegalStateException], "Unrecognized feature extractor", new Function() {
       def call() {
-        val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil)
+        val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil)
       }
     })
   }
@@ -134,7 +134,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   it should "correctly hash to the feature size when hashing is enabled" in {
     val params: JValue = ("feature size" -> 10)
-    val generator = new NodePairSubgraphFeatureGenerator(params, config, fakeFileUtil)
+    val generator = new NodePairSubgraphFeatureGenerator(params, config, outputter, fakeFileUtil)
     val hash7 = generator.featureDict.getIndex("hash-7")
     val hash2 = generator.featureDict.getIndex("hash-2")
     val string1 = "a"  // hash code is 97

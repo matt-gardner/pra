@@ -29,7 +29,7 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
  * The Driver creates all of these objects, and passes them to the other parts of the code that
  * need them.
  *
- * Split is now done.
+ * Split and Outputter are now done.
  */
 class PraConfig(builder: PraConfigBuilder) {
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,27 +38,6 @@ class PraConfig(builder: PraConfigBuilder) {
 
   // Path to the graph file to use for the random walks.
   val graph = builder.graph
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  // Output-related objects
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // If not null, a directory where we should save the output for later inspection.  If null, we do
-  // not save anything.
-  val outputBase = builder.outputBase
-
-  // A class that handles output.  If you want a node name translator (which is in addition to the
-  // node dictionary, like translating Freebase MIDs to human-readable strings), you need to
-  // initialize this yourself and set it in the builder.  Otherwise, we'll just use the nodeDict
-  // and edgeDict that are already here.
-  val outputter = builder.outputter
-
-  // Whether or not we should save the train/test matrices that are created when running PRA.
-  // These files can be very large, so if all you care about is the MAP or MRR score of each run,
-  // you should probably not create them.  They can be very helpful for debugging, though.  I would
-  // recommend leaving this as false (the default), unless you need to debug something or do some
-  // error analysis, then you can set it to true.
-  val outputMatrices = builder.outputMatrices
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
   // Relation-metadata-related objects - inverses, ranges, and the like
@@ -117,9 +96,6 @@ class PraConfigBuilder(config: PraConfig = null) {
   var allowedTargets: Set[Int] = if (config != null) config.allowedTargets else null
   var unallowedEdges: Seq[Int] = if (config != null) config.unallowedEdges else Seq()
   var relationInverses: Map[Int, Int] = if (config != null) config.relationInverses else null
-  var outputBase: String = if (config != null) config.outputBase else null
-  var outputMatrices: Boolean = if (config != null) config.outputMatrices else false
-  var outputter: Outputter = if (config != null) config.outputter else null
   var praBase: String = if (config != null) config.praBase else null
 
   var noChecks = false
@@ -129,15 +105,9 @@ class PraConfigBuilder(config: PraConfig = null) {
   def setAllowedTargets(a: Set[Int]) = {this.allowedTargets = a;this;}
   def setUnallowedEdges(e: Seq[Int]) = {this.unallowedEdges = e;this;}
   def setRelationInverses(i: Map[Int, Int]) = {relationInverses = i;this;}
-  def setOutputBase(outputBase: String) = {this.outputBase = outputBase;this;}
-  def setOutputter(o: Outputter) = {this.outputter = o;this;}
-  def setOutputMatrices(o: Boolean) = {this.outputMatrices = o;this;}
   def setPraBase(o: String) = {this.praBase = o;this;}
 
   def build(): PraConfig = {
-    if (outputter == null) {
-      outputter = new Outputter(null, new FileUtil())
-    }
     if (noChecks) return new PraConfig(this)
 
     // TODO(matt): Do we really need this check any more?  Probably not...

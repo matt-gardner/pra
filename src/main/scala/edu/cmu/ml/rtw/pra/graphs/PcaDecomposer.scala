@@ -11,8 +11,10 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 class PcaDecomposer(
-    graph_dir: String,
-    result_dir: String) {
+  graph_dir: String,
+  result_dir: String,
+  outputter: Outputter
+) {
 
   val fileUtil = new FileUtil
   val graph_file = graph_dir + "/graph_chi/edges.tsv"
@@ -28,7 +30,7 @@ class PcaDecomposer(
     fileUtil.touchFile(in_progress_file)
     val rows = new mutable.HashMap[(Int, Int), mutable.ArrayBuffer[(Int, Double)]]
 
-    Outputter.info("Reading graph from file")
+    outputter.info("Reading graph from file")
     for (line <- fileUtil.readLinesFromFile(graph_file)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
@@ -39,7 +41,7 @@ class PcaDecomposer(
       rels += Tuple2(relation, value)
     }
 
-    Outputter.info(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
+    outputter.info(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
     val builder = new CSCMatrix.Builder[Double](rows.size, edge_dict.getNextIndex)
     var i = 0
     for (row <- rows) {
@@ -52,12 +54,12 @@ class PcaDecomposer(
     }
     val matrix = builder.result
 
-    Outputter.info(s"Performing SVD with $dims dimensions")
+    outputter.info(s"Performing SVD with $dims dimensions")
     val svd.SVD(u, s, v) = svd(matrix, dims)
-    Outputter.info(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
+    outputter.info(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
     val weights = breeze.numerics.sqrt(s)
 
-    Outputter.info("Saving results")
+    outputter.info("Saving results")
     val out = fileUtil.getFileWriter(result_dir + "embeddings.tsv")
     for (i <- 1 until edge_dict.getNextIndex) {
       val vector = v(::, i) :* weights

@@ -8,7 +8,6 @@ import cc.mallet.types.InstanceList
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.Split
@@ -28,7 +27,11 @@ import scala.collection.mutable
  * classification time, or your model will be all messed up.
  */
 
-abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Boolean, logLevel: Int) {
+abstract class BatchModel[T <: Instance](
+  binarizeFeatures: Boolean,
+  outputter: Outputter,
+  logLevel: Int
+) {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
@@ -43,7 +46,7 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
       data: InstanceList,
       alphabet: Alphabet) {
 
-    Outputter.info("Separating into positive, negative, unseen")
+    outputter.info("Separating into positive, negative, unseen")
     val grouped = featureMatrix.getRows().asScala.groupBy(row => {
       if (row.instance.isPositive == true)
         "positive"
@@ -58,18 +61,8 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
     val positiveMatrix = new FeatureMatrix(grouped.getOrElse("positive", Seq()).asJava)
     val negativeMatrix = new FeatureMatrix(grouped.getOrElse("negative", Seq()).asJava)
     val unseenMatrix = new FeatureMatrix(grouped.getOrElse("unseen", Seq()).asJava)
-    // TODO(matt): this shouldn't have any checks on it, because those should be inside
-    // config.outputter.  And it'd be nice to figure out how to get rid of the feature names
-    // parameter to this method, but we'll worry about that later...
-    if (config.outputMatrices && config.outputBase != null) {
-      Outputter.info("Outputting matrices")
-      val base = config.outputBase
-      config.outputter.outputFeatureMatrix(s"${base}positive_matrix.tsv", positiveMatrix, featureNames)
-      config.outputter.outputFeatureMatrix(s"${base}negative_matrix.tsv", negativeMatrix, featureNames)
-      config.outputter.outputFeatureMatrix(s"${base}unseen_matrix.tsv", unseenMatrix, featureNames)
-    }
 
-    Outputter.info("Converting positive matrix to MALLET instances and adding to the dataset")
+    outputter.info("Converting positive matrix to MALLET instances and adding to the dataset")
     // First convert the positive matrix to a scala object
     positiveMatrix.getRows().asScala
     // Then, in parallel, map the MatrixRow objects there to MALLET Instance objects
@@ -80,25 +73,25 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
         data.addThruPipe(instance)
       })
 
-    Outputter.info("Adding negative evidence")
+    outputter.info("Adding negative evidence")
     val numPositiveFeatures = positiveMatrix.getRows().asScala.map(_.columns).sum
     var numNegativeFeatures = 0
     for (negativeExample <- negativeMatrix.getRows().asScala) {
       numNegativeFeatures += negativeExample.columns
       data.addThruPipe(matrixRowToInstance(negativeExample, alphabet))
     }
-    Outputter.info("Number of positive features: " + numPositiveFeatures)
-    Outputter.info("Number of negative features: " + numNegativeFeatures)
+    outputter.info("Number of positive features: " + numPositiveFeatures)
+    outputter.info("Number of negative features: " + numNegativeFeatures)
     if (numNegativeFeatures < numPositiveFeatures) {
-      Outputter.info("Using unseen examples to make up the difference")
+      outputter.info("Using unseen examples to make up the difference")
       val difference = numPositiveFeatures - numNegativeFeatures
       var numUnseenFeatures = 0.0
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         numUnseenFeatures += unseenExample.columns
       }
-      Outputter.info("Number of unseen features: " + numUnseenFeatures)
+      outputter.info("Number of unseen features: " + numUnseenFeatures)
       val unseenWeight = difference / numUnseenFeatures
-      Outputter.info("Unseen weight: " + unseenWeight)
+      outputter.info("Unseen weight: " + unseenWeight)
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         val unseenInstance = matrixRowToInstance(unseenExample, alphabet)
         data.addThruPipe(unseenInstance)
@@ -117,7 +110,7 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
    *     from the features in the feature matrix and the learned weights.
    */
   def classifyInstances(featureMatrix: FeatureMatrix): Seq[(T, Double)] = {
-    Outputter.outputAtLevel("Classifying instances", logLevel)
+    outputter.outputAtLevel("Classifying instances", logLevel)
     featureMatrix.getRows().asScala.map(matrixRow => {
       val score = classifyMatrixRow(matrixRow)
       (matrixRow.instance.asInstanceOf[T], score)
@@ -136,11 +129,11 @@ abstract class BatchModel[T <: Instance](config: PraConfig, binarizeFeatures: Bo
 
 object BatchModel{
   // The Split object is necessary here to nail down a specific type.
-  def create[T <: Instance](params: JValue, split: Split[T], config: PraConfig): BatchModel[T] = {
+  def create[T <: Instance](params: JValue, split: Split[T], outputter: Outputter): BatchModel[T] = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
-      case "logistic regression" => new LogisticRegressionModel[T](config, params)
-      case "svm" => new SVMModel[T](config, params)
+      case "logistic regression" => new LogisticRegressionModel[T](params, outputter)
+      case "svm" => new SVMModel[T](params, outputter)
       case other => throw new IllegalStateException("Unrecognized model type")
     }
   }

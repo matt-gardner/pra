@@ -23,14 +23,14 @@ import org.json4s.native.JsonMethods._
  * but it does not actually produce a feature matrix.  The idea here is just to see what
  * connections there are between a set of nodes in a graph, and that's it.
  */
-class GraphExplorer(params: JValue, config: PraConfig) {
+class GraphExplorer(params: JValue, config: PraConfig, outputter: Outputter) {
   val paramKeys = Seq("path finder")
   JsonHelper.ensureNoExtras(params, "operation -> explore", paramKeys)
 
   def findConnectingPaths(data: Dataset[NodePairInstance]): Map[NodePairInstance, Map[PathType, Int]] = {
-    Outputter.info("Finding connecting paths")
+    outputter.info("Finding connecting paths")
 
-    val finder = NodePairPathFinder.create(params \ "path finder", config)
+    val finder = NodePairPathFinder.create(params \ "path finder", config, outputter)
     finder.findPaths(config, data, Seq())
 
     val pathCountMap = finder.getPathCountMap().asScala.mapValues(

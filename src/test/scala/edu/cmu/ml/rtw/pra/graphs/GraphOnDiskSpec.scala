@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
 import scala.collection.mutable
@@ -9,6 +10,7 @@ import org.scalatest._
 
 class GraphOnDiskSpec extends FlatSpecLike with Matchers {
 
+  val outputter = Outputter.justLogger
   val graphFilename = "/graph/graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
       "1\t3\t1\n" +
@@ -23,7 +25,7 @@ class GraphOnDiskSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
 
   "loadGraph" should "correctly read in a graph" in {
-    val graph = new GraphOnDisk("/graph/", fileUtil)
+    val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
     graph.entries.size should be(7)
     graph.getNode(0).edges should be(Map())
     graph.getNode(1).edges.size should be(4)

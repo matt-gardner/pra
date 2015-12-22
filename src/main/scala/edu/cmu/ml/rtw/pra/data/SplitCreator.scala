@@ -17,6 +17,7 @@ class SplitCreator(
     params: JValue,
     praBase: String,
     splitDir: String,
+    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
   // TODO(matt): now that I've added another type, I should clean this up a bit...  And the graph
@@ -45,7 +46,7 @@ class SplitCreator(
   }
 
   def createSplitFromMetadata() {
-    Outputter.info(s"Creating split at $splitDir")
+    outputter.info(s"Creating split at $splitDir")
     val percentTraining = (params \ "percent training").extract[Double]
     val relations = (params \ "relations").extract[List[String]]
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
@@ -56,7 +57,7 @@ class SplitCreator(
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val graph = new GraphOnDisk(graphDir, fileUtil)
+    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
@@ -78,7 +79,7 @@ class SplitCreator(
       } else {
         addNegativeExamples(all_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       }
-      Outputter.info("Splitting data")
+      outputter.info("Splitting data")
       val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
@@ -89,14 +90,14 @@ class SplitCreator(
   }
 
   def addNegativeToSplit() {
-    Outputter.info(s"Creating split at $splitDir")
+    outputter.info(s"Creating split at $splitDir")
     fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val graph = new GraphOnDisk(graphDir, fileUtil)
+    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
@@ -154,8 +155,8 @@ class SplitCreator(
     params match {
       case JNothing => null
       case jval => {
-        val graph = new GraphOnDisk(graphDir, fileUtil)
-        new PprNegativeExampleSelector(params, graph)
+        val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+        new PprNegativeExampleSelector(params, graph, outputter)
       }
     }
   }

@@ -13,6 +13,7 @@ import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
+import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.Index;
@@ -39,7 +40,7 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private Pair<Integer, Integer> sourceTargetPair =
       new Pair<Integer, Integer>(sourceNode, targetNode);
   private int intermediateNode = 3;
-  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", new FileUtil());
+  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
   private NodePairInstance instance = new NodePairInstance(sourceNode, targetNode, true, graph);
   private List<NodePairInstance> instances = Lists.newArrayList();
 

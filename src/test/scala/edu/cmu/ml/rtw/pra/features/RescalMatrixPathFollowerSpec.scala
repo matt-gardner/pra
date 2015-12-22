@@ -10,12 +10,14 @@ import breeze.linalg._
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
+  val outputter = Outputter.justLogger
   val numNodes = 3
   val path_type_factory = new BasicPathTypeFactory()
   val path_types = Seq(
@@ -90,12 +92,13 @@ class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   }
 
   lazy val creator = {
-    val graph = new GraphOnDisk("/graph/", fileUtil)
+    val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
     val config = new PraConfigBuilder().setGraph(graph).setNoChecks().build()
     val negativesPerSource = 20
     new RescalMatrixPathFollower(
       config,
       path_types,
+      outputter,
       "",
       new Dataset[NodePairInstance](Seq(
         new NodePairInstance(1, 1, true, graph),

@@ -54,10 +54,10 @@ trait PprComputer {
 }
 
 object PprComputerCreator {
-  def create(params: JValue, graph: Graph, random: Random): PprComputer = {
+  def create(params: JValue, graph: Graph, outputter: Outputter, random: Random): PprComputer = {
     val pprComputerType = JsonHelper.extractWithDefault(params, "type", "InMemoryPprComputer")
     pprComputerType match {
-      case "InMemoryPprComputer" => new InMemoryPprComputer(params, graph, random)
+      case "InMemoryPprComputer" => new InMemoryPprComputer(params, graph, outputter, random)
       case "GraphChiPprComputer" => new GraphChiPprComputer(
         params, graph.asInstanceOf[GraphOnDisk], random)
       case "Fake" => new PprComputer {
@@ -74,7 +74,12 @@ object PprComputerCreator {
   }
 }
 
-class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Random) extends PprComputer {
+class InMemoryPprComputer(
+  params: JValue,
+  graph: Graph,
+  outputter: Outputter,
+  random: Random = new Random
+) extends PprComputer {
   implicit val formats = DefaultFormats
   val paramKeys = Seq("type", "reset probability", "walks per source", "num steps", "log level")
   JsonHelper.ensureNoExtras(params, "split -> negative instances -> ppr computer", paramKeys)
@@ -91,7 +96,7 @@ class InMemoryPprComputer(params: JValue, graph: Graph, random: Random = new Ran
   ) = {
     val sources = if (allowedSources.size > 0) data.instances.map(_.source).toSet else Set[Int]()
     val targets = if (allowedTargets.size > 0) data.instances.map(_.target).toSet else Set[Int]()
-    Outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
+    outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
   }

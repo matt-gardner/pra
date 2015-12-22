@@ -10,18 +10,20 @@ import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class FeatureExtractorSpec extends FlatSpecLike with Matchers {
+  val outputter = Outputter.justLogger
   val factory = new BasicPathTypeFactory
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
     "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
-  val graph = new GraphOnDisk("/graph/", fileUtil)
+  val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
   val config = new PraConfigBuilder().setPraBase("/").setNoChecks().build()
 
   val instance = new NodePairInstance(1, 2, true, graph)
@@ -58,7 +60,7 @@ class FeatureExtractorSpec extends FlatSpecLike with Matchers {
   "OneSidedFeatureExtractor" should "map each path type entry to a one-sided feature" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (2, 3)), Set((1, 3)))
-    val extractor = new OneSidedFeatureExtractor
+    val extractor = new OneSidedFeatureExtractor(outputter)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     print(features)
     features.size should be(3)

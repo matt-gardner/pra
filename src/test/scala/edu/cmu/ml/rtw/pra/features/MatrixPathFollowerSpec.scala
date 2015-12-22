@@ -19,12 +19,14 @@ import com.google.common.collect.Sets
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
 class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
+  val outputter = Outputter.justLogger
   val numNodes = 100
   val path_type_factory = new BasicPathTypeFactory()
   val relation1File = "/relation 1"
@@ -158,7 +160,7 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     fileUtil.addFileToBeRead(relation1Through3File, relation1Through3FileContents)
     fileUtil.addFileToBeRead(relation1Through4File, relation1Through4FileContents)
     val edgesToExclude = Seq[((Int, Int), Int)](((4, 2), 4), ((1, 4), 4))
-    val graph = new GraphOnDisk("/graph/", fileUtil)
+    val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
     val path_types = Seq(
       path_type_factory.fromString("-1-"),
       path_type_factory.fromString("-1-2-"),
@@ -167,6 +169,7 @@ class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
     new MatrixPathFollower(
       numNodes,
       path_types,
+      outputter,
       "/matrices/",
       new Dataset[NodePairInstance](Seq(
         new NodePairInstance(1, 1, true, graph),

@@ -82,12 +82,16 @@ class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) 
 
 // This Graph implementation is backed by a file on disk, and can either be used with GraphChi or
 // loaded into memory.
-class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) extends Graph {
+class GraphOnDisk(
+  val graphDir: String,
+  outputter: Outputter,
+  fileUtil: FileUtil = new FileUtil
+) extends Graph {
   lazy val _entries: Array[Node] = loadGraph()
   val graphFile = graphDir + "graph_chi/edges.tsv"
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv")(0).toInt
 
-  Outputter.info("Loading node and edge dictionaries")
+  outputter.info("Loading node and edge dictionaries")
   val nodeDict = new Dictionary(fileUtil)
   nodeDict.setFromFile(graphDir + "node_dict.tsv")
   val edgeDict = new Dictionary(fileUtil)
@@ -103,8 +107,8 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
   override def getNumEdgeTypes() = edgeDict.getNextIndex()
 
   def loadGraph(): Array[Node] = {
-    Outputter.info(s"Loading graph")
-    val graphBuilder = new GraphBuilder(nodeDict.getNextIndex, nodeDict, edgeDict)
+    outputter.info(s"Loading graph")
+    val graphBuilder = new GraphBuilder(outputter, nodeDict.getNextIndex, nodeDict, edgeDict)
     for (line <- fileUtil.getLineIterator(graphFile)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
@@ -112,7 +116,7 @@ class GraphOnDisk(val graphDir: String, fileUtil: FileUtil = new FileUtil) exten
       val relation = fields(2).toInt
       graphBuilder.addEdge(source, target, relation)
     }
-    Outputter.info("Done reading graph file")
+    outputter.info("Done reading graph file")
     graphBuilder.build
   }
 }
@@ -143,9 +147,11 @@ class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dicti
 // GraphInMemory needs the dictionaries too.  So we just make them vals, so the caller can get the
 // dictionaries out if necessary.
 class GraphBuilder(
-    initialSize: Int = -1,
-    val nodeDict: Dictionary = new Dictionary,
-    val edgeDict: Dictionary = new Dictionary) {
+  outputter: Outputter,
+  initialSize: Int = -1,
+  val nodeDict: Dictionary = new Dictionary,
+  val edgeDict: Dictionary = new Dictionary
+) {
   type MutableGraphEntry = mutable.HashMap[Int, mutable.HashMap[Boolean, Set[Int]]]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
   (0 until entries.size).par.foreach(i => { entries(i) = new MutableGraphEntry })
@@ -179,7 +185,7 @@ class GraphBuilder(
   }
 
   def build(): Array[Node] = {
-    Outputter.info("Building the graph object")
+    outputter.info("Building the graph object")
     // If no initial size was provided, we try to trim the size of the resultant array (this should
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
@@ -198,7 +204,7 @@ class GraphBuilder(
         }).toMap, edgeDict)
       }
     })
-    Outputter.info("Graph object built")
+    outputter.info("Graph object built")
     finalized
   }
 

@@ -14,6 +14,7 @@ import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
+import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil;
 import edu.cmu.ml.rtw.users.matt.util.TestUtil;
@@ -29,7 +30,7 @@ public class RandomWalkPathFollowerCompanionTest extends TestCase {
     fileUtil = new FakeFileUtil();
     fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n");
     fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n");
-    graph = new GraphOnDisk("/graph/", fileUtil);
+    graph = new GraphOnDisk("/graph/", Outputter.justLogger(), fileUtil);
   }
 
   public void testAcceptableRow() throws RemoteException {

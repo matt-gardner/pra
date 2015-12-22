@@ -40,6 +40,7 @@ trait Operation[T <: Instance] {
       directory: String,
       useRange: Boolean,
       builder: PraConfigBuilder,
+      outputter: Outputter,
       fileUtil: FileUtil = new FileUtil) {
     val inverses = createInverses(directory, builder, fileUtil)
     val relation = builder.relation
@@ -52,7 +53,7 @@ trait Operation[T <: Instance] {
         null
       }
     }
-    val unallowedEdges = createUnallowedEdges(relation, inverses, embeddings, builder)
+    val unallowedEdges = createUnallowedEdges(relation, inverses, embeddings, outputter, builder)
     builder.setUnallowedEdges(unallowedEdges)
 
     if (directory != null && useRange && fileUtil.fileExists(directory + "ranges.tsv")) {
@@ -72,10 +73,8 @@ trait Operation[T <: Instance] {
       }
       builder.setAllowedTargets(allowedTargets)
     } else {
-      val writer = fileUtil.getFileWriter(builder.outputBase + "log.txt", true)  // true -> append
-      writer.write("No range file found! I hope your accept policy is as you want it...\n")
-      Outputter.warn("No range file found!")
-      writer.close()
+      outputter.logToFile("No range file found! I hope your accept policy is as you want it...\n")
+      outputter.warn("No range file found!")
     }
   }
 
@@ -83,6 +82,7 @@ trait Operation[T <: Instance] {
       relation: String,
       inverses: Map[Int, Int],
       embeddings: Map[String, Seq[String]],
+      outputter: Outputter,
       builder: PraConfigBuilder): Seq[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
 
@@ -90,7 +90,7 @@ trait Operation[T <: Instance] {
     // graph.
     builder.graph match {
       case None => {
-        Outputter.warn("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
+        outputter.warn("\n\n\nNO SHARED GRAPH, SO NO UNALLOWED EDGES!!!\n\n\n")
         return unallowedEdges.toSeq
       }
       case _ => { }
@@ -166,14 +166,15 @@ object Operation {
       params: JValue,
       split: Split[T],
       metadataDirectory: String,
+      outputter: Outputter,
       fileUtil: FileUtil): Operation[T] = {
     val operationType = JsonHelper.extractWithDefault(params, "type", "train and test")
     operationType match {
       case "no op" => new NoOp[T]
-      case "train and test" => new TrainAndTest(params, split, metadataDirectory, fileUtil)
-      case "explore graph" => new ExploreGraph(params, split, fileUtil)
-      case "create matrices" => new CreateMatrices(params, split, metadataDirectory, fileUtil)
-      case "sgd train and test" => new SgdTrainAndTest(params, split, metadataDirectory, fileUtil)
+      case "train and test" => new TrainAndTest(params, split, metadataDirectory, outputter, fileUtil)
+      case "explore graph" => new ExploreGraph(params, split, outputter, fileUtil)
+      case "create matrices" => new CreateMatrices(params, split, metadataDirectory, outputter, fileUtil)
+      case "sgd train and test" => new SgdTrainAndTest(params, split, metadataDirectory, outputter, fileUtil)
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
   }
@@ -187,49 +188,42 @@ class TrainAndTest[T <: Instance](
   params: JValue,
   split: Split[T],
   metadataDirectory: String,
+  outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[T] {
   val paramKeys = Seq("type", "features", "learning")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
   override def runRelation(configBuilder: PraConfigBuilder) {
-    parseRelationMetadata(metadataDirectory, true, configBuilder)
+    parseRelationMetadata(metadataDirectory, true, configBuilder, outputter)
 
     val config = configBuilder.build()
 
     // First we get features.
-    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
+    val generator = FeatureGenerator.create(params \ "features", config, split, outputter, fileUtil)
 
     val trainingData = split.getTrainingData(config.relation, config.graph)
     val trainingMatrix = generator.createTrainingMatrix(trainingData)
-
-    // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
-    // The outputter should have the parameters to decide whether to do anything or not.
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "training_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-    }
+    outputter.outputFeatureMatrix(true, trainingMatrix, generator.getFeatureNames())
 
     // Then we train a model.
-    val model = BatchModel.create(params \ "learning", split, config)
+    val model = BatchModel.create(params \ "learning", split, outputter)
     val featureNames = generator.getFeatureNames()
     model.train(trainingMatrix, trainingData, featureNames)
 
     // Then we test the model.
     val testingData = split.getTestingData(config.relation, config.graph)
     val testMatrix = generator.createTestMatrix(testingData)
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, testMatrix, generator.getFeatureNames())
-    }
+    outputter.outputFeatureMatrix(false, testMatrix, generator.getFeatureNames())
     val scores = model.classifyInstances(testMatrix)
-    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, trainingData)
+    outputter.outputScores(scores, trainingData)
   }
 }
 
 class ExploreGraph[T <: Instance](
   params: JValue,
   split: Split[T],
+  outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[T] {
   val paramKeys = Seq("type", "explore", "data")
@@ -261,10 +255,10 @@ class ExploreGraph[T <: Instance](
       }
     }
 
-    val explorer = new GraphExplorer(params \ "explore", config)
+    val explorer = new GraphExplorer(params \ "explore", config, outputter)
     val castData = data.asInstanceOf[Dataset[NodePairInstance]]
     val pathCountMap = explorer.findConnectingPaths(castData)
-    config.outputter.outputPathCountMap(config.outputBase, "path_count_map.tsv", pathCountMap, castData)
+    outputter.outputPathCountMap(pathCountMap, castData)
   }
 }
 
@@ -272,32 +266,28 @@ class CreateMatrices[T <: Instance](
   params: JValue,
   split: Split[T],
   metadataDirectory: String,
+  outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[T] {
   val paramKeys = Seq("type", "features", "data")
-  val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
+  val dataOptions = Seq("both", "training", "testing")
+  val dataToUse = JsonHelper.extractOptionWithDefault(params, "data", dataOptions, "both")
 
   override def runRelation(configBuilder: PraConfigBuilder) {
-    parseRelationMetadata(metadataDirectory, true, configBuilder)
+    parseRelationMetadata(metadataDirectory, true, configBuilder, outputter)
     val config = configBuilder.build()
 
-    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
+    val generator = FeatureGenerator.create(params \ "features", config, split, outputter, fileUtil)
 
     if (dataToUse == "training" || dataToUse == "both") {
       val trainingData = split.getTrainingData(config.relation, config.graph)
       val trainingMatrix = generator.createTrainingMatrix(trainingData)
-      if (config.outputMatrices && config.outputBase != null) {
-        val output = config.outputBase + "training_matrix.tsv"
-        config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-      }
+      outputter.outputFeatureMatrix(true, trainingMatrix, generator.getFeatureNames())
     }
     if (dataToUse == "testing" || dataToUse == "both") {
       val testingData = split.getTestingData(config.relation, config.graph)
       val testingMatrix = generator.createTestMatrix(testingData)
-      if (config.outputMatrices && config.outputBase != null) {
-        val output = config.outputBase + "testing_matrix.tsv"
-        config.outputter.outputFeatureMatrix(output, testingMatrix, generator.getFeatureNames())
-      }
+      outputter.outputFeatureMatrix(false, testingMatrix, generator.getFeatureNames())
     }
   }
 }
@@ -306,6 +296,7 @@ class SgdTrainAndTest[T <: Instance](
   params: JValue,
   split: Split[T],
   metadataDirectory: String,
+  outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[T] {
   val paramKeys = Seq("type", "learning", "features", "cache feature vectors")
@@ -315,21 +306,21 @@ class SgdTrainAndTest[T <: Instance](
   val random = new util.Random
 
   override def runRelation(configBuilder: PraConfigBuilder) {
-    parseRelationMetadata(metadataDirectory, true, configBuilder)
+    parseRelationMetadata(metadataDirectory, true, configBuilder, outputter)
 
     val config = configBuilder.build()
 
     val featureVectors = new concurrent.TrieMap[Instance, Option[MatrixRow]]
 
-    val model = OnlineModel.create(params \ "learning", config)
-    val generator = FeatureGenerator.create(params \ "features", config, split, fileUtil)
+    val model = OnlineModel.create(params \ "learning", outputter)
+    val generator = FeatureGenerator.create(params \ "features", config, split, outputter, fileUtil)
 
     val trainingData = split.getTrainingData(config.relation, config.graph)
 
-    Outputter.info("Starting learning")
+    outputter.info("Starting learning")
     val start = compat.Platform.currentTime
     for (iteration <- 1 to model.iterations) {
-      Outputter.info(s"Iteration $iteration")
+      outputter.info(s"Iteration $iteration")
       model.nextIteration()
       random.shuffle(trainingData.instances).par.foreach(instance => {
         val matrixRow = if (featureVectors.contains(instance)) {
@@ -347,23 +338,20 @@ class SgdTrainAndTest[T <: Instance](
     }
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    Outputter.info(s"Learning took $seconds seconds")
+    outputter.info(s"Learning took $seconds seconds")
 
     val featureNames = generator.getFeatureNames()
-    config.outputter.outputWeights(config.outputBase + "weights.tsv", model.getWeights(), featureNames)
-    // TODO(matt): this should be a single call to outputter.outputTrainingMatrix(trainingMatrix).
-    // The outputter should have the parameters to decide whether to do anything or not.  Also, I
-    // should probably add something to the outputter to append to the matrix file, or something,
-    // so I can have this call above and not have to keep around the feature vectors, especially if
-    // I'm not caching them.  Same for the test matrix below.
-    if (config.outputMatrices && config.outputBase != null) {
-      val output = config.outputBase + "training_matrix.tsv"
-      val trainingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
-        case Some(row) => Seq(row)
-        case _ => Seq()
-      }).toList.asJava)
-      config.outputter.outputFeatureMatrix(output, trainingMatrix, generator.getFeatureNames())
-    }
+    outputter.outputWeights(model.getWeights(), featureNames)
+    // TODO(matt): I should probably add something to the outputter to append to the matrix file,
+    // or something, so I can have this call above and not have to keep around the feature vectors,
+    // especially if I'm not caching them.  Same for the test matrix below.  I could also possibly
+    // make the matrix a lazy parameter, hidden within a function call, so that I don't have to
+    // compute it here if it's not going to be needed...
+    val trainingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
+      case Some(row) => Seq(row)
+      case _ => Seq()
+    }).toList.asJava)
+    outputter.outputFeatureMatrix(true, trainingMatrix, generator.getFeatureNames())
 
     featureVectors.clear
 
@@ -377,15 +365,12 @@ class SgdTrainAndTest[T <: Instance](
         case None => (instance, 0.0)
       }
     }).seq
-    config.outputter.outputScores(config.outputBase + "scores.tsv", scores, trainingData)
+    outputter.outputScores(scores, trainingData)
 
-    if (config.outputMatrices && config.outputBase != null) {
-      val testingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
-        case Some(row) => Seq(row)
-        case _ => Seq()
-      }).toList.asJava)
-      val output = config.outputBase + "test_matrix.tsv"
-      config.outputter.outputFeatureMatrix(output, testingMatrix, generator.getFeatureNames())
-    }
+    val testingMatrix = new FeatureMatrix(featureVectors.values.flatMap(_ match {
+      case Some(row) => Seq(row)
+      case _ => Seq()
+    }).toList.asJava)
+    outputter.outputFeatureMatrix(false, testingMatrix, generator.getFeatureNames())
   }
 }

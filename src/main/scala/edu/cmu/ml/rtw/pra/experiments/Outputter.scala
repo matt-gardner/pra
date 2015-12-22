@@ -9,8 +9,12 @@ import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import scala.collection.JavaConverters._
+
+import org.json4s._
+import org.json4s.native.JsonMethods.{pretty,render,parse}
 
 /**
  * Handles outputting results and other information from running PRA to the file system.  When
@@ -22,7 +26,69 @@ import scala.collection.JavaConverters._
  * @author mgardner
  *
  */
-class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new FileUtil) {
+class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: FileUtil = new FileUtil) {
+  implicit val formats = DefaultFormats
+
+  // NOTE: using a non-default value for this parameter currently does not interact well with
+  // ExperimentRunner.  Specifically, the default check to not re-run experiments will fail.
+  val baseDir = JsonHelper.extractWithDefault(params, "outdir", s"${praBase}results/${methodName}/")
+  val shouldOutputMatrices = JsonHelper.extractWithDefault(params, "output matrices", false)
+  val shouldOutputPaths = JsonHelper.extractWithDefault(params, "output paths", false)
+  val shouldOutputPathCounts = JsonHelper.extractWithDefault(params, "output path counts", false)
+  val shouldOutputPathCountMap = JsonHelper.extractWithDefault(params, "output path count map", false)
+
+  lazy val nodeNames = (params \ "node names") match {
+    case JNothing => null
+    case JString(filename) => fileUtil.readMapFromTsvFile(filename, true)
+    case _ => throw new IllegalStateException("bad specification of node names")
+  }
+
+  private var relation: String = null
+
+  def setRelation(_relation: String) {
+    fileUtil.mkdirs(baseDir + relation)
+    relation = _relation
+  }
+
+  def begin() {
+    fileUtil.mkdirOrDie(baseDir)
+  }
+
+  def clean() {
+    fileUtil.deleteFile(baseDir)
+  }
+
+  // TODO(matt): it might make sense to redirect outputAtLevel to a proper logging library.  At
+  // least this puts all of the logging statements in a single place.
+  private var logLevel = 3
+
+  def fatal(message: String) { outputAtLevel(message, 0) }
+  def error(message: String) { outputAtLevel(message, 1) }
+  def warn(message: String) { outputAtLevel(message, 2) }
+  def info(message: String) { outputAtLevel(message, 3) }
+  def debug(message: String) { outputAtLevel(message, 4) }
+
+  def setLogLevel(level: Int) {
+    logLevel = level
+  }
+
+  def outputAtLevel(message: String, level: Int) {
+    if (level <= logLevel) {
+      println(message)
+    }
+  }
+
+  def logToFile(message: String) {
+    val writer = fileUtil.getFileWriter(baseDir + "log.txt", true)  // true -> append
+    writer.write(message)
+    writer.close()
+  }
+
+  def writeGlobalParams(_params: JValue) {
+    var writer = fileUtil.getFileWriter(baseDir + "params.json")
+    writer.write(pretty(render(_params)))
+    writer.close()
+  }
 
   def getNode(index: Int, graph: Graph): String = {
     val node = graph.getNodeName(index)
@@ -38,10 +104,10 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
   }
 
   def outputScores[T <: Instance](
-    filename: String,
     scores: Seq[(T, Double)],
     trainingData: Dataset[T]
   ) {
+    val filename = baseDir + relation + "/scores.tsv"
     trainingData.instances(0) match {
       case nodePairInstance: NodePairInstance =>  {
         outputNodePairScores(
@@ -132,40 +198,33 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     writer.close()
   }
 
-  def outputWeights(filename: String, weights: Seq[Double], featureNames: Seq[String]) {
+  def outputWeights(weights: Seq[Double], featureNames: Seq[String]) {
+    val filename = baseDir + relation + "/weights.tsv"
     val lines = weights.zip(featureNames).sortBy(-_._1).map(weight => {
       s"${weight._2}\t${weight._1}"
     })
     fileUtil.writeLinesToFile(filename, lines)
   }
 
-  def outputSplitFiles(
-    outputBase: String,
-    trainingData: Dataset[NodePairInstance],
-    testingData: Dataset[NodePairInstance]
-  ) {
-    if (outputBase != null) {
-      fileUtil.writeLinesToFile(outputBase + "training_data.tsv", trainingData.instancesToStrings)
-      fileUtil.writeLinesToFile(outputBase + "testing_data.tsv", testingData.instancesToStrings)
-    }
+  def outputDataset[T <: Instance](filename: String, data: Dataset[T]) {
+    fileUtil.writeLinesToFile(filename, data.instancesToStrings)
   }
 
-  def outputPathCounts(baseDir: String, filename: String, pathCounts: Map[PathType, Int]) {
-    if (baseDir != null) {
+  def outputPathCounts(pathCounts: Map[PathType, Int]) {
+    if (shouldOutputPathCounts) {
       val lines = pathCounts.toList.sortBy(-_._2).map(entry => {
         s"${entry._1}\t${entry._2}"
       })
-      fileUtil.writeLinesToFile(baseDir + filename, lines)
+      fileUtil.writeLinesToFile(baseDir + relation + "/path_counts.tsv", lines)
     }
   }
 
   def outputPathCountMap(
-      baseDir: String,
-      filename: String,
-      pathCountMap: Map[NodePairInstance, Map[PathType, Int]],
-      data: Dataset[NodePairInstance]) {
-    if (baseDir != null) {
-      val writer = fileUtil.getFileWriter(baseDir + filename)
+    pathCountMap: Map[NodePairInstance, Map[PathType, Int]],
+    data: Dataset[NodePairInstance]
+  ) {
+    if (shouldOutputPathCountMap) {
+      val writer = fileUtil.getFileWriter(baseDir + relation + "/path_count_map.tsv")
       for (instance <- data.instances) {
         writer.write(getNode(instance.source, instance.graph) + "\t"
           + getNode(instance.target, instance.graph) + "\t")
@@ -185,55 +244,40 @@ class Outputter(nodeNames: Map[String, String] = null, fileUtil: FileUtil = new 
     }
   }
 
-  def outputPaths(
-      baseDir: String,
-      filename: String,
-      pathTypes: Seq[PathType],
-      graph: Graph) {
-    if (baseDir != null) {
-      fileUtil.writeLinesToFile(baseDir + filename, pathTypes.map(p => getPathType(p, graph)))
+  def outputPaths(pathTypes: Seq[PathType], graph: Graph) {
+    if (shouldOutputPaths) {
+      fileUtil.writeLinesToFile(baseDir + relation + "/paths.tsv", pathTypes.map(p => getPathType(p, graph)))
     }
   }
 
-  def outputFeatureMatrix(filename: String, matrix: FeatureMatrix, featureNames: Seq[String]) {
-    val writer = fileUtil.getFileWriter(filename)
-    for (row <- matrix.getRows().asScala) {
-      val key = row.instance match {
-        case npi: NodePairInstance => {
-          getNode(npi.source, npi.graph) + "," + getNode(npi.target, npi.graph)
+  def outputFeatureMatrix(isTraining: Boolean, matrix: FeatureMatrix, featureNames: Seq[String]) {
+    if (shouldOutputMatrices) {
+      val trainingStr = if (isTraining) "training_matrix.tsv" else "test_matrix.tsv"
+      val filename = baseDir + relation + "/" + trainingStr
+      val writer = fileUtil.getFileWriter(filename)
+      for (row <- matrix.getRows().asScala) {
+        val key = row.instance match {
+          case npi: NodePairInstance => {
+            getNode(npi.source, npi.graph) + "," + getNode(npi.target, npi.graph)
+          }
+          case ni: NodeInstance => { getNode(ni.node, ni.graph) }
         }
-        case ni: NodeInstance => { getNode(ni.node, ni.graph) }
-      }
-      writer.write(key + "\t")
-      for (i <- 0 until row.columns) {
-        val featureName = featureNames(row.featureTypes(i))
-        writer.write(featureName + "," + row.values(i))
-        if (i < row.columns - 1) {
-           writer.write(" -#- ")
+        val positiveStr = if (row.instance.isPositive) "1" else "-1"
+        writer.write(key + "\t" + positiveStr + "\t")
+        for (i <- 0 until row.columns) {
+          val featureName = featureNames(row.featureTypes(i))
+          writer.write(featureName + "," + row.values(i))
+          if (i < row.columns - 1) {
+             writer.write(" -#- ")
+          }
         }
+        writer.write("\n")
       }
-      writer.write("\n")
+      writer.close()
     }
-    writer.close()
   }
 }
 
 object Outputter {
-  private var logLevel = 3
-
-  def fatal(message: String) { outputAtLevel(message, 0) }
-  def error(message: String) { outputAtLevel(message, 1) }
-  def warn(message: String) { outputAtLevel(message, 2) }
-  def info(message: String) { outputAtLevel(message, 3) }
-  def debug(message: String) { outputAtLevel(message, 4) }
-
-  def setLogLevel(level: Int) {
-    logLevel = level
-  }
-
-  def outputAtLevel(message: String, level: Int) {
-    if (level <= logLevel) {
-      println(message)
-    }
-  }
+  val justLogger = new Outputter(JNothing, "/dev/null", "/dev/null")
 }

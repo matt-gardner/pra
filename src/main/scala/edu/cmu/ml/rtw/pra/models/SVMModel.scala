@@ -10,7 +10,6 @@ import cc.mallet.types.InstanceList
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
@@ -33,11 +32,11 @@ import ca.uwo.csd.ai.nlp.libsvm.svm_node
 import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel[T <: Instance](
-  config: PraConfig,
-  params: JValue
+  params: JValue,
+  outputter: Outputter
 ) extends BatchModel[T](
-  config,
   JsonHelper.extractWithDefault(params, "binarize features", false),
+  outputter,
   JsonHelper.extractWithDefault(params, "log level", 3)
 ) {
   implicit val formats = DefaultFormats
@@ -76,10 +75,10 @@ class SVMModel[T <: Instance](
    * instances is positive or negative, train an SVM.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
-    Outputter.info("Learning feature weights")
-    Outputter.info("Prepping training data")
+    outputter.info("Learning feature weights")
+    outputter.info("Prepping training data")
 
-    Outputter.info("Creating alphabet")
+    outputter.info("Creating alphabet")
     val pipes = new mutable.ArrayBuffer[Pipe]
     pipes.+=(new Noop())
     pipes.+=(new Target2Label())
@@ -89,7 +88,7 @@ class SVMModel[T <: Instance](
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    Outputter.info("Creating the MalletLibSVM object")
+    outputter.info("Creating the MalletLibSVM object")
     val svmTrainer = new SVMClassifierTrainer(kernel)
 
     // Finally, we train.  All that prep and everything that follows is really just to get

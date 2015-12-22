@@ -52,11 +52,12 @@ object NodePairPathFinder {
   def create(
       params: JValue,
       config: PraConfig,
+      outputter: Outputter,
       fileUtil: FileUtil = new FileUtil): PathFinder[NodePairInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
-      case "RandomWalkPathFinder" => new GraphChiPathFinder(params, fileUtil)
-      case "BfsPathFinder" => new NodePairBfsPathFinder(params, config, fileUtil)
+      case "RandomWalkPathFinder" => new GraphChiPathFinder(params, outputter, fileUtil)
+      case "BfsPathFinder" => new NodePairBfsPathFinder(params, config, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodePairInstances")
     }
   }
@@ -66,10 +67,11 @@ object NodePathFinder {
   def create(
       params: JValue,
       config: PraConfig,
+      outputter: Outputter,
       fileUtil: FileUtil = new FileUtil): PathFinder[NodeInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
-      case "BfsPathFinder" => new NodeBfsPathFinder(params, config, fileUtil)
+      case "BfsPathFinder" => new NodeBfsPathFinder(params, config, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodeInstances")
     }
   }
@@ -80,6 +82,7 @@ object NodePathFinder {
 // class can go away.
 class GraphChiPathFinder(
   params: JValue,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 ) extends PathFinder[NodePairInstance] {
   implicit val formats = DefaultFormats
@@ -157,10 +160,10 @@ class GraphChiPathFinder(
   }
 
   def createVectorPathTypeFactory(params: JValue, config: PraConfig) = {
-    Outputter.info("Initializing vector path type factory")
+    outputter.info("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
-    Outputter.info(s"RESET WEIGHT SET TO $resetWeight")
+    outputter.info(s"RESET WEIGHT SET TO $resetWeight")
     val embeddingsFiles = (params \ "embeddings") match {
       case JNothing => Nil
       case JString(path) if (path.startsWith("/")) => List(path)
@@ -184,7 +187,7 @@ class GraphChiPathFinder(
 
   def readEmbeddingsVectors(embeddingsFiles: Seq[String], graph: Graph) = {
     embeddingsFiles.flatMap(file => {
-      Outputter.info(s"Embeddings file: $file")
+      outputter.info(s"Embeddings file: $file")
       readVectorsFromFile(file, graph)
     }).toMap
   }

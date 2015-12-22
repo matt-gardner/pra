@@ -27,6 +27,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 class MatrixPathFollower(
     numNodes: Int,
     pathTypes: Seq[PathType],
+    outputter: Outputter,
     val matrixDir: String,
     data: Dataset[NodePairInstance],
     allowedTargets: Set[Int],
@@ -44,10 +45,10 @@ class MatrixPathFollower(
   override def getFeatureMatrix() = getFeatureMatrix(source_nodes, allowedTargets)
 
   val sources_matrix = {
-    Outputter.info(s"num nodes: ${numNodes}")
+    outputter.info(s"num nodes: ${numNodes}")
     val builder = new CSCMatrix.Builder[Double](numNodes, numNodes, source_nodes.size)
     for (source <- source_nodes) {
-      Outputter.info(s"source: $source")
+      outputter.info(s"source: $source")
       builder.add(source, source, 1)
     }
     builder.result
@@ -92,7 +93,7 @@ class MatrixPathFollower(
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int]): FeatureMatrix = {
     val path_matrices = getPathMatrices()
-    Outputter.info("Getting feature matrix for input sources")
+    outputter.info("Getting feature matrix for input sources")
     val entries = pathTypes.zipWithIndex.par.flatMap(path_type_with_index => {
       for (instance <- path_matrices(path_type_with_index._1).activeIterator
            if sources.contains(instance._1._1);
@@ -129,7 +130,7 @@ class MatrixPathFollower(
   }
 
   def getPathMatrices(): Map[PathType, CSCMatrix[Double]] = {
-    Outputter.info(s"Creating path matrices from the relation matrices in $matrixDir")
+    outputter.info(s"Creating path matrices from the relation matrices in $matrixDir")
     val _path_types = pathTypes.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
     val relations = _path_types.flatMap(_.getEdgeTypes).toSet
     val filenames = fileUtil.listDirectoryContents(matrixDir).toSet - "params.json"
@@ -160,7 +161,7 @@ class MatrixPathFollower(
         result = result * relation_matrix
       }
     }
-    Outputter.info(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
+    outputter.info(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
     if (result.activeSize / sources_matrix.activeSize > maxFanOut) {
       new CSCMatrix.Builder[Double](numNodes, numNodes, 0).result
     } else {

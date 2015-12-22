@@ -27,6 +27,7 @@ import scala.collection.parallel.ParMap
 abstract class BfsPathFinder[T <: Instance](
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 )  extends PathFinder[T] {
   implicit val formats = DefaultFormats
@@ -62,12 +63,12 @@ abstract class BfsPathFinder[T <: Instance](
     data: Dataset[T],
     edgesToExclude: Seq[((Int, Int), Int)]
   ) {
-    Outputter.outputAtLevel("Running BFS...  ", logLevel)
+    outputter.outputAtLevel("Running BFS...  ", logLevel)
     val start = compat.Platform.currentTime
     results = runBfs(data, config.unallowedEdges.toSet)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    Outputter.outputAtLevel(s"Took ${seconds} seconds", logLevel)
+    outputter.outputAtLevel(s"Took ${seconds} seconds", logLevel)
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
@@ -190,7 +191,7 @@ abstract class BfsPathFinder[T <: Instance](
       pathDict.getIndex(factory.fromString(newString))
     } catch {
       case e: NullPointerException => {
-        Outputter.fatal(s"NULL PATH TYPE: $pathType")
+        outputter.fatal(s"NULL PATH TYPE: $pathType")
         throw e
       }
     }
@@ -210,8 +211,9 @@ abstract class BfsPathFinder[T <: Instance](
 class NodePairBfsPathFinder(
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodePairInstance](params, config, fileUtil) {
+) extends BfsPathFinder[NodePairInstance](params, config, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodePairInstance, unallowedEdges: Set[Int]) = {
     val graph = instance.graph
     val source = instance.source
@@ -240,8 +242,9 @@ class NodePairBfsPathFinder(
 class NodeBfsPathFinder(
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodeInstance](params, config, fileUtil) {
+) extends BfsPathFinder[NodeInstance](params, config, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodeInstance, unallowedEdges: Set[Int]) = {
     val graph = instance.graph
     val node = instance.node

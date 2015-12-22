@@ -25,6 +25,7 @@ import org.json4s.JsonDSL.WithDouble._
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator[T] {
   implicit val formats = DefaultFormats
@@ -53,7 +54,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     createMatrixFromData(data)
 
   def createMatrixFromData(data: Dataset[T]) = {
-    Outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
+    outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
     val rows = data.instances.par.map(constructMatrixRow).flatten.seq
     new FeatureMatrix(rows.asJava)
   }
@@ -85,7 +86,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   def createExtractors(params: JValue): Seq[FeatureExtractor[T]]
 
   def getLocalSubgraphs(data: Dataset[T]): Map[T, Subgraph] = {
-    Outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
+    outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
       logLevel)
 
     val edgesToExclude = createEdgesToExclude(data.instances, config.unallowedEdges)
@@ -144,27 +145,29 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 class NodePairSubgraphFeatureGenerator(
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodePairInstance](params, config, fileUtil) {
+) extends SubgraphFeatureGenerator[NodePairInstance](params, config, outputter, fileUtil) {
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodePairFeatureExtractor.create(params, config, fileUtil))
+    extractorNames.map(params => NodePairFeatureExtractor.create(params, config, outputter, fileUtil))
   }
 
-  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", config)
+  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", config, outputter)
 }
 
 class NodeSubgraphFeatureGenerator(
   params: JValue,
   config: PraConfig,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodeInstance](params, config, fileUtil) {
+) extends SubgraphFeatureGenerator[NodeInstance](params, config, outputter, fileUtil) {
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PathOnlyFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodeFeatureExtractor.create(params, config, fileUtil))
+    extractorNames.map(params => NodeFeatureExtractor.create(params, config, outputter, fileUtil))
   }
 
-  def createPathFinder() = NodePathFinder.create(params \ "path finder", config)
+  def createPathFinder() = NodePathFinder.create(params \ "path finder", config, outputter)
 }

@@ -23,6 +23,7 @@ import org.json4s.native.JsonMethods._
 class SyntheticDataCreator(
     base_dir: String,
     params: JValue,
+    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil()) {
 
   // Extracting parameters first
@@ -84,7 +85,7 @@ class SyntheticDataCreator(
     fileUtil.mkdirs(split_dir)
     fileUtil.mkdirs(relation_set_dir)
     fileUtil.touchFile(in_progress_file)
-    Outputter.info(s"Creating relation set in $relation_set_dir")
+    outputter.info(s"Creating relation set in $relation_set_dir")
     val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
     val instances = (new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
       new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
@@ -315,15 +316,15 @@ class SyntheticDataCreator(
 // TODO(matt): No I don't.  I just need GraphCreator to have a method that creates the
 // RelationSetCreator that I can override, that's all.
 trait ISyntheticDataCreatorFactory {
-  def getSyntheticDataCreator(base_dir: String, params: JValue): SyntheticDataCreator = {
-    getSyntheticDataCreator(base_dir, params, new FileUtil)
+  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter): SyntheticDataCreator = {
+    getSyntheticDataCreator(base_dir, params, outputter, new FileUtil)
   }
 
-  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil): SyntheticDataCreator
+  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter, fileUtil: FileUtil): SyntheticDataCreator
 }
 
 class SyntheticDataCreatorFactory extends ISyntheticDataCreatorFactory {
-  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
-    new SyntheticDataCreator(base_dir, params, fileUtil)
+  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter, fileUtil: FileUtil) = {
+    new SyntheticDataCreator(base_dir, params, outputter, fileUtil)
   }
 }

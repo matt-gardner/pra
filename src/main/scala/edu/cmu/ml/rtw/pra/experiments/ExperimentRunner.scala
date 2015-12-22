@@ -13,7 +13,6 @@ object ExperimentRunner {
 
   val SPEC_DIR = "/experiment_specs/"
   val RESULTS_DIR = "/results/"
-  val EXPLORATION_DIR = "/results_exploration/"
   val fileUtil = new FileUtil
 
   def main(args: Array[String]) {
@@ -59,13 +58,7 @@ object ExperimentRunner {
   def runPraFromSpec(pra_base: String)(spec_file: File) {
     val spec_lines = fileUtil.readLinesFromFile(spec_file)
     val params = new SpecFileReader(pra_base).readSpecFile(spec_file)
-    // TODO(matt): this is pretty ugly.  Can't we design this better?
-    val mode = (params \ "operation" \ "type") match {
-      case JNothing => "no op"
-      case JString(m) => m
-      case other => throw new IllegalStateException("something is wrong in specifying the pra mode")
-    }
-    val result_base_dir = if (mode == "explore graph") pra_base + EXPLORATION_DIR else pra_base + RESULTS_DIR
+    val result_base_dir = pra_base + RESULTS_DIR
     val experiment_spec_dir = pra_base + SPEC_DIR
     println(s"Running PRA from spec file $spec_file")
     val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".json", "")
@@ -74,6 +67,6 @@ object ExperimentRunner {
       println(s"Result directory $result_dir already exists. Skipping...")
       return
     }
-    new Driver(pra_base).runPra(result_dir, params)
+    new Driver(pra_base).runPra(experiment, params)
   }
 }

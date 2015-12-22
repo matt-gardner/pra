@@ -17,6 +17,7 @@ import scala.util.Random
 class PprNegativeExampleSelector(
     params: JValue,
     val graph: Graph,
+    outputter: Outputter,
     random: Random = new Random) {
   implicit val formats = DefaultFormats
   val paramKeys = Seq("ppr computer", "negative to positive ratio", "max potential predictions")
@@ -24,7 +25,7 @@ class PprNegativeExampleSelector(
 
   val negativesPerPositive = JsonHelper.extractWithDefault(params, "negative to positive ratio", 3)
   val maxPotentialPredictions = JsonHelper.extractWithDefault(params, "max potential predictions", 1000)
-  val pprComputer = PprComputerCreator.create(params \ "ppr computer", graph, random)
+  val pprComputer = PprComputerCreator.create(params \ "ppr computer", graph, outputter, random)
 
   // This is how many times we should try sampling the right number of negatives for each positive
   // before giving up, in case a (source, target) pair is isolated from the graph, for instance.
@@ -39,14 +40,14 @@ class PprNegativeExampleSelector(
     allowedSources: Set[Int],
     allowedTargets: Set[Int]
   ): Dataset[NodePairInstance] = {
-    Outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
+    outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
 
     val start = compat.Platform.currentTime
-    Outputter.info("Computing PPR scores...")
+    outputter.info("Computing PPR scores...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, allowedSources, allowedTargets)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    Outputter.info(s"  took ${seconds} seconds")
+    outputter.info(s"  took ${seconds} seconds")
     val negativeExamples = sampleByPrr(data, pprValues)
 
     val negativeData = new Dataset[NodePairInstance](negativeExamples.map(x =>
@@ -66,21 +67,21 @@ class PprNegativeExampleSelector(
     range: Set[Int],
     knownPositives: Dataset[NodePairInstance]
   ): Dataset[NodePairInstance] = {
-    Outputter.info("Finding potential predictions to add to the KB")
+    outputter.info("Finding potential predictions to add to the KB")
     val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
     val data = new Dataset[NodePairInstance](sourcesToUse.map(entity =>
         new NodePairInstance(entity, -1, true, graph)).toSeq)
-    Outputter.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
+    outputter.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
 
     val start = compat.Platform.currentTime
     // By using computePersonalizedPageRank this way, we will get a map from entities in the domain
     // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
     // and create a set of potential predictions.
-    Outputter.info("Computing PPR scores for the sources...")
+    outputter.info("Computing PPR scores for the sources...")
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    Outputter.info(s"  took ${seconds} seconds")
+    outputter.info(s"  took ${seconds} seconds")
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
     new Dataset[NodePairInstance](potentialPredictions.map(x =>
@@ -95,7 +96,7 @@ class PprNegativeExampleSelector(
     range: Set[Int],
     knownPositives: Dataset[NodePairInstance]
   ): Set[Int] = {
-    Outputter.debug("Finding potential predictions to add to the KB (for a single source)")
+    outputter.debug("Finding potential predictions to add to the KB (for a single source)")
     val data = new Dataset[NodePairInstance](Seq(new NodePairInstance(source, -1, true, graph)))
 
     val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())

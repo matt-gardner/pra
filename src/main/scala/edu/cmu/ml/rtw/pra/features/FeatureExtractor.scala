@@ -26,12 +26,13 @@ object NodePairFeatureExtractor {
   def create(
     params: JValue,
     config: PraConfig,
+    outputter: Outputter,
     fileUtil: FileUtil
   ): FeatureExtractor[NodePairInstance] = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor
+      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(outputter)
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
@@ -80,7 +81,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor[Nod
   }
 }
 
-class OneSidedFeatureExtractor extends FeatureExtractor[NodePairInstance] {
+class OneSidedFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodePairInstance] {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -93,11 +94,11 @@ class OneSidedFeatureExtractor extends FeatureExtractor[NodePairInstance] {
         } else if (start == instance.target) {
           "TARGET:" + path + ":" + endNode
         } else {
-          Outputter.fatal(s"Source: ${instance.source}")
-          Outputter.fatal(s"Target: ${instance.target}")
-          Outputter.fatal(s"Left node: ${start}")
-          Outputter.fatal(s"Right node: ${end}")
-          Outputter.fatal(s"path: ${path}")
+          outputter.fatal(s"Source: ${instance.source}")
+          outputter.fatal(s"Target: ${instance.target}")
+          outputter.fatal(s"Left node: ${start}")
+          outputter.fatal(s"Right node: ${end}")
+          outputter.fatal(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }
@@ -272,12 +273,13 @@ object NodeFeatureExtractor {
   def create(
     params: JValue,
     config: PraConfig,
+    outputter: Outputter,
     fileUtil: FileUtil
   ): FeatureExtractor[NodeInstance] = {
     println(pretty(render(params)))
     params match {
-      case JString("PathAndEndNodeFeatureExtractor") => new PathAndEndNodeFeatureExtractor
-      case JString("PathOnlyFeatureExtractor") => new PathOnlyFeatureExtractor
+      case JString("PathAndEndNodeFeatureExtractor") => new PathAndEndNodeFeatureExtractor(outputter)
+      case JString("PathOnlyFeatureExtractor") => new PathOnlyFeatureExtractor(outputter)
       case JString(other) => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
       case jval: JValue => {
         (jval \ "name") match {
@@ -288,7 +290,7 @@ object NodeFeatureExtractor {
   }
 }
 
-class PathAndEndNodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
+class PathAndEndNodeFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodeInstance] {
   override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -299,10 +301,10 @@ class PathAndEndNodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
         if (start == instance.node) {
           path + ":" + endNode
         } else {
-          Outputter.fatal(s"node: ${instance.node}")
-          Outputter.fatal(s"Left node: ${start}")
-          Outputter.fatal(s"Right node: ${end}")
-          Outputter.fatal(s"path: ${path}")
+          outputter.fatal(s"node: ${instance.node}")
+          outputter.fatal(s"Left node: ${start}")
+          outputter.fatal(s"Right node: ${end}")
+          outputter.fatal(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be the instance node")
         }
@@ -311,7 +313,7 @@ class PathAndEndNodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
   }
 }
 
-class PathOnlyFeatureExtractor extends FeatureExtractor[NodeInstance] {
+class PathOnlyFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodeInstance] {
   override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -321,10 +323,10 @@ class PathOnlyFeatureExtractor extends FeatureExtractor[NodeInstance] {
         if (start == instance.node) {
           path
         } else {
-          Outputter.fatal(s"node: ${instance.node}")
-          Outputter.fatal(s"Left node: ${start}")
-          Outputter.fatal(s"Right node: ${end}")
-          Outputter.fatal(s"path: ${path}")
+          outputter.fatal(s"node: ${instance.node}")
+          outputter.fatal(s"Left node: ${start}")
+          outputter.fatal(s"Right node: ${end}")
+          outputter.fatal(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be the instance node")
         }

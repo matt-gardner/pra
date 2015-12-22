@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.data
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
@@ -8,7 +9,12 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import org.json4s._
 
-sealed abstract class Split[T <: Instance](params: JValue, baseDir: String, fileUtil: FileUtil) {
+sealed abstract class Split[T <: Instance](
+  params: JValue,
+  baseDir: String,
+  outputter: Outputter,
+  fileUtil: FileUtil
+) {
   implicit val formats = DefaultFormats
 
   val directory = params match {
@@ -47,7 +53,7 @@ sealed abstract class Split[T <: Instance](params: JValue, baseDir: String, file
   }
 
   def readGraphString(graphString: String): GraphInMemory = {
-    val graphBuilder = new GraphBuilder()
+    val graphBuilder = new GraphBuilder(outputter)
     val graphEdges = graphString.split(" ### ")
     for (edge <- graphEdges) {
       val fields = edge.split("\\^,\\^")
@@ -67,8 +73,9 @@ sealed abstract class Split[T <: Instance](params: JValue, baseDir: String, file
 class NodePairSplit(
   params: JValue,
   baseDir: String,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends Split[NodePairInstance](params, baseDir, fileUtil) {
+) extends Split[NodePairInstance](params, baseDir, outputter, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodePairInstance = {
     val fields = line.split("\t")
     val isPositive =
@@ -98,8 +105,9 @@ class NodePairSplit(
 class NodeSplit(
   params: JValue,
   baseDir: String,
+  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends Split[NodeInstance](params, baseDir, fileUtil) {
+) extends Split[NodeInstance](params, baseDir, outputter, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodeInstance = {
     val fields = line.split("\t")
     val isPositive =
@@ -124,11 +132,16 @@ class NodeSplit(
 }
 
 object Split {
-  def create(params: JValue, baseDir: String, fileUtil: FileUtil = new FileUtil): Split[_ <: Instance] = {
+  def create(
+    params: JValue,
+    baseDir: String,
+    outputter: Outputter,
+    fileUtil: FileUtil = new FileUtil
+  ): Split[_ <: Instance] = {
     val instanceType = JsonHelper.extractWithDefault(params, "type", "node pair")
     instanceType match {
-      case "node pair" => new NodePairSplit(params, baseDir, fileUtil)
-      case "node" => new NodeSplit(params, baseDir, fileUtil)
+      case "node pair" => new NodePairSplit(params, baseDir, outputter, fileUtil)
+      case "node" => new NodeSplit(params, baseDir, outputter, fileUtil)
     }
   }
 }
@@ -139,7 +152,7 @@ object DatasetReader {
     graph: Option[Graph],
     fileUtil: FileUtil = new FileUtil
   ): Dataset[NodePairInstance] = {
-    val split = new NodePairSplit(JString("/fake/"), "/", fileUtil)
+    val split = new NodePairSplit(JString("/fake/"), "/", Outputter.justLogger, fileUtil)
     split.readDatasetFile(filename, graph)
   }
 
@@ -148,7 +161,7 @@ object DatasetReader {
     graph: Option[Graph],
     fileUtil: FileUtil = new FileUtil
   ): Dataset[NodeInstance] = {
-    val split = new NodeSplit(JString("/fake/"), "/", fileUtil)
+    val split = new NodeSplit(JString("/fake/"), "/", Outputter.justLogger, fileUtil)
     split.readDatasetFile(filename, graph)
   }
 }

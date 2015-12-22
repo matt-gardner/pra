@@ -25,6 +25,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 class RescalMatrixPathFollower(
   config: PraConfig,
   pathTypes: Seq[PathType],
+  outputter: Outputter,
   val rescalDir: String,
   data: Dataset[NodePairInstance],
   val negativesPerSource: Int,
@@ -100,7 +101,7 @@ class RescalMatrixPathFollower(
 
   def getPathMatrices(): Map[PathType, DenseMatrix[Double]] = {
     val rescal_matrices = getRescalMatrices()
-    Outputter.info(s"Creating path matrices from the relation matrices in $rescalDir")
+    outputter.info(s"Creating path matrices from the relation matrices in $rescalDir")
     val _path_types = pathTypes.toList.asInstanceOf[List[BaseEdgeSequencePathType]]
 
     _path_types.par.map(x => (x, createPathMatrix(x, rescal_matrices))).seq.toMap
@@ -150,7 +151,7 @@ class RescalMatrixPathFollower(
         result = result * relation_matrix
       }
     }
-    Outputter.info(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
+    outputter.info(s"Done, ${path_type.getEdgeTypes().length} steps, ${result.activeSize} entries, $str")
     result
   }
 
@@ -192,7 +193,7 @@ class RescalMatrixPathFollower(
   }
 
   def getFeatureMatrix(sources: Set[Int], allowed_targets: Set[Int], keep_all: Boolean): FeatureMatrix = {
-    Outputter.info("Getting feature matrix for input sources")
+    outputter.info("Getting feature matrix for input sources")
     val sources_list = sources.toList.sorted
     val targets_list = allowed_targets.toList.sorted
     val source_indices = sources.map(id  => (id, sources_list.indexOf(id))).toMap
@@ -243,7 +244,7 @@ class RescalMatrixPathFollower(
       source_indices: Map[Int, Int],
       target_indices: Map[Int, Int]) = {
     val path_matrices = getPathMatrices()
-    Outputter.info("Doing (sources * path_type * targets) multiplications")
+    outputter.info("Doing (sources * path_type * targets) multiplications")
     val matrix_rows = pathTypes.zipWithIndex.par.flatMap(path_type => {
       val feature_matrix = source_matrix * path_matrices(path_type._1) * target_matrix
       pairs.map(pair => {

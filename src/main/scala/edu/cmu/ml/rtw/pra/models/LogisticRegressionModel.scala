@@ -7,7 +7,6 @@ import cc.mallet.types.InstanceList
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
-import edu.cmu.ml.rtw.pra.config.PraConfig
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
@@ -19,11 +18,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 class LogisticRegressionModel[T <: Instance](
-  config: PraConfig,
-  params: JValue
+  params: JValue,
+  outputter: Outputter
 ) extends BatchModel[T](
-  config,
   JsonHelper.extractWithDefault(params, "binarize features", false),
+  outputter,
   JsonHelper.extractWithDefault(params, "log level", 3)
 ) {
   val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features", "log level")
@@ -41,10 +40,10 @@ class LogisticRegressionModel[T <: Instance](
    * instances is positive or negative, train a logistic regression classifier.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
-    Outputter.info("Learning feature weights")
-    Outputter.info("Prepping training data")
+    outputter.info("Learning feature weights")
+    outputter.info("Prepping training data")
 
-    Outputter.info("Creating alphabet")
+    outputter.info("Creating alphabet")
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
     val pipe = new Noop()
     val data = new InstanceList(pipe)
@@ -52,20 +51,20 @@ class LogisticRegressionModel[T <: Instance](
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    Outputter.info("Creating the MalletLogisticRegression object")
+    outputter.info("Creating the MalletLogisticRegression object")
     val lr = new MalletLogisticRegression(alphabet)
     if (l2Weight != 0.0) {
-      Outputter.info("Setting L2 weight to " + l2Weight)
+      outputter.info("Setting L2 weight to " + l2Weight)
       lr.setL2wt(l2Weight)
     }
     if (l1Weight != 0.0) {
-      Outputter.info("Setting L1 weight to " + l1Weight)
+      outputter.info("Setting L1 weight to " + l1Weight)
       lr.setL1wt(l1Weight)
     }
 
     // Finally, we train.  All that prep and everything that follows is really just to get
     // ready for and pass on the output of this one line.
-    Outputter.info("Training the classifier")
+    outputter.info("Training the classifier")
     lr.train(data)
     val features = lr.getSparseFeatures()
     val params = lr.getSparseParams()
@@ -82,10 +81,7 @@ class LogisticRegressionModel[T <: Instance](
         j += 1
       }
     }
-    Outputter.info("Outputting feature weights")
-    if (config.outputBase != null) {
-      config.outputter.outputWeights(config.outputBase + "weights.tsv", weights, featureNames)
-    }
+    outputter.outputWeights(weights, featureNames)
     lrWeights = weights.toSeq
   }
 

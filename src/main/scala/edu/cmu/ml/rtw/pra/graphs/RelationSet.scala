@@ -15,7 +15,7 @@ import scala.collection.mutable
 
 import org.json4s._
 
-class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
+class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
 
   // Fields dealing with the relations themselves.
@@ -89,38 +89,15 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
   }
 
   def writeRelationEdgesToGraphFile(
-      intEdgeFile: FileWriter,
-      seenTriples: mutable.HashSet[(Int, Int, Int)],
-      prefixOverride: String,
-      seenNps: mutable.HashSet[(String)],
-      aliases: Seq[(String, Map[String, Seq[String]])],
-      nodeDict: Dictionary,
-      edgeDict: Dictionary): Int = {
-    // TODO(matt): does this need to be a redirect method?  That was initially for testing, but is
-    // no longer necessary.
-    writeRelationEdgesFromFile(
-      relationFile,
-      loadEmbeddings(),
-      seenTriples,
-      prefixOverride,
-      seenNps,
-      aliases,
-      intEdgeFile,
-      nodeDict,
-      edgeDict)
-  }
-
-  def writeRelationEdgesFromFile(
-      filename: String,
-      embeddings: Map[String, List[String]],
-      seenTriples: mutable.HashSet[(Int, Int, Int)],
-      prefixOverride: String,
-      seenNps: mutable.HashSet[(String)],
-      aliases: Seq[(String, Map[String, Seq[String]])],
-      writer: FileWriter,
-      nodeDict: Dictionary,
-      edgeDict: Dictionary): Int = {
-    Outputter.info(s"Adding edges from relation file $relationFile")
+    writer: FileWriter,
+    seenTriples: mutable.HashSet[(Int, Int, Int)],
+    prefixOverride: String,
+    seenNps: mutable.HashSet[(String)],
+    aliases: Seq[(String, Map[String, Seq[String]])],
+    nodeDict: Dictionary,
+    edgeDict: Dictionary
+  ): Int = {
+    outputter.info(s"Adding edges from relation file $relationFile")
     val prefix = {
       if (prefixOverride != null) {
         prefixOverride
@@ -132,24 +109,17 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
     }
     var i = 0
     var numEdges = 0
-    for (line <- fileUtil.getLineIterator(filename)) {
+    for (line <- fileUtil.getLineIterator(relationFile)) {
       i += 1
       fileUtil.logEvery(1000000, i)
       val fields = line.split("\t")
-      var relation: String = null
-      var arg1: String = null
-      var arg2: String = null
       // TODO(matt): Maybe make this relation file format a configurable field?
-      if (isKb) {
+      val (arg1, arg2, relation) = if (isKb) {
         // KB relations are formated (S, O, V).
-        arg1 = fields(0)
-        arg2 = fields(1)
-        relation = fields(2)
+        (fields(0), fields(1), fields(2))
       } else {
         // And surface relations are formatted (S, V, O).
-        arg1 = fields(0)
-        relation = fields(1)
-        arg2 = fields(2)
+        (fields(0), fields(2), fields(1))
       }
       val ind1 = nodeDict.getIndex(arg1)
       val ind2 = nodeDict.getIndex(arg2)
@@ -161,7 +131,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
 
       if (!aliasesOnly) {
         val replaced = replaceRelation(relation)
-        val relationEdges = getEmbeddedRelations(replaced, embeddings)
+        val relationEdges = getEmbeddedRelations(replaced, loadEmbeddings())
         for (relation <- relationEdges) {
           val prefixed_relation = prefix + relation
           val relation_index = edgeDict.getIndex(prefixed_relation)
@@ -234,7 +204,7 @@ class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) {
 
   def loadEmbeddings(): Map[String, List[String]] = {
     if (embeddingsFile != null) {
-      Outputter.info("Reading embeddings from file " + embeddingsFile)
+      outputter.info("Reading embeddings from file " + embeddingsFile)
       fileUtil.readMapListFromTsvFile(embeddingsFile).mapValues(_.toList)
     } else {
       null

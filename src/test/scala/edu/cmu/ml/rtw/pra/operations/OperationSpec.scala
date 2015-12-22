@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.operations
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.Split
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -33,8 +34,9 @@ class OperationSpec extends FlatSpecLike with Matchers {
   val builder = new PraConfigBuilder().setGraph(graph)
   val fileUtil = new FakeFileUtil()
 
-  val split = Split.create(JString("fake"), "/base/dir/", fileUtil)
-  val operation = Operation.create(JNothing, split, "/", fileUtil).get
+  val outputter = Outputter.justLogger
+  val split = Split.create(JString("fake"), "/base/dir/", outputter, fileUtil)
+  val operation = Operation.create(JNothing, split, "/", outputter, fileUtil)
 
   def expectCount[T](collection: Seq[T], element: T, count: Int) {
     val actualCount = collection.filter(_.equals(element)).size
@@ -46,7 +48,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
     // the relation itself, even if there are embeddings.  Sometimes we use both the original
     // edge and the embedding as edges in the graph.  If the original edge is still there, this
     // will stop it, and if it's not there, having it in this list won't hurt anything.
-    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, embeddings, builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, embeddings, outputter, builder)
     unallowedEdges.size should be(6)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 2)
@@ -56,7 +58,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no inverses" in {
-    val unallowedEdges = operation.createUnallowedEdges(relation, Map(), embeddings, builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation, Map(), embeddings, outputter, builder)
     unallowedEdges.size should be(3)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -64,21 +66,21 @@ class OperationSpec extends FlatSpecLike with Matchers {
   }
 
   it should "work with no embeddings" in {
-    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, null, builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, null, outputter, builder)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)
   }
 
   it should "work when the relation has no inverse" in {
-    val unallowedEdges = operation.createUnallowedEdges(relation2, inverses, null, builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation2, inverses, null, outputter, builder)
     unallowedEdges.size should be(1)
     expectCount(unallowedEdges, edgeDict.getIndex(relation2), 1)
   }
 
   it should "work when the inverse has no embeddings" in {
     // This test is due to a bug.
-    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, embeddings - inverse, builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, embeddings - inverse, outputter, builder)
     unallowedEdges.size should be(4)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded1), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(embedded2), 1)
@@ -88,7 +90,7 @@ class OperationSpec extends FlatSpecLike with Matchers {
 
   it should "work when the relation has no embeddings" in {
     // This test is also due to a bug.
-    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, Map(), builder)
+    val unallowedEdges = operation.createUnallowedEdges(relation, inverses, Map(), outputter, builder)
     unallowedEdges.size should be(2)
     expectCount(unallowedEdges, edgeDict.getIndex(relation), 1)
     expectCount(unallowedEdges, edgeDict.getIndex(inverse), 1)

@@ -11,6 +11,7 @@ import junit.framework.TestCase;
 import com.google.common.collect.Lists;
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
+import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
@@ -29,7 +30,7 @@ public class RandomWalkPathFinderTest extends TestCase {
   public void setUp() {
     edgesToExclude = Lists.newArrayList();
     addEdgeToExclude(1, 2, 1, edgesToExclude);
-    graph = new GraphOnDisk("src/test/resources/", new FileUtil());
+    graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
     instances = Lists.newArrayList();
     instances.add(new NodePairInstance(1, 2, true, graph));
     finder = new RandomWalkPathFinder(graph,

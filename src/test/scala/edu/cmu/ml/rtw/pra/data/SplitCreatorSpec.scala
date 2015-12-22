@@ -1,5 +1,6 @@
 package edu.cmu.ml.rtw.pra.data
 
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
@@ -21,6 +22,7 @@ import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods.{pretty,render}
 
 class SplitCreatorSpec extends FlatSpecLike with Matchers {
+  val outputter = Outputter.justLogger
 
   val params: JValue =
     ("percent training" -> .3) ~
@@ -41,8 +43,8 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   fakeFileUtil.addFileToBeRead("/graphs/nell/node_dict.tsv", "1\tnode1\n2\tnode2\n")
   fakeFileUtil.addFileToBeRead("/graphs/nell/edge_dict.tsv", "1\trel/1\n")
   fakeFileUtil.onlyAllowExpectedFiles()
-  val splitCreator = new SplitCreator(params, praBase, splitDir, fakeFileUtil)
-  val graph = new GraphOnDisk("/graphs/nell/", fakeFileUtil)
+  val splitCreator = new SplitCreator(params, praBase, splitDir, outputter, fakeFileUtil)
+  val graph = new GraphOnDisk("/graphs/nell/", outputter, fakeFileUtil)
 
   val positiveInstances = Seq(new NodePairInstance(1, 1, true, graph), new NodePairInstance(1, 2, true, graph))
   val negativeInstances = Seq(new NodePairInstance(2, 2, false, graph), new NodePairInstance(1, 2, false, graph))
@@ -115,7 +117,7 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
 
 
   def splitCreatorWithFakeNegativeSelector(expectedSources: Set[Int], expectedTargets: Set[Int]) = {
-    new SplitCreator(params, praBase, splitDir, fakeFileUtil) {
+    new SplitCreator(params, praBase, splitDir, outputter, fakeFileUtil) {
       override def createNegativeExampleSelector(params: JValue) = {
         new FakeNegativeExampleSelector(expectedSources, expectedTargets)
       }
@@ -123,7 +125,7 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   }
 
   class FakeNegativeExampleSelector(expectedSources: Set[Int], expectedTargets: Set[Int])
-      extends PprNegativeExampleSelector(JNothing, new GraphOnDisk("src/test/resources/")) {
+      extends PprNegativeExampleSelector(JNothing, new GraphOnDisk("src/test/resources/", outputter), outputter) {
     override def selectNegativeExamples(
         data: Dataset[NodePairInstance],
         allowedSources: Set[Int],

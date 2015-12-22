@@ -14,6 +14,7 @@ import scala.collection.JavaConverters._
 import edu.cmu.ml.rtw.pra.config.PraConfigBuilder
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -22,6 +23,7 @@ import edu.cmu.ml.rtw.users.matt.util.TestUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
 class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
+  val outputter = Outputter.justLogger
   val factory = new FakePathTypeFactory()
   val finderParams: JValue =
     ("walks per source" -> 123) ~
@@ -44,7 +46,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val path1 = factory.fromString("-1-2-3-")
   val path2 = factory.fromString("-1-2-3- INVERSE")
   val unallowedEdges = List(1, 3, 2)
-  val graph = new GraphOnDisk("src/test/resources/")
+  val graph = new GraphOnDisk("src/test/resources/", outputter)
   val config = new PraConfigBuilder().setNoChecks()
     .setGraph(graph).setUnallowedEdges(unallowedEdges).build()
 
@@ -64,7 +66,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")
-  val generator = new PraFeatureGenerator(params, config, fileUtil)
+  val generator = new PraFeatureGenerator(params, config, outputter, fileUtil)
 
   "createEdgesToExclude" should "handle the basic case" in {
     val edgesToExclude = generator.createEdgesToExclude(data.instances, unallowedEdges)

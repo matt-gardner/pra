@@ -18,6 +18,7 @@ import org.json4s.native.JsonMethods.{pretty,render,parse}
 class SimilarityMatrixCreator(
     embeddingsDir: String,
     name: String,
+    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
 
@@ -56,7 +57,7 @@ class SimilarityMatrixCreator(
     paramOut.close
 
     val dict = new Dictionary
-    Outputter.info("Reading vectors")
+    outputter.info("Reading vectors")
     val vectors = {
       val tmp = new mutable.ArrayBuffer[(Int, DenseVector[Double])]
       for (line <- fileUtil.readLinesFromFile(embeddingsFile)) {
@@ -76,18 +77,18 @@ class SimilarityMatrixCreator(
 
     num_vectors = vectors.size
     dimension = vectors(0)._2.size
-    Outputter.info("Creating hash functions")
+    outputter.info("Creating hash functions")
     val hash_functions = createHashFunctions(num_hashes, hash_size, vectors.map(_._2))
-    Outputter.info("Hashing vectors")
+    outputter.info("Hashing vectors")
     val hashed_vectors = vectors.par.map(x => (x._1, hashVector(x._2, hash_functions), x._2))
     val hash_maps = (0 until num_hashes).map(index => {
       hashed_vectors.seq.map(y => (y._2(index), (y._1, y._3))).groupBy(_._1).seq.toMap.transform(
         (k, v) => v.map(_._2).toSeq).withDefaultValue(Nil)
     }).toSeq
-    Outputter.info("Computing similarities")
+    outputter.info("Computing similarities")
     val similarities = hashed_vectors.flatMap(x =>
         computeSimilarities(threshold, upper_threshold, max_similar, x, hash_maps))
-    Outputter.info("Done computing similarities; outputting results")
+    outputter.info("Done computing similarities; outputting results")
     val out = fileUtil.getFileWriter(outFile)
     similarities.map(x => out.write(s"${dict.getString(x._1)}\t${dict.getString(x._2)}\t${x._3}\n"))
     out.close()
@@ -101,19 +102,19 @@ class SimilarityMatrixCreator(
       max_similar: Int,
       vec: (Int, Seq[Int], DenseVector[Double]),
       hash_maps: Seq[Map[Int, Seq[(Int, DenseVector[Double])]]]): Seq[(Int, Int, Double)] = {
-    if (done.getAndIncrement % 10000 == 0) Outputter.info(done.get.toString)
+    if (done.getAndIncrement % 10000 == 0) outputter.info(done.get.toString)
     val start = System.currentTimeMillis
     val close_vectors =
       for ((hash_map, index) <- hash_maps.zipWithIndex; vec2 <- hash_map(vec._2(index))
            if vec2._1 != vec._1)
              yield vec2
     if (close_vectors.size > 100000) {
-      Outputter.warn("There were too many hash collisions, so I'm giving up on this one")
+      outputter.warn("There were too many hash collisions, so I'm giving up on this one")
       return Seq()
     }
     val close_vector_set = close_vectors.toSet
     if (close_vector_set.size > 1000) {
-      Outputter.warn(s"Saw ${close_vector_set.size} hash collisions for relation ${vec._1}.  Consider " +
+      outputter.warn(s"Saw ${close_vector_set.size} hash collisions for relation ${vec._1}.  Consider " +
         "increasing your hash size")
     }
     val similarities =
