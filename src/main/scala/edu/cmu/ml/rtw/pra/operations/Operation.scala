@@ -156,6 +156,7 @@ class CreateMatrices[T <: Instance](
   val dataToUse = JsonHelper.extractOptionWithDefault(params, "data", dataOptions, "both")
 
   override def runRelation(relation: String) {
+    Outputter.info(s"Creating feature matrices for relation ${config.relation}; using data: ${dataToUse}")
     val generator = FeatureGenerator.create(
       params \ "features",
       graph,
