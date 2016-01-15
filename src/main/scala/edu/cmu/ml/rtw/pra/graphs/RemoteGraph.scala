@@ -24,7 +24,7 @@ class RemoteGraph(system: ActorSystem[GraphMessage]) extends Graph {
   val edgeIds = new concurrent.TrieMap[String, Int]
 
   lazy val (numNodes, numEdgeTypes) = {
-    val response = system ? { f: ActorRef[StatsResponse] => GetGraphStats(f) }
+    val response: Future[StatsResponse] = system ? { GetGraphStats(_) }
     val result = Await.result(response, timeout)
     (result.numNodes, result.numEdgeTypes)
   }
@@ -81,7 +81,7 @@ class RemoteGraph(system: ActorSystem[GraphMessage]) extends Graph {
   override def getNumEdgeTypes(): Int = numEdgeTypes
 
   private def getNodeFromServer(id: Int): (Node, String) = {
-    val response = system ? { f: ActorRef[NodeResponse] => GetNodeById(id, f) }
+    val response: Future[NodeResponse] = system ? { GetNodeById(id, _) }
     val result = Await.result(response, timeout)
     nodeNames.putIfAbsent(id, result.name)
     nodeIds.putIfAbsent(result.name, id)
@@ -90,7 +90,7 @@ class RemoteGraph(system: ActorSystem[GraphMessage]) extends Graph {
   }
 
   private def getNodeFromServer(name: String): (Node, Int) = {
-    val response = system ? { f: ActorRef[NodeResponse] => GetNodeByName(name, f) }
+    val response: Future[NodeResponse] = system ? { GetNodeByName(name, _) }
     val result = Await.result(response, timeout)
     nodeNames.putIfAbsent(result.id, name)
     nodeIds.putIfAbsent(name, result.id)
@@ -99,7 +99,7 @@ class RemoteGraph(system: ActorSystem[GraphMessage]) extends Graph {
   }
 
   private def getEdgeFromServer(id: Int): (Int, String) = {
-    val response = system ? { f: ActorRef[EdgeResponse] => GetEdgeById(id, f) }
+    val response: Future[EdgeResponse] = system ? { GetEdgeById(id, _) }
     val result = Await.result(response, timeout)
     edgeNames.putIfAbsent(id, result.name)
     edgeIds.putIfAbsent(result.name, id)
@@ -107,7 +107,7 @@ class RemoteGraph(system: ActorSystem[GraphMessage]) extends Graph {
   }
 
   private def getEdgeFromServer(name: String): (Int, String) = {
-    val response = system ? { f: ActorRef[EdgeResponse] => GetEdgeByName(name, f) }
+    val response: Future[EdgeResponse] = system ? { GetEdgeByName(name, _) }
     val result = Await.result(response, timeout)
     edgeNames.putIfAbsent(result.id, name)
     edgeIds.putIfAbsent(name, result.id)
