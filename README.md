@@ -47,9 +47,14 @@ that license).  You can find the text of that license
 
 Version 3.2 (current snapshot):
 
+- Implemented remote graphs.  This means that if you have a really large graph that takes a long
+  time to load, or is too big to fit in memory along with all of your feature computation, you can
+start a graph server once somewhere and let it run, while just passing the code a reference to
+where the server is running.  (CURRENTLY IN PROGRESS)
+
 - Allow for feature extraction and classification over _nodes_ in the graph, instead of only _node
   pairs_.  This means that in addition to classifying _relations_ between two entities, you can
-now also classify entity _types_ based on the features of your graph. (CURRENTLY IN PROGRESS)
+now also classify entity _types_ based on the features of your graph.
 
 - Made a change in how feature matrices are computed with SubgraphFeatureGenerator, which saves a
   whole lot of memory, especially on large datasets.  Previously, all of the intermediate graph

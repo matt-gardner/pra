@@ -111,7 +111,7 @@ class InMemoryPprComputer(
       var currentNode = node
       for (stepNum <- 1 to numSteps) {
         // Step to a connected node.
-        val nextNodes = graph.entries(currentNode).getAllConnectedNodes().toSeq
+        val nextNodes = graph.getNode(currentNode).getAllConnectedNodes().toSeq
         val index = random.nextInt(nextNodes.size)
         currentNode = nextNodes(index)
         // Check to see if we're at a node we want to keep track of.

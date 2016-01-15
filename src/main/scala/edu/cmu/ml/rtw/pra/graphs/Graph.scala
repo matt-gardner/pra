@@ -7,7 +7,7 @@ import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 trait Graph {
-  def entries: Array[Node]
+  protected def entries: Array[Node]
 
   def getNode(i: Int) = entries(i)
   def getNode(name: String) = entries(getNodeIndex(name))
