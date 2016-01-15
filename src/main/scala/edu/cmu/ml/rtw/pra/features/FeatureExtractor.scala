@@ -271,7 +271,6 @@ object NodeFeatureExtractor {
     outputter: Outputter,
     fileUtil: FileUtil
   ): FeatureExtractor[NodeInstance] = {
-    println(pretty(render(params)))
     params match {
       case JString("PathAndEndNodeFeatureExtractor") => new PathAndEndNodeFeatureExtractor(outputter)
       case JString("PathOnlyFeatureExtractor") => new PathOnlyFeatureExtractor(outputter)

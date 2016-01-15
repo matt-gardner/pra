@@ -17,14 +17,9 @@ import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
 /**
- * Handles outputting results and other information from running PRA to the file system.  When
- * initialized with node and edge dictionaries, this will output human-readable information.  If
- * node and edge dictionaries are not available, this will fall back on outputting information
- * using the integers used internally by GraphChi (i.e., not very useful).  So we _really_
- * recommend using node and edge dicts with this class.
+ * Handles outputting results and other information from running PRA to the file system.
  *
  * @author mgardner
- *
  */
 class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: FileUtil = new FileUtil) {
   implicit val formats = DefaultFormats
@@ -46,8 +41,8 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
   private var relation: String = null
 
   def setRelation(_relation: String) {
-    fileUtil.mkdirs(baseDir + relation)
     relation = _relation
+    fileUtil.mkdirs(baseDir + relation)
   }
 
   def begin() {
