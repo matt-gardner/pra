@@ -8,9 +8,6 @@ import scala.collection.JavaConverters._
 
 import org.scalatest._
 
-import akka.typed.ActorSystem
-import akka.typed.Props
-
 class RemoteGraphSpec extends FlatSpecLike with Matchers {
 
   val outputter = Outputter.justLogger
@@ -28,10 +25,7 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
   val graphOnDisk = new GraphOnDisk("/graph/", outputter, fileUtil)
 
-  "remote graph" should "actually work with a 'local' remote graph" in {
-    val remoteGraphServer = new RemoteGraphServer(graphOnDisk)
-    val system = ActorSystem("system", Props(remoteGraphServer.handler))
-    val graph = new RemoteGraph(system)
+  def testGraphIsCorrect(graph: Graph) {
     graph.getNumNodes() should be(7)
     graph.getNode(0).edges should be(Map())
     graph.getNode(1).edges.size should be(4)
@@ -72,6 +66,35 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
     graph.getNode(6).edges(1)._1.size should be(0)
     graph.getNode(6).edges(1)._2.size should be(1)
     graph.getNode(6).edges(1)._2(0) should be(1)
+  }
+
+  "remote graph" should "actually work with a 'local' remote graph" in {
+    val port = 9877
+    val remoteGraphServer = new RemoteGraphServer(graphOnDisk, port)
+    remoteGraphServer.start()
+    val graph = new RemoteGraph("localhost", port)
+    testGraphIsCorrect(graph)
+    graph.close()
+    remoteGraphServer.quit()
+  }
+
+  it should "work when the server is in another process" in {
+    val port = 9877
+    val specFileContents = s"""{"graph": "/graph/", "port": $port}"""
+    val specFile = "/spec/file"
+    fileUtil.addFileToBeRead(specFile, specFileContents)
+    val thread = new Thread() {
+      override def run() {
+        RunRemoteGraphServer.fileUtil = fileUtil
+        RunRemoteGraphServer.main(Array(specFile))
+      }
+    }
+    thread.start()
+    Thread.sleep(100)
+    val graph = new RemoteGraph("localhost", port)
+    testGraphIsCorrect(graph)
+    graph.close()
+    thread.interrupt()
   }
 
 }

@@ -5,6 +5,9 @@ import scala.collection.mutable
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+
+import org.json4s._
 
 trait Graph {
   protected def entries: Array[Node]
@@ -66,11 +69,36 @@ trait Graph {
   }
 }
 
-// The edges map is (relation -> (in edges, out edges)).
-class Node(val edges: Map[Int, (Array[Int], Array[Int])], edgeDict: Dictionary) {
-  def getEdges(edgeLabel: String) = {
-    edges(edgeDict.getIndex(edgeLabel))
+object Graph {
+  implicit val formats = DefaultFormats
+
+  def create(params: JValue, praBase: String, outputter: Outputter, fileUtil: FileUtil): Option[Graph] = {
+    val graphType = JsonHelper.extractWithDefault(params, "type", "default")
+    graphType match {
+      case "remote" => {
+        val hostname = (params \ "hostname").extract[String]
+        val port = (params \ "port").extract[Int]
+        Some(new RemoteGraph(hostname, port))
+      }
+      case other => {
+        val graphDirectory = params match {
+          case JNothing => None
+          case JString(path) if (path.startsWith("/")) => Some(path)
+          case JString(name) => Some(praBase + "/graphs/" + name + "/")
+          case jval => Some(praBase + "/graphs/" + (jval \ "name").extract[String] + "/")
+        }
+        val graph = graphDirectory match {
+          case None => None
+          case Some(dir) => Some(new GraphOnDisk(dir, outputter, fileUtil))
+        }
+        graph
+      }
+    }
   }
+}
+
+// The edges map is (relation -> (in edges, out edges)).
+case class Node(edges: Map[Int, (Array[Int], Array[Int])]) {
 
   // We'll save ourselves some time and memory and only create this when it's asked for.  Hopefully
   // it won't exacerbate memory issues too much.  But, especially when using random walks to
@@ -91,11 +119,18 @@ class GraphOnDisk(
   val graphFile = graphDir + "graph_chi/edges.tsv"
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv")(0).toInt
 
-  outputter.info("Loading node and edge dictionaries")
-  val nodeDict = new Dictionary(fileUtil)
-  nodeDict.setFromFile(graphDir + "node_dict.tsv")
-  val edgeDict = new Dictionary(fileUtil)
-  edgeDict.setFromFile(graphDir + "edge_dict.tsv")
+  lazy val nodeDict = {
+    outputter.info("Loading node dictionary")
+    val tmp = new Dictionary(fileUtil)
+    tmp.setFromFile(graphDir + "node_dict.tsv")
+    tmp
+  }
+  lazy val edgeDict = {
+    outputter.info("Loading edge dictionary")
+    val tmp = new Dictionary(fileUtil)
+    tmp.setFromFile(graphDir + "edge_dict.tsv")
+    tmp
+  }
 
   override def entries = _entries
   override def getNodeName(i: Int) = nodeDict.getString(i)
@@ -194,14 +229,14 @@ class GraphBuilder(
     val finalized = new Array[Node](finalSize)
     (0 until finalSize).par.foreach(i => {
       if (entries(i) == null) {
-        finalized(i) = new Node(Map(), edgeDict)
+        finalized(i) = new Node(Map())
       } else {
         finalized(i) = new Node(entries(i).map(entry => {
           val relation = entry._1
           val inEdges = entry._2.getOrElse(true, Set()).toList.sorted.toArray
           val outEdges = entry._2.getOrElse(false, Set()).toList.sorted.toArray
           (relation -> (inEdges, outEdges))
-        }).toMap, edgeDict)
+        }).toMap)
       }
     })
     outputter.info("Graph object built")

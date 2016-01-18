@@ -21,7 +21,6 @@ libraryDependencies ++= Seq(
   // Scala utility libraries
   "org.json4s" %% "json4s-native" % "3.2.11",
   "edu.cmu.ml.rtw" %% "matt-util" % "1.2.1",
-  "com.typesafe.akka" %% "akka-typed-experimental" % "2.4.1",
   // Matrix stuff, both for java and scala
   "net.sf.trove4j" % "trove4j" % "2.0.2",
   "org.scalanlp" %% "breeze" % "0.10",
@@ -38,7 +37,9 @@ libraryDependencies ++= Seq(
 
 // GraphChi leaves some threads running, so we need to call System.exit().  This makes that play
 // nicely while in an sbt console.
-fork in run := true
+fork := true
+
+connectInput := true
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 

@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.experiments
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.SplitCreator
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphCreator
 import edu.cmu.ml.rtw.pra.graphs.GraphDensifier
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
@@ -59,16 +60,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       new RelationMetadata(params \ "relation metadata", praBase, outputter, fileUtil)
     val split = Split.create(params \ "split", praBase, outputter, fileUtil)
 
-    val graphDirectory = (params \ "graph") match {
-      case JNothing => None
-      case JString(path) if (path.startsWith("/")) => Some(path)
-      case JString(name) => Some(praBase + "/graphs/" + name + "/")
-      case jval => Some(praBase + "/graphs/" + (jval \ "name").extract[String] + "/")
-    }
-    val graph = graphDirectory match {
-      case None => None
-      case Some(dir) => Some(new GraphOnDisk(dir, outputter))
-    }
+    val graph = Graph.create(params \ "graph", praBase, outputter, fileUtil)
 
     val operation =
       Operation.create(params \ "operation", graph, split, relationMetadata, outputter, fileUtil)
@@ -120,8 +112,13 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
       }
       case JString(name) => graph_name = name
       case jval => {
-        graph_name = (jval \ "name").extract[String]
-        params_specified = true
+        jval \ "name" match {
+          case JString(name) => {
+            graph_name = name
+            params_specified = true
+          }
+          case other => { }
+        }
       }
     }
     if (graph_name != "") {
