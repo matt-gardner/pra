@@ -12,8 +12,17 @@ import org.json4s._
 trait Graph {
   protected def entries: Array[Node]
 
-  def getNode(i: Int) = entries(i)
-  def getNode(name: String) = entries(getNodeIndex(name))
+  val emptyNode = Node(Map())
+
+  def getNode(i: Int): Node = {
+    if (i < entries.size) {
+      entries(i)
+    } else {
+      emptyNode
+    }
+  }
+
+  def getNode(name: String): Node = getNode(getNodeIndex(name))
 
   def getNodeName(i: Int): String
   def getNodeIndex(name: String): Int
@@ -144,12 +153,16 @@ class GraphOnDisk(
   def loadGraph(): Array[Node] = {
     outputter.info(s"Loading graph")
     val graphBuilder = new GraphBuilder(outputter, nodeDict.getNextIndex, nodeDict, edgeDict)
+    outputter.info(s"Iterating through file")
+    var i = 0
     for (line <- fileUtil.getLineIterator(graphFile)) {
+      fileUtil.logEvery(1000000, i)
       val fields = line.split("\t")
       val source = fields(0).toInt
       val target = fields(1).toInt
       val relation = fields(2).toInt
       graphBuilder.addEdge(source, target, relation)
+      i += 1
     }
     outputter.info("Done reading graph file")
     graphBuilder.build

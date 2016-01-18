@@ -80,13 +80,10 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
 
   it should "work when the server is in another process" in {
     val port = 9877
-    val specFileContents = s"""{"graph": "/graph/", "port": $port}"""
-    val specFile = "/spec/file"
-    fileUtil.addFileToBeRead(specFile, specFileContents)
     val thread = new Thread() {
       override def run() {
         RunRemoteGraphServer.fileUtil = fileUtil
-        RunRemoteGraphServer.main(Array(specFile))
+        RunRemoteGraphServer.main(Array("--graph", "/graph/", "--port", port.toString))
       }
     }
     thread.start()

@@ -13,16 +13,26 @@ import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
 
-import org.json4s.JNothing
+import org.json4s._
 
 object RemoteGraph {
   val DEFAULT_PORT = 9876
 }
 
 class RemoteGraph(val hostname: String, val port: Int) extends Graph {
-  lazy val socket = new Socket(hostname, port)
-  lazy val out = new ObjectOutputStream(socket.getOutputStream)
-  lazy val in = new ObjectInputStream(socket.getInputStream)
+  println("Starting remote graph")
+  lazy val socket = {
+    println("Creating socket")
+    new Socket(hostname, port)
+  }
+  lazy val out = {
+    println("Creating socket output stream")
+    new ObjectOutputStream(socket.getOutputStream)
+  }
+  lazy val in = {
+    println("Creating socket input stream")
+    new ObjectInputStream(socket.getInputStream)
+  }
 
   def close() = socket.close()
 
@@ -34,8 +44,11 @@ class RemoteGraph(val hostname: String, val port: Int) extends Graph {
   val edgeIds = new concurrent.TrieMap[String, Int]
 
   lazy val (numNodes, numEdgeTypes) = {
-    out.writeObject(GetGraphStats)
-    val result = in.readObject().asInstanceOf[StatsResponse]
+    println("Getting graph stats from server")
+    val result = out synchronized {
+      out.writeObject(GetGraphStats)
+      in.readObject().asInstanceOf[StatsResponse]
+    }
     (result.numNodes, result.numEdgeTypes)
   }
 
@@ -91,29 +104,41 @@ class RemoteGraph(val hostname: String, val port: Int) extends Graph {
   override def getNumEdgeTypes(): Int = numEdgeTypes
 
   private def getNodeFromServer(id: Int): (Node, String) = {
-    out.writeObject(GetNodeById(id))
-    val result = in.readObject().asInstanceOf[NodeResponse]
+    println("Getting node " + id + " from server")
+    val result = out synchronized {
+      out.writeObject(GetNodeById(id))
+      in.readObject().asInstanceOf[NodeResponse]
+    }
     updateNodeCache(result.node, id, result.name)
     (result.node, result.name)
   }
 
   private def getNodeFromServer(name: String): (Node, Int) = {
-    out.writeObject(GetNodeByName(name))
-    val result = in.readObject().asInstanceOf[NodeResponse]
+    println("Getting node " + name + " from server")
+    val result = out synchronized {
+      out.writeObject(GetNodeByName(name))
+      in.readObject().asInstanceOf[NodeResponse]
+    }
     updateNodeCache(result.node, result.id, name)
     (result.node, result.id)
   }
 
   private def getEdgeFromServer(id: Int): (Int, String) = {
-    out.writeObject(GetEdgeById(id))
-    val result = in.readObject().asInstanceOf[EdgeResponse]
+    println("Getting edge " + id + " from server")
+    val result = out synchronized {
+      out.writeObject(GetEdgeById(id))
+      in.readObject().asInstanceOf[EdgeResponse]
+    }
     updateEdgeCache(id, result.name)
     (id, result.name)
   }
 
   private def getEdgeFromServer(name: String): (Int, String) = {
-    out.writeObject(GetEdgeByName(name))
-    val result = in.readObject().asInstanceOf[EdgeResponse]
+    println("Getting edge " + name + " from server")
+    val result = out synchronized {
+      out.writeObject(GetEdgeByName(name))
+      in.readObject().asInstanceOf[EdgeResponse]
+    }
     updateEdgeCache(result.id, name)
     (result.id, name)
   }
@@ -149,11 +174,14 @@ final case class StatsResponse(numNodes: Int, numEdgeTypes: Int) extends GraphRe
 class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
 
   val serverSocket = new ServerSocket(port)
+  val handlerSockets = new mutable.ListBuffer[Socket]
 
   override def run() {
     while (true) {
       try {
-        new Handler(serverSocket.accept()).start()
+        val socket = serverSocket.accept()
+        handlerSockets += socket
+        new Handler(socket).start()
       } catch {
         case e: InterruptedException => {
           println("Closing the server socket")
@@ -171,36 +199,47 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
   def quit() {
     println("Closing the socket")
     serverSocket.close()
+    println("Closing handler sockets")
+    handlerSockets.map(_.close())
   }
 
   class Handler(socket: Socket) extends Thread {
+    println("Got a new client")
+    println("isConnected: " + socket.isConnected)
     val out = new ObjectOutputStream(socket.getOutputStream)
     val in = new ObjectInputStream(socket.getInputStream)
 
     override def run() {
+      println("Handling requests")
       while (!socket.isClosed) {
         try {
-          val message = in.readObject().asInstanceOf[GraphMessage]
+          println("Waiting for message")
+          val message = in.readObject()
           message match {
             case GetNodeById(id) => {
+              println("Requested node " + id)
               val node = graph.getNode(id)
               val nodeName = graph.getNodeName(id)
               out.writeObject(NodeResponse(id, nodeName, node))
             }
             case GetNodeByName(name) => {
+              println("Requested node " + name)
               val node = graph.getNode(name)
               val id = graph.getNodeIndex(name)
               out.writeObject(NodeResponse(id, name, node))
             }
             case GetEdgeById(id) => {
+              println("Requested edge " + id)
               val name = graph.getEdgeName(id)
               out.writeObject(EdgeResponse(id, name))
             }
             case GetEdgeByName(name) => {
+              println("Requested edge " + name)
               val id = graph.getEdgeIndex(name)
               out.writeObject(EdgeResponse(id, name))
             }
             case GetGraphStats => {
+              println("Requested graph stats")
               out.writeObject(StatsResponse(graph.getNumNodes(), graph.getNumEdgeTypes()))
             }
           }
@@ -222,23 +261,49 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
 object RunRemoteGraphServer {
   var fileUtil = new FileUtil
 
-  def main(args: Array[String]) {
-    import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-    val specFile = args(0)
-    val praBase = "/dev/null"
+  def parseArgs(args: List[String]): Map[String, String] = {
+    def nextOption(map: Map[String, String], list: List[String]): Map[String, String] = {
+      list match {
+        case Nil => map
+        case "--graph" :: value :: tail => nextOption(map ++ Map("graph" -> value), tail)
+        case "--port" :: value :: tail => nextOption(map ++ Map("port" -> value), tail)
+        case "--spec" :: value :: tail => nextOption(map ++ Map("spec" -> value), tail)
+        case option :: tail => {
+          throw new RuntimeException("unknown option: " + option)
+        }
+      }
+    }
+    nextOption(Map(), args)
+  }
+
+  def readSpecFile(specFile: String): (String, Int) = {
+    implicit val formats = DefaultFormats
     val params = new SpecFileReader("/dev/null", fileUtil).readSpecFile(specFile)
     val paramKeys = Seq("type", "port", "graph")
-    JsonHelper.ensureNoExtras(params, "operation", paramKeys)
+    JsonHelper.ensureNoExtras(params, "main", paramKeys)
     val port = JsonHelper.extractWithDefault(params, "port", RemoteGraph.DEFAULT_PORT)
+    val graph = (params \ "graph").extract[String]
+    (graph, port)
+  }
 
+  def main(args: Array[String]) {
+    val options = parseArgs(args.toList)
+    val (graphFile, port) = options.get("spec") match {
+      case Some(specFile) => readSpecFile(specFile)
+      case None => {
+        (options("graph"), options("port").toInt)
+      }
+    }
+
+    val praBase = "/dev/null"
     val outputter = new Outputter(JNothing, praBase, "running graph")
-    val graph = Graph.create(params \ "graph", praBase, outputter, fileUtil).get
+    val graph = Graph.create(JString(graphFile), praBase, outputter, fileUtil).get
     val server = new RemoteGraphServer(graph, port)
     println(s"Starting graph server on port $port")
     server.start()
     try {
       println("Hit enter to stop the server...")
-      val in = scala.io.StdIn.readLine()
+      val in = scala.io.Source.stdin.bufferedReader.readLine
     } finally {
       println("Quitting")
       server.quit()
