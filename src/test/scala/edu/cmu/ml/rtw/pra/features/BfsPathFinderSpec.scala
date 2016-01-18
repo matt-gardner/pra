@@ -43,7 +43,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/node_dict.tsv", nodeDictContents)
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictContents)
 
-  val relation = "fake relation"
+  val relation = "rel1"
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
   val instance = new NodePairInstance(5, 3, true, graph)
   val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)

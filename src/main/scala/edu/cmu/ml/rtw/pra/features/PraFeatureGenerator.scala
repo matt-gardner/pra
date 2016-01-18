@@ -182,7 +182,7 @@ class PraFeatureGenerator(
       val matrix_dir = if (matrix_base.endsWith("/")) graph.graphDir + matrix_base else
         graph.graphDir + matrix_base + "/"
       new MatrixPathFollower(
-        graph.nodeDict.getNextIndex(),
+        graph.nodeDict.size,
         pathTypes,
         outputter,
         matrix_dir,

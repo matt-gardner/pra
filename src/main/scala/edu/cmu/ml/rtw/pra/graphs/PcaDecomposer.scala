@@ -7,7 +7,7 @@ import scala.collection.mutable
 import breeze.linalg._
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 class PcaDecomposer(
@@ -20,7 +20,7 @@ class PcaDecomposer(
   val graph_file = graph_dir + "/graph_chi/edges.tsv"
   val in_progress_file = result_dir + "in_progress"
   lazy val edge_dict = {
-    val dict = new Dictionary
+    val dict = new MutableConcurrentDictionary
     dict.setFromFile(graph_dir + "edge_dict.tsv")
     dict
   }

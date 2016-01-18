@@ -4,7 +4,7 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
 import scala.collection.mutable
@@ -22,7 +22,7 @@ class RelationMetadataSpec extends FlatSpecLike with Matchers {
   val embedded1 = "embedded1"
   val embedded2 = "embedded2"
   val embedded3 = "embedded3"
-  val edgeDict = new Dictionary()
+  val edgeDict = new MutableConcurrentDictionary()
   val inversesFile = "/inverses/file"
   val inversesFileContents = s"${relation}\t${inverse}"
   val embeddingsFile = "/embeddings/file"
@@ -35,7 +35,7 @@ class RelationMetadataSpec extends FlatSpecLike with Matchers {
   val kbDirectory = "/dev/null/"
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
-  val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
+  val graph = new GraphInMemory(Array[Node](), new MutableConcurrentDictionary, edgeDict)
   val fileUtil = new FakeFileUtil()
   fileUtil.addFileToBeRead(inversesFile, inversesFileContents)
   fileUtil.addFileToBeRead(embeddingsFile, embeddingsFileContents)

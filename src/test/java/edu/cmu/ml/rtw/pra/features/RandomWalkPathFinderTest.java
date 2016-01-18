@@ -47,9 +47,9 @@ public class RandomWalkPathFinderTest extends TestCase {
 
   public void testEcondePath() {
     Index<PathType> pathDict = finder.getPathDictionary();
-    int[] expectedPathTypes = new int[factory.pathTypes.length];
-    for (int i = 0; i < factory.pathTypes.length; i++) {
-      expectedPathTypes[i] = pathDict.getIndex(factory.pathTypes[i]);
+    int[] expectedPathTypes = new int[factory.pathTypes().length];
+    for (int i = 0; i < factory.pathTypes().length; i++) {
+      expectedPathTypes[i] = pathDict.getIndex(factory.pathTypes()[i]);
     }
     Path path = new Path(1, 10);
     assertTrue(Arrays.equals(expectedPathTypes, finder.encodePath(path)));

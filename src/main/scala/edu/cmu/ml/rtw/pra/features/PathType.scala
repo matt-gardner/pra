@@ -1,38 +1,34 @@
-package edu.cmu.ml.rtw.pra.features;
+package edu.cmu.ml.rtw.pra.features
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import edu.cmu.ml.rtw.pra.graphs.Graph
 
-import edu.cmu.ml.rtw.pra.graphs.Graph;
-
-public interface PathType {
+trait PathType {
 
   /**
    * How many iterations should we run if we want to be sure we complete the computation for this
    * path type?
    */
-  public int recommendedIters();
+  def recommendedIters(): Int
 
   /**
    * Is this the last hop?  This determines whether the walk gets sent to the companion for
    * tracking statistics.
    */
-  public boolean isLastHop(int hopNum);
+  def isLastHop(hopNum: Int): Boolean
 
   /**
    * Creates a machine-parseable representation of the PathType.  This must match the
-   * ObjectParser<PathType> implementation in the PathTypeFactory.  Edges types, node types, and
+   * ObjectParser[PathType] implementation in the PathTypeFactory.  Edges types, node types, and
    * whatever else, are encoded as integers.
    */
-  public String encodeAsString();
+  def encodeAsString(): String
 
   /**
    * Creates a human-digestable representation of the PathType.  To make it human readable, we need
    * to convert the integers that show up in the path type into their string representations, using
    * the provided dictionaries.
    */
-  public String encodeAsHumanReadableString(Graph graph);
+  def encodeAsHumanReadableString(graph: Graph, edgeMap: Map[Int, String] = Map()): String
 
   /**
    * Given the hop number and information about the current vertex, pick an edge to follow.
@@ -48,13 +44,14 @@ public interface PathType {
    * because vertices that have lots of edges tend to get more walks at them.  So, really, try hard
    * to avoid a loop over all of the edges.  The cache parameter should be helpful for that.
    */
-  public int nextHop(int hopNum,
-                     int sourceVertex,
-                     Vertex vertex,
-                     Random random,
-                     EdgeExcluder edgeExcluder,
-                     PathTypeVertexCache cache);
+  def nextHop(
+    hopNum: Int,
+    sourceVertex: Int,
+    vertex: Vertex,
+    random: java.util.Random,
+    edgeExcluder: EdgeExcluder,
+    cache: PathTypeVertexCache): Int
 
-  public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum);
-
+  def cacheVertexInformation(vertex: Vertex, hopNum: Int): PathTypeVertexCache
 }
+

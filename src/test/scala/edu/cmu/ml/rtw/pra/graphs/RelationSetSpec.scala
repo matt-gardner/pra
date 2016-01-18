@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import org.scalatest._
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileWriter
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.TestUtil
@@ -38,8 +38,8 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
   val replaced = "replaced"
   val verb1 = "verb1"
   val verb2 = "verb2"
-  val nodeDict = new Dictionary()
-  val edgeDict = new Dictionary()
+  val nodeDict = new MutableConcurrentDictionary()
+  val edgeDict = new MutableConcurrentDictionary()
   val concept1Index = nodeDict.getIndex(concept1)
   val concept2Index = nodeDict.getIndex(concept2)
   val np1Index = nodeDict.getIndex(np1)

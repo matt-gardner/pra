@@ -6,7 +6,7 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -32,7 +32,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     "include bias", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
-  val featureDict = new Dictionary
+  val featureDict = new MutableConcurrentDictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
@@ -60,7 +60,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
   override def getFeatureNames(): Array[String] = {
     // Not really sure if par is useful here...  Maybe I should just take it out.
-    val features = (1 until featureDict.getNextIndex).par.map(i => {
+    val features = (1 until featureDict.size).par.map(i => {
         val name = featureDict.getString(i)
         if (name == null) {
           // We need to put these in the feature name array, so that MALLET gets the feature

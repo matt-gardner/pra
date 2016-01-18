@@ -10,9 +10,10 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.graphs.Graph;
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
 import edu.cmu.ml.rtw.pra.graphs.Node;
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
 import edu.cmu.ml.rtw.users.matt.util.MapUtil;
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
 
 // This class also tests BaseEdgeSequencePathTypeFactory, which has the implementations of most of
 // these methods.
@@ -106,12 +107,13 @@ public class BasicPathTypeFactoryTest extends TestCase {
         PathType pathType = factory.fromString(pathDescription);
         assertEquals(pathDescription, pathType.encodeAsString());
         assertEquals(pathDescription, pathType.toString());
-        Dictionary edgeDict = new Dictionary();
+        MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(false, new FileUtil());
         edgeDict.getIndex("r1");
         edgeDict.getIndex("r2");
         edgeDict.getIndex("r3");
         Graph graph = new GraphInMemory(new Node[0], null, edgeDict);
         String humanReadable = "-r1-_r2-r3-";
-        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(graph));
+        assertEquals(humanReadable, pathType.encodeAsHumanReadableString(
+            graph, scala.collection.immutable.Map$.MODULE$.<Object, String>empty()));
     }
 }

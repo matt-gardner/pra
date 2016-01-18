@@ -9,7 +9,8 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
 import edu.cmu.ml.rtw.pra.graphs.Node;
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
+import edu.cmu.ml.rtw.users.matt.util.FileUtil;
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
 
@@ -18,7 +19,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
     private Vector vector2 = new Vector(new double[]{-1,-2,-3});
     private Vector vector3 = new Vector(new double[]{1,3,3});
     private Map<Integer, Vector> embeddings = Maps.newHashMap();
-    private Dictionary edgeDict = new Dictionary();
+    private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(false, new FileUtil());
     private GraphInMemory graph = new GraphInMemory(new Node[0], null, edgeDict);
 
     @Override

@@ -16,7 +16,7 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.Index;
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentIndex;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class RandomWalkPathFinderCompanionTest extends TestCase {
@@ -29,7 +29,7 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private PathType type13 = factory.fromString("-1-3-");
   private PathType type22 = factory.fromString("-2-2-");
   private PathType type23 = factory.fromString("-2-3-");
-  private Index<PathType> pathDict = new Index<PathType>(factory, false, new FileUtil());
+  private MutableConcurrentIndex<PathType> pathDict = new MutableConcurrentIndex<PathType>(factory, false, new FileUtil());
   private int type1Index = pathDict.getIndex(type1);
   private int type2Index = pathDict.getIndex(type2);
   private int type_2Index = pathDict.getIndex(type_2);

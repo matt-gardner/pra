@@ -25,6 +25,9 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
   val graphOnDisk = new GraphOnDisk("/graph/", outputter, fileUtil)
 
+  // TODO(matt): I don't think I've specified what should happen if you query for a node or edge
+  // without checking that it's present.  Should I expect a null pointer exception, or do something
+  // else?
   def testGraphIsCorrect(graph: Graph) {
     graph.getNumNodes() should be(7)
     graph.getNode(0).edges should be(Map())
@@ -66,13 +69,29 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
     graph.getNode(6).edges(1)._1.size should be(0)
     graph.getNode(6).edges(1)._2.size should be(1)
     graph.getNode(6).edges(1)._2(0) should be(1)
+    graph.getNode("6").edges.size should be(1)
+    graph.getNode("6").edges(1)._1.size should be(0)
+    graph.getNode("6").edges(1)._2.size should be(1)
+    graph.getNode("6").edges(1)._2(0) should be(1)
+    graph.hasNode("1") should be(true)
+    graph.hasNode("2") should be(true)
+    graph.hasNode("3") should be(true)
+    graph.hasNode("4") should be(true)
+    graph.hasNode("5") should be(true)
+    graph.hasNode("6") should be(true)
+    graph.hasNode("other") should be(false)
+    graph.hasEdge("1") should be(true)
+    graph.hasEdge("2") should be(true)
+    graph.hasEdge("3") should be(true)
+    graph.hasEdge("4") should be(true)
+    graph.hasEdge("other") should be(false)
   }
 
   "remote graph" should "actually work with a 'local' remote graph" in {
     val port = 9877
     val remoteGraphServer = new RemoteGraphServer(graphOnDisk, port)
     remoteGraphServer.start()
-    val graph = new RemoteGraph("localhost", port)
+    val graph = new RemoteGraph("localhost", port, 1)
     testGraphIsCorrect(graph)
     graph.close()
     remoteGraphServer.quit()
@@ -88,7 +107,7 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
     }
     thread.start()
     Thread.sleep(100)
-    val graph = new RemoteGraph("localhost", port)
+    val graph = new RemoteGraph("localhost", port, 1)
     testGraphIsCorrect(graph)
     graph.close()
     thread.interrupt()

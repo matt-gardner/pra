@@ -101,25 +101,25 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
 
     @Override
     public PathTypeVertexCache cacheVertexInformation(Vertex vertex, int hopNum) {
-      if (hopNum >= numHops) return null;
+      if (hopNum >= numHops()) return null;
 
-      Vector baseVector = _embeddings[edgeTypes[hopNum]];
+      Vector baseVector = _embeddings[edgeTypes()[hopNum]];
       // If we have no embeddings for the edge type corresponding to this hop num (for instance, if
       // it is the "alias" relation), then just return the edge type itself.
       if (baseVector == null) {
-        return new VectorPathTypeVertexCache(edgeTypes[hopNum]);
+        return new VectorPathTypeVertexCache(edgeTypes()[hopNum]);
       }
 
       int[] vertexEdgeTypes;
-      if (reverse[hopNum]) {
+      if (reverse()[hopNum]) {
         vertexEdgeTypes = vertex.getInEdgeTypes();
       } else {
         vertexEdgeTypes = vertex.getOutEdgeTypes();
       }
       // If there's only one possible edge type, and it matches the edge type we're supposed to be
       // walking on, don't bother messing with the reset probability, just take it.
-      if (vertexEdgeTypes.length == 1 && vertexEdgeTypes[0] == edgeTypes[hopNum]) {
-        return new VectorPathTypeVertexCache(edgeTypes[hopNum]);
+      if (vertexEdgeTypes.length == 1 && vertexEdgeTypes[0] == edgeTypes()[hopNum]) {
+        return new VectorPathTypeVertexCache(edgeTypes()[hopNum]);
       }
       double[] weights = new double[vertexEdgeTypes.length];
       double totalWeight = 0.0;
@@ -139,10 +139,7 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
     }
 
     @Override
-    protected int getNextEdgeType(int hopNum,
-                                  Vertex vertex,
-                                  Random random,
-                                  PathTypeVertexCache _cache) {
+    public int getNextEdgeType(int hopNum, Vertex vertex, Random random, PathTypeVertexCache _cache) {
       VectorPathTypeVertexCache cache = (VectorPathTypeVertexCache) _cache;
       if (cache.isDeltaDistribution()) return cache.deltaEdgeType;
 

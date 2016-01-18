@@ -27,7 +27,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
   val graph = new GraphOnDisk("src/test/resources/", outputter)
   val fakeFileUtil = new FakeFileUtil
-  val relation = "fake relation"
+  val relation = "rel3"
   val metadata = RelationMetadata.empty
 
   val generator = new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fakeFileUtil)

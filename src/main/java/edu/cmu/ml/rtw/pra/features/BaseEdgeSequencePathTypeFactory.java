@@ -48,15 +48,15 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
   public PathType concatenatePathTypes(PathType pathToSource, PathType pathFromTarget) {
     BaseEdgeSequencePathType source = (BaseEdgeSequencePathType) pathToSource;
     BaseEdgeSequencePathType target = (BaseEdgeSequencePathType) pathFromTarget;
-    int totalHops = source.numHops + target.numHops;
+    int totalHops = source.numHops() + target.numHops();
     int[] combinedEdgeTypes = new int[totalHops];
     boolean[] combinedReverse = new boolean[totalHops];
-    System.arraycopy(source.edgeTypes, 0, combinedEdgeTypes, 0, source.numHops);
-    System.arraycopy(source.reverse, 0, combinedReverse, 0, source.numHops);
+    System.arraycopy(source.edgeTypes(), 0, combinedEdgeTypes, 0, source.numHops());
+    System.arraycopy(source.reverse(), 0, combinedReverse, 0, source.numHops());
 
-    for (int i = target.numHops - 1, j = source.numHops; i >= 0; i--, j++) {
-      combinedEdgeTypes[j] = target.edgeTypes[i];
-      combinedReverse[j] = !target.reverse[i];
+    for (int i = target.numHops() - 1, j = source.numHops(); i >= 0; i--, j++) {
+      combinedEdgeTypes[j] = target.edgeTypes()[i];
+      combinedReverse[j] = !target.reverse()[i];
     }
     return newInstance(combinedEdgeTypes, combinedReverse);
   }
@@ -64,11 +64,11 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
   @Override
   public PathType addToPathType(PathType pathType, int relation, int node, boolean reverse) {
     BaseEdgeSequencePathType path = (BaseEdgeSequencePathType) pathType;
-    int totalHops = path.numHops + 1;
+    int totalHops = path.numHops() + 1;
     int[] combinedEdgeTypes = new int[totalHops];
     boolean[] combinedReverse = new boolean[totalHops];
-    System.arraycopy(path.edgeTypes, 0, combinedEdgeTypes, 0, path.numHops);
-    System.arraycopy(path.reverse, 0, combinedReverse, 0, path.numHops);
+    System.arraycopy(path.edgeTypes(), 0, combinedEdgeTypes, 0, path.numHops());
+    System.arraycopy(path.reverse(), 0, combinedReverse, 0, path.numHops());
 
     combinedEdgeTypes[totalHops - 1] = relation;
     combinedReverse[totalHops - 1] = reverse;

@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -27,10 +27,10 @@ class GraphDensifier(
   val inProgressFile = s"${matrixDir}in_progress"
 
   val maxMatrixFileSize = 100000
-  val edge_dict = new Dictionary
+  val edge_dict = new MutableConcurrentDictionary
   edge_dict.setFromFile(graphDir + "/edge_dict.tsv")
 
-  val node_dict = new Dictionary
+  val node_dict = new MutableConcurrentDictionary
   node_dict.setFromFile(graphDir + "/node_dict.tsv")
 
   def densifyGraph(params: JValue) {

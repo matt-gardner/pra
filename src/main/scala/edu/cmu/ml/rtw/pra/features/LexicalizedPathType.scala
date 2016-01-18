@@ -42,13 +42,13 @@ class LexicalizedPathType(
     throw new UnsupportedOperationException("LexicalizedPathTypes can't be followed at the moment")
   }
 
-  override def encodeAsString() = stringDescription(null)
+  override def encodeAsString() = stringDescription(null, Map())
 
-  override def encodeAsHumanReadableString(graph: Graph) = {
-    stringDescription(graph)
+  override def encodeAsHumanReadableString(graph: Graph, edgeMap: Map[Int, String] = Map()) = {
+    stringDescription(graph, edgeMap)
   }
 
-  def stringDescription(graph: Graph) = {
+  def stringDescription(graph: Graph, edgeMap: Map[Int, String]) = {
     val builder = new StringBuilder()
     for (i <- 0 until numHops) {
       builder.append("-")
@@ -58,7 +58,11 @@ class LexicalizedPathType(
       if (graph == null) {
         builder.append(edgeTypes(i))
       } else {
-        builder.append(graph.getEdgeName(edgeTypes(i)))
+        val edgeName = edgeMap.get(edgeTypes(i)) match {
+          case Some(name) => name
+          case None => graph.getEdgeName(edgeTypes(i))
+        }
+        builder.append(edgeName)
       }
       builder.append("->")
       if (i < nodes.size) {

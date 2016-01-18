@@ -176,10 +176,18 @@ class VectorSimilarityFeatureExtractor(
     (words(0), (words(1), words(2).toDouble))
   }).toList.sorted
   val relations = pairs.groupBy(_._1).mapValues(_.map(_._2).sortBy(-_._2).take(maxSimilarVectors).map(_._1))
+  val ANY_REL = "@ANY_REL@"
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    val anyRel = graph.getEdgeIndex("@ANY_REL@")
+    val (anyRel: Int, edgeMap: Map[Int, String]) = {
+      if (graph.hasEdge(ANY_REL)) {
+        (graph.getEdgeIndex(ANY_REL), Map())
+      } else {
+        val index = graph.getNumEdgeTypes + 100
+        (index, Map(index -> ANY_REL))
+      }
+    }
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
@@ -196,7 +204,7 @@ class VectorSimilarityFeatureExtractor(
           val oldEdgeType = edgeTypes(sim._1)
           edgeTypes(sim._1) = sim._2
           val similar = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(graph)
+            .encodeAsHumanReadableString(graph, edgeMap)
           edgeTypes(sim._1) = oldEdgeType
           "VECSIM:" + similar
         }).toSet
@@ -209,9 +217,18 @@ class VectorSimilarityFeatureExtractor(
 
 class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
 
+  val ANY_REL = "@ANY_REL@"
+
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    val anyRel = graph.getEdgeIndex("@ANY_REL@")
+    val (anyRel: Int, edgeMap: Map[Int, String]) = {
+      if (graph.hasEdge(ANY_REL)) {
+        (graph.getEdgeIndex(ANY_REL), Map())
+      } else {
+        val index = graph.getNumEdgeTypes + 100
+        (index, Map(index -> ANY_REL))
+      }
+    }
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
@@ -222,7 +239,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
           val oldEdgeType = edgeTypes(i)
           edgeTypes(i) = anyRel
           val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-            .encodeAsHumanReadableString(graph)
+            .encodeAsHumanReadableString(graph, edgeMap)
           edgeTypes(i) = oldEdgeType
           "ANYREL:" + newPathType
         }).toSet
@@ -235,9 +252,22 @@ class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
 
 class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]{
 
-  override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
+  val ANY_REL = "@ANY_REL@"
+  val ALIAS = "@ALIAS@"
+
+  override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph): Seq[String] = {
     val graph = instance.graph
-    val anyRel = graph.getEdgeIndex("@ANY_REL@")
+    if (!graph.hasEdge("@ALIAS@")) {
+      return List[String]()
+    }
+    val (anyRel: Int, edgeMap: Map[Int, String]) = {
+      if (graph.hasEdge(ANY_REL)) {
+        (graph.getEdgeIndex(ANY_REL), Map())
+      } else {
+        val index = graph.getNumEdgeTypes + 100
+        (index, Map(index -> ANY_REL))
+      }
+    }
     // TODO(matt): this is brittle, because the alias relation might have a different name...
     val alias = graph.getEdgeIndex("@ALIAS@")
     val sourceTarget = (instance.source, instance.target)
@@ -251,7 +281,7 @@ class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]
             val oldEdgeType = edgeTypes(i)
             edgeTypes(i) = anyRel
             val newPathType = new BasicPathTypeFactory.BasicPathType(edgeTypes, reverses)
-              .encodeAsHumanReadableString(graph)
+              .encodeAsHumanReadableString(graph, edgeMap)
             edgeTypes(i) = oldEdgeType
             "ANYREL:" + newPathType
           }).toSet

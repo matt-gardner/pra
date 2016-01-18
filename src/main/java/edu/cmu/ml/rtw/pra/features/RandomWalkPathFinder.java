@@ -40,7 +40,7 @@ import edu.cmu.graphchi.walks.WalkUpdateFunction;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.Index;
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentIndex;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 /**
@@ -57,7 +57,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private final int numWalksPerSource;
   private final Path[] walkPaths;
   private final int[][][] encodedWalkPaths;
-  private final Index<PathType> pathDict;
+  private final MutableConcurrentIndex<PathType> pathDict;
   private final int[] sourceIds;
   private final List<Integer> origSources;
   private final List<Integer> origTargets;
@@ -94,7 +94,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
       origSources.add(instance.source());
       origTargets.add(instance.target());
     }
-    this.pathDict = new Index<PathType>(pathTypeFactory, false, new FileUtil());
+    this.pathDict = new MutableConcurrentIndex<PathType>(pathTypeFactory, false, new FileUtil());
     // We add these to a set first, so we don't start twice as many walks from a node that shows up
     // twice in the training data.  You could argue that those nodes should have more influence on
     // the resultant paths, and that's fair, but it also slows down the computation by quite a bit,
@@ -183,7 +183,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   }
 
   @VisibleForTesting
-  protected Index<PathType> getPathDictionary() {
+  protected MutableConcurrentIndex<PathType> getPathDictionary() {
     return pathDict;
   }
 

@@ -4,6 +4,8 @@ import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.ImmutableDictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
@@ -26,10 +28,12 @@ trait Graph {
 
   def getNodeName(i: Int): String
   def getNodeIndex(name: String): Int
+  def hasNode(name: String): Boolean
   def getNumNodes(): Int
 
   def getEdgeName(i: Int): String
   def getEdgeIndex(name: String): Int
+  def hasEdge(name: String): Boolean
   def getNumEdgeTypes(): Int
 
   // These methods below here should only be used with care!  Depending on your graph, they could
@@ -87,7 +91,7 @@ object Graph {
       case "remote" => {
         val hostname = (params \ "hostname").extract[String]
         val port = (params \ "port").extract[Int]
-        Some(new RemoteGraph(hostname, port))
+        Some(new RemoteGraph(hostname, port, 40))
       }
       case other => {
         val graphDirectory = params match {
@@ -130,29 +134,27 @@ class GraphOnDisk(
 
   lazy val nodeDict = {
     outputter.info("Loading node dictionary")
-    val tmp = new Dictionary(fileUtil)
-    tmp.setFromFile(graphDir + "node_dict.tsv")
-    tmp
+    ImmutableDictionary.readFromFile(graphDir + "node_dict.tsv", fileUtil)
   }
   lazy val edgeDict = {
     outputter.info("Loading edge dictionary")
-    val tmp = new Dictionary(fileUtil)
-    tmp.setFromFile(graphDir + "edge_dict.tsv")
-    tmp
+    ImmutableDictionary.readFromFile(graphDir + "edge_dict.tsv", fileUtil)
   }
 
   override def entries = _entries
   override def getNodeName(i: Int) = nodeDict.getString(i)
   override def getNodeIndex(name: String) = nodeDict.getIndex(name)
-  override def getNumNodes() = nodeDict.getNextIndex()
+  override def hasNode(name: String) = nodeDict.hasString(name)
+  override def getNumNodes() = nodeDict.size
 
   override def getEdgeName(i: Int) = edgeDict.getString(i)
   override def getEdgeIndex(name: String) = edgeDict.getIndex(name)
-  override def getNumEdgeTypes() = edgeDict.getNextIndex()
+  override def hasEdge(name: String) = edgeDict.hasString(name)
+  override def getNumEdgeTypes() = edgeDict.size
 
   def loadGraph(): Array[Node] = {
     outputter.info(s"Loading graph")
-    val graphBuilder = new GraphBuilder(outputter, nodeDict.getNextIndex, nodeDict, edgeDict)
+    val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
     outputter.info(s"Iterating through file")
     var i = 0
     for (line <- fileUtil.getLineIterator(graphFile)) {
@@ -176,11 +178,13 @@ class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dicti
   override def entries = _entries
   override def getNodeName(i: Int) = nodeDict.getString(i)
   override def getNodeIndex(name: String) = nodeDict.getIndex(name)
-  override def getNumNodes() = nodeDict.getNextIndex()
+  override def hasNode(name: String) = nodeDict.hasString(name)
+  override def getNumNodes() = nodeDict.size
 
   override def getEdgeName(i: Int) = edgeDict.getString(i)
   override def getEdgeIndex(name: String) = edgeDict.getIndex(name)
-  override def getNumEdgeTypes() = edgeDict.getNextIndex()
+  override def hasEdge(name: String) = edgeDict.hasString(name)
+  override def getNumEdgeTypes() = edgeDict.size
 
   def writeToDisk(directory: String) {
     val fileUtil = new FileUtil
@@ -197,8 +201,8 @@ class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dicti
 class GraphBuilder(
   outputter: Outputter,
   initialSize: Int = -1,
-  val nodeDict: Dictionary = new Dictionary,
-  val edgeDict: Dictionary = new Dictionary
+  val nodeDict: Dictionary = new MutableConcurrentDictionary,
+  val edgeDict: Dictionary = new MutableConcurrentDictionary
 ) {
   type MutableGraphEntry = mutable.HashMap[Int, mutable.HashMap[Boolean, Set[Int]]]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)

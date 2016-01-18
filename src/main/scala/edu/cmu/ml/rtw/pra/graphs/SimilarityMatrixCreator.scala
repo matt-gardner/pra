@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 
 import breeze.linalg._
 
@@ -56,7 +56,7 @@ class SimilarityMatrixCreator(
     paramOut.write(pretty(render(params)))
     paramOut.close
 
-    val dict = new Dictionary
+    val dict = new MutableConcurrentDictionary
     outputter.info("Reading vectors")
     val vectors = {
       val tmp = new mutable.ArrayBuffer[(Int, DenseVector[Double])]

@@ -6,7 +6,7 @@ import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 
 import scala.collection.mutable
@@ -17,8 +17,8 @@ import org.json4s.JsonDSL._
 import org.scalatest._
 
 class OutputterSpec extends FlatSpecLike with Matchers {
-  val nodeDict = new Dictionary
-  val edgeDict = new Dictionary
+  val nodeDict = new MutableConcurrentDictionary
+  val edgeDict = new MutableConcurrentDictionary
   val factory = new BasicPathTypeFactory
   val emptyOutputter = Outputter.justLogger
 

@@ -12,6 +12,7 @@ import edu.cmu.graphchi.preprocessing.EdgeProcessor
 import edu.cmu.graphchi.preprocessing.FastSharder
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.IntTriple
 import edu.cmu.ml.rtw.users.matt.util.Pair
@@ -107,8 +108,8 @@ class GraphCreator(
       (relationSet.aliasRelation, relationSet.getAliases)
     }).seq
 
-    val nodeDict = new Dictionary()
-    val edgeDict = new Dictionary()
+    val nodeDict = new MutableConcurrentDictionary()
+    val edgeDict = new MutableConcurrentDictionary()
 
     val seenNps = new mutable.HashSet[String]
     val seenTriples: mutable.HashSet[(Int, Int, Int)] = {

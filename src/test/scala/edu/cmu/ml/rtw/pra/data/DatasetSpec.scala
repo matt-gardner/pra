@@ -37,8 +37,8 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(instanceFilename, instanceFileContents)
   fileUtil.addFileToBeRead(instanceGraphFilename, instanceGraphFileContents)
   fileUtil.addFileToBeRead(badDatasetFilename, badDatasetFile)
-  fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n")
-  fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n")
+  fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\tnode5\n6\tnode6\n")
+  fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n2\trel2\n3\trel3\n")
   val graphOnDisk = new GraphOnDisk("/graph/", Outputter.justLogger, fileUtil)
 
   "DatasetReader.readNodePairFile" should "crash on bad third column" in {

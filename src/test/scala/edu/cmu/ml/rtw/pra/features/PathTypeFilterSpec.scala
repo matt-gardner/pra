@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
+import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 
 import org.scalatest._
 
@@ -20,7 +20,7 @@ class BasicPathTypeFilterSpec extends FlatSpecLike with Matchers {
   val pathType6 = factory.fromString("-2-5-6-7-4-")
   val pathType7 = factory.fromString("-1-_2-")
 
-  val edgeDict = new Dictionary
+  val edgeDict = new MutableConcurrentDictionary
   edgeDict.getIndex("edge1")
   edgeDict.getIndex("edge2")
   edgeDict.getIndex("edge3")
@@ -28,7 +28,7 @@ class BasicPathTypeFilterSpec extends FlatSpecLike with Matchers {
   edgeDict.getIndex("edge5")
   edgeDict.getIndex("edge6")
   edgeDict.getIndex("edge7")
-  val graph = new GraphInMemory(Array[Node](), new Dictionary, edgeDict)
+  val graph = new GraphInMemory(Array[Node](), new MutableConcurrentDictionary, edgeDict)
 
   "shouldKeepPath" should "keep all paths with default parameters" in {
     val filter = new BasicPathTypeFilter(JNothing)

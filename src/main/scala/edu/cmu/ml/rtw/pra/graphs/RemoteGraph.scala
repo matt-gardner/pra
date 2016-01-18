@@ -7,11 +7,13 @@ import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
 
 import scala.collection.concurrent
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.LinkedBlockingQueue
 
 import org.json4s._
 
@@ -19,36 +21,34 @@ object RemoteGraph {
   val DEFAULT_PORT = 9876
 }
 
-class RemoteGraph(val hostname: String, val port: Int) extends Graph {
+class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) extends Graph {
   println("Starting remote graph")
-  lazy val socket = {
-    println("Creating socket")
-    new Socket(hostname, port)
-  }
-  lazy val out = {
-    println("Creating socket output stream")
-    new ObjectOutputStream(socket.getOutputStream)
-  }
-  lazy val in = {
-    println("Creating socket input stream")
-    new ObjectInputStream(socket.getInputStream)
+  lazy val sockets = {
+    println("Opening $numConnections connections to graph server")
+    val queue = new LinkedBlockingQueue[(Socket, ObjectOutputStream, ObjectInputStream)]
+    (1 to numConnections).map(i => {
+      val socket = new Socket(hostname, port)
+      val out = new ObjectOutputStream(socket.getOutputStream)
+      val in = new ObjectInputStream(socket.getInputStream)
+      queue.put((socket, out, in))
+    })
+    queue
   }
 
-  def close() = socket.close()
+  def close() = sockets.asScala.map(_._1.close())
 
   val nodeNames = new concurrent.TrieMap[Int, String]
   val nodeIds = new concurrent.TrieMap[String, Int]
   val nodes = new concurrent.TrieMap[Int, Node]
+  val nodesNotPresent = new concurrent.TrieMap[String, Boolean]
 
   val edgeNames = new concurrent.TrieMap[Int, String]
   val edgeIds = new concurrent.TrieMap[String, Int]
+  val edgesNotPresent = new concurrent.TrieMap[String, Boolean]
 
   lazy val (numNodes, numEdgeTypes) = {
     println("Getting graph stats from server")
-    val result = out synchronized {
-      out.writeObject(GetGraphStats)
-      in.readObject().asInstanceOf[StatsResponse]
-    }
+    val result = getFromServer[StatsResponse](GetGraphStats)
     (result.numNodes, result.numEdgeTypes)
   }
 
@@ -78,6 +78,16 @@ class RemoteGraph(val hostname: String, val port: Int) extends Graph {
     }
   }
 
+  override def hasNode(name: String): Boolean = {
+    nodeIds.get(name) match {
+      case Some(id) => true
+      case None => {
+        getNodeFromServer(name)
+        !nodesNotPresent.contains(name)
+      }
+    }
+  }
+
   override def getNodeIndex(name: String): Int = {
     nodeIds.get(name) match {
       case Some(id) => id
@@ -94,6 +104,16 @@ class RemoteGraph(val hostname: String, val port: Int) extends Graph {
     }
   }
 
+  override def hasEdge(name: String): Boolean = {
+    edgeIds.get(name) match {
+      case Some(id) => true
+      case None => {
+        getEdgeFromServer(name)
+        !edgesNotPresent.contains(name)
+      }
+    }
+  }
+
   override def getEdgeIndex(name: String): Int = {
     edgeIds.get(name) match {
       case Some(id) => id
@@ -105,56 +125,78 @@ class RemoteGraph(val hostname: String, val port: Int) extends Graph {
 
   private def getNodeFromServer(id: Int): (Node, String) = {
     println("Getting node " + id + " from server")
-    val result = out synchronized {
-      out.writeObject(GetNodeById(id))
-      in.readObject().asInstanceOf[NodeResponse]
+    val result = getFromServer[NodeResponse](GetNodeById(id))
+    updateNodeCache(result)
+    result match {
+      case NodePresent(id, name, node) => (node, name)
+      case NodeAbsent(name) => (null, name)
     }
-    updateNodeCache(result.node, id, result.name)
-    (result.node, result.name)
   }
 
   private def getNodeFromServer(name: String): (Node, Int) = {
     println("Getting node " + name + " from server")
-    val result = out synchronized {
-      out.writeObject(GetNodeByName(name))
-      in.readObject().asInstanceOf[NodeResponse]
+    val result = getFromServer[NodeResponse](GetNodeByName(name))
+    updateNodeCache(result)
+    result match {
+      case NodePresent(id, name, node) => (node, id)
+      case NodeAbsent(name) => (null, -1)
     }
-    updateNodeCache(result.node, result.id, name)
-    (result.node, result.id)
   }
 
   private def getEdgeFromServer(id: Int): (Int, String) = {
     println("Getting edge " + id + " from server")
-    val result = out synchronized {
-      out.writeObject(GetEdgeById(id))
-      in.readObject().asInstanceOf[EdgeResponse]
+    val result = getFromServer[EdgeResponse](GetEdgeById(id))
+    updateEdgeCache(result)
+    result match {
+      case EdgePresent(id, name) => (id, name)
+      case EdgeAbsent(name) => (id, null)
     }
-    updateEdgeCache(id, result.name)
-    (id, result.name)
   }
 
   private def getEdgeFromServer(name: String): (Int, String) = {
     println("Getting edge " + name + " from server")
-    val result = out synchronized {
-      out.writeObject(GetEdgeByName(name))
-      in.readObject().asInstanceOf[EdgeResponse]
+    val result = getFromServer[EdgeResponse](GetEdgeByName(name))
+    updateEdgeCache(result)
+    result match {
+      case EdgePresent(id, name) => (id, name)
+      case EdgeAbsent(name) => (-1, name)
     }
-    updateEdgeCache(result.id, name)
-    (result.id, name)
+  }
+
+  def getFromServer[T <: GraphResponse](message: GraphMessage): T = {
+    val (socket, out, in) = sockets.take()
+    out.writeObject(message)
+    val result = in.readObject().asInstanceOf[T]
+    sockets.put((socket, out, in))
+    result
   }
 
   // We don't need to worry about checking the return values in either of these two methods,
   // because if another thread updated the cache, it will have put the same value in.  We assume
   // that the graph server we're talking to has an immutable graph.
-  private def updateNodeCache(node: Node, id: Int, name: String) {
-    nodeNames.putIfAbsent(id, name)
-    nodeIds.putIfAbsent(name, id)
-    nodes.putIfAbsent(id, node)
+  private def updateNodeCache(response: NodeResponse) {
+    response match {
+      case NodePresent(id, name, node) => {
+        nodeNames.putIfAbsent(id, name)
+        nodeIds.putIfAbsent(name, id)
+        nodes.putIfAbsent(id, node)
+      }
+      case NodeAbsent(name) => {
+        nodesNotPresent.putIfAbsent(name, true)
+      }
+    }
   }
 
-  private def updateEdgeCache(id: Int, name: String) {
-    edgeNames.putIfAbsent(id, name)
-    edgeIds.putIfAbsent(name, id)
+  private def updateEdgeCache(response: EdgeResponse) {
+    response match {
+      case EdgePresent(id, name) => {
+        edgeNames.putIfAbsent(id, name)
+        edgeIds.putIfAbsent(name, id)
+      }
+      case EdgeAbsent(name) => {
+        edgesNotPresent.putIfAbsent(name, true)
+      }
+    }
   }
 }
 
@@ -165,9 +207,15 @@ final case class GetEdgeById(id: Int) extends GraphMessage
 final case class GetEdgeByName(name: String) extends GraphMessage
 final case object GetGraphStats extends GraphMessage
 
-sealed trait GraphResponse
-final case class NodeResponse(id: Int, name: String, node: Node) extends GraphResponse
-final case class EdgeResponse(id: Int, name: String) extends GraphResponse
+trait GraphResponse
+trait NodeResponse extends GraphResponse
+case class NodePresent(id: Int, name: String, node: Node) extends NodeResponse
+case class NodeAbsent(name: String) extends NodeResponse
+
+trait EdgeResponse extends GraphResponse
+case class EdgePresent(id: Int, name: String) extends EdgeResponse
+case class EdgeAbsent(name: String) extends EdgeResponse
+
 final case class StatsResponse(numNodes: Int, numEdgeTypes: Int) extends GraphResponse
 
 
@@ -220,23 +268,31 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
               println("Requested node " + id)
               val node = graph.getNode(id)
               val nodeName = graph.getNodeName(id)
-              out.writeObject(NodeResponse(id, nodeName, node))
+              out.writeObject(NodePresent(id, nodeName, node))
             }
             case GetNodeByName(name) => {
               println("Requested node " + name)
-              val node = graph.getNode(name)
-              val id = graph.getNodeIndex(name)
-              out.writeObject(NodeResponse(id, name, node))
+              if (graph.hasNode(name)) {
+                val node = graph.getNode(name)
+                val id = graph.getNodeIndex(name)
+                out.writeObject(NodePresent(id, name, node))
+              } else {
+                out.writeObject(NodeAbsent(name))
+              }
             }
             case GetEdgeById(id) => {
               println("Requested edge " + id)
               val name = graph.getEdgeName(id)
-              out.writeObject(EdgeResponse(id, name))
+              out.writeObject(EdgePresent(id, name))
             }
             case GetEdgeByName(name) => {
               println("Requested edge " + name)
-              val id = graph.getEdgeIndex(name)
-              out.writeObject(EdgeResponse(id, name))
+              if (graph.hasEdge(name)) {
+                val id = graph.getEdgeIndex(name)
+                out.writeObject(EdgePresent(id, name))
+              } else {
+                out.writeObject(EdgeAbsent(name))
+              }
             }
             case GetGraphStats => {
               println("Requested graph stats")

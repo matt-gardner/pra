@@ -14,7 +14,7 @@ import com.google.common.collect.Sets;
 import edu.cmu.graphchi.walks.LongWalkArray;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
-import edu.cmu.ml.rtw.pra.features.FakePathTypeFactory.FakePathType;
+import edu.cmu.ml.rtw.pra.features.FakePathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
 import edu.cmu.ml.rtw.users.matt.util.FileUtil;
