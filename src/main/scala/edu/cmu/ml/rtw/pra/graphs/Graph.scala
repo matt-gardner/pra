@@ -12,7 +12,7 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 import org.json4s._
 
 import gnu.trove.{TIntObjectHashMap => TMap}
-import gnu.trove.{TIntHashSet => TSet}
+import gnu.trove.{TIntArrayList => TList}
 
 trait Graph {
   protected def entries: Array[Node]
@@ -52,12 +52,10 @@ trait Graph {
         val edges = node.edges.get(relation)
         val inEdges = edges._1
         val outEdges = edges._2
-        val inEdgeTriples = inEdges.map(sourceIndex => {
-          (sourceIndex, relation, index)
-        }).toSet
-        val outEdgeTriples = outEdges.map(targetIndex => {
-          (index, relation, targetIndex)
-        }).toSet
+        val inEdgeTriples =
+          (for (i <- 0 until inEdges.size) yield (inEdges.get(i), relation, index)).toSet
+        val outEdgeTriples =
+          (for (i <- 0 until outEdges.size) yield (outEdges.get(i), relation, index)).toSet
         inEdgeTriples ++ outEdgeTriples
       })
     }).seq.toSet
@@ -114,13 +112,15 @@ object Graph {
 }
 
 // The edges map is (relation -> (in edges, out edges)).
-case class Node(edges: TMap[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])]) {
+case class Node(edges: TMap[(TList, TList)]) {
 
   // We'll save ourselves some time and memory and only create this when it's asked for.  Hopefully
   // it won't exacerbate memory issues too much.  But, especially when using random walks to
   // compute PPR, this can take a lot of time if it's recomputed every time it's asked for.
-  private lazy val _connectedNodes = edges.getValues(
-    new Array[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])](0)).flatMap(value => value._1 ++ value._2).toSet
+  private lazy val _connectedNodes = edges.getValues(new Array[(TList, TList)](0)).flatMap(value => {
+    (for (i <- 0 until value._1.size) yield value._1.get(i)) ++
+    (for (i <- 0 until value._2.size) yield value._2.get(i))
+  }).toSet
 
   def getAllConnectedNodes(): Set[Int] = _connectedNodes
 }
@@ -160,12 +160,32 @@ class GraphOnDisk(
     outputter.info(s"Loading graph, with initial size ${nodeDict.size}")
     val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
     outputter.info(s"Iterating through file")
-    var i = 0
-    for ((source, target, relation) <- fileUtil.getLineIterator(graphFile, fileUtil.intTripleFromLine _)) {
-      fileUtil.logEvery(1000000, i)
-      graphBuilder.addEdge(source, target, relation)
+    var lineNum = 0
+    def addEdge(line: String): Unit = {
+      fileUtil.logEvery(1000000, lineNum)
+      var source, target, relation = 0
+      var i = 0
+      while (line.charAt(i) != '\t') {
+        source *= 10
+        source += line.charAt(i) - 48
+        i += 1
+      }
       i += 1
+      while (line.charAt(i) != '\t') {
+        target *= 10
+        target += line.charAt(i) - 48
+        i += 1
+      }
+      i += 1
+      while (i < line.length) {
+        relation *= 10
+        relation += line.charAt(i) - 48
+        i += 1
+      }
+      graphBuilder.addEdge(source, target, relation)
+      lineNum += 1
     }
+    fileUtil.processFile(graphFile, addEdge _)
     outputter.info("Done reading graph file")
     graphBuilder.build
   }
@@ -204,9 +224,9 @@ class GraphBuilder(
   val nodeDict: Dictionary = new MutableConcurrentDictionary,
   val edgeDict: Dictionary = new MutableConcurrentDictionary
 ) {
-  type MutableGraphEntry = TMap[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])]
+  type MutableGraphEntry = TMap[(TList, TList)]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
-  (0 until entries.size).par.foreach(i => { entries(i) = new MutableGraphEntry })
+  (0 until entries.length).par.foreach(i => { entries(i) = new MutableGraphEntry })
   var maxIndexSeen = -1
   var edgesAdded = 0
 
@@ -214,10 +234,10 @@ class GraphBuilder(
     addEdge(nodeDict.getIndex(source), nodeDict.getIndex(target), edgeDict.getIndex(relation))
   }
 
-  def getOrUpdate(entry: MutableGraphEntry, relation: Int): (mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int]) = {
+  def getOrUpdate(entry: MutableGraphEntry, relation: Int): (TList, TList) = {
     val edges = entry.get(relation)
     if (edges == null) {
-      val newEdges = (new mutable.ArrayBuffer[Int], new mutable.ArrayBuffer[Int])
+      val newEdges = (new TList, new TList)
       entry.put(relation, newEdges)
       newEdges
     } else {
@@ -228,13 +248,14 @@ class GraphBuilder(
   def addEdge(source: Int, target: Int, relation: Int) {
     if (source > maxIndexSeen) maxIndexSeen = source
     if (target > maxIndexSeen) maxIndexSeen = target
-    if (source >= entries.size || target >= entries.size) {
+    // It turns out that calling .size on an array in scala creates a new object.  Who knew?
+    if (source >= entries.length || target >= entries.length) {
       growEntries()
     }
     val sourceEdges = getOrUpdate(entries(source), relation)
-    sourceEdges._2 += target
+    sourceEdges._2.add(target)
     val targetEdges = getOrUpdate(entries(target), relation)
-    targetEdges._1 += source
+    targetEdges._1.add(source)
     edgesAdded += 1
   }
 
@@ -253,7 +274,7 @@ class GraphBuilder(
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
     // actually saw edges for, and we'll need an empty node representations for that.
-    val finalSize = if (initialSize == -1) maxIndexSeen + 1 else entries.size
+    val finalSize = if (initialSize == -1) maxIndexSeen + 1 else entries.length
     val finalized = new Array[Node](finalSize)
     (0 until finalSize).par.foreach(i => {
       if (entries(i) == null) {

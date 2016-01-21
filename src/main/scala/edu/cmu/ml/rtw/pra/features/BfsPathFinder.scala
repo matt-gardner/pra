@@ -143,14 +143,16 @@ abstract class BfsPathFinder[T <: Instance](
           val edges = n.edges.get(relation)
           val inEdges = edges._1
           val outEdges = edges._2
-          if (inEdges.length + outEdges.length <= maxFanOut) {
-            for (nextNode <- inEdges) {
+          if (inEdges.size + outEdges.size <= maxFanOut) {
+            for (i <- 0 until inEdges.size) {
+              val nextNode = inEdges.get(i)
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 val nextPathType = factory.addToPathType(pathType, relation, nextNode, true)
                 queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
               }
             }
-            for (nextNode <- outEdges) {
+            for (i <- 0 until outEdges.size) {
+              val nextNode = outEdges.get(i)
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
                 val nextPathType = factory.addToPathType(pathType, relation, nextNode, false)
                 queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
