@@ -63,6 +63,8 @@ class RelationMetadata(
   def getUnallowedEdges(relation: String, graph: Graph): Seq[Int] = {
     val unallowedEdges = new mutable.ArrayBuffer[Int]
 
+    if (!graph.hasEdge(relation)) return unallowedEdges.toSeq
+
     // The relation itself is an unallowed edge type.
     val relIndex = graph.getEdgeIndex(relation)
     unallowedEdges += relIndex

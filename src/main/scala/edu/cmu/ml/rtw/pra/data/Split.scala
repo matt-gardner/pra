@@ -79,6 +79,8 @@ class NodePairSplit(
 ) extends Split[NodePairInstance](params, baseDir, outputter, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodePairInstance = {
     val fields = line.split("\t")
+    val source = fields(0)
+    val target = fields(1)
     val isPositive =
       try {
         if (fields.size == 2) true else fields(2).toInt == 1
@@ -86,9 +88,9 @@ class NodePairSplit(
         case e: NumberFormatException =>
           throw new IllegalStateException("Dataset not formatted correctly!")
       }
-    val source = graph.getNodeIndex(fields(0))
-    val target = graph.getNodeIndex(fields(1))
-    new NodePairInstance(source, target, isPositive, graph)
+    val sourceId = if (graph.hasNode(source)) graph.getNodeIndex(source) else -1
+    val targetId = if (graph.hasNode(target)) graph.getNodeIndex(target) else -1
+    new NodePairInstance(sourceId, targetId, isPositive, graph)
   }
 
   override def lineToInstanceAndGraph(line: String): NodePairInstance = {
@@ -97,8 +99,8 @@ class NodePairSplit(
     val target = fields(1)
     val isPositive = fields(2).toInt == 1
     val graph = readGraphString(fields(3))
-    val sourceId = graph.getNodeIndex(source)
-    val targetId = graph.getNodeIndex(target)
+    val sourceId = if (graph.hasNode(source)) graph.getNodeIndex(source) else -1
+    val targetId = if (graph.hasNode(target)) graph.getNodeIndex(target) else -1
     new NodePairInstance(sourceId, targetId, isPositive, graph)
   }
 }
@@ -111,6 +113,7 @@ class NodeSplit(
 ) extends Split[NodeInstance](params, baseDir, outputter, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodeInstance = {
     val fields = line.split("\t")
+    val nodeName = fields(0)
     val isPositive =
       try {
         if (fields.size == 1) true else fields(1).toInt == 1
@@ -118,7 +121,7 @@ class NodeSplit(
         case e: NumberFormatException =>
           throw new IllegalStateException("Dataset not formatted correctly!")
       }
-    val nodeId = graph.getNodeIndex(fields(0))
+    val nodeId = if (graph.hasNode(nodeName)) graph.getNodeIndex(nodeName) else -1
     new NodeInstance(nodeId, isPositive, graph)
   }
 
@@ -127,7 +130,7 @@ class NodeSplit(
     val nodeName = fields(0)
     val isPositive = fields(1).toInt == 1
     val graph = readGraphString(fields(2))
-    val nodeId = graph.getNodeIndex(nodeName)
+    val nodeId = if (graph.hasNode(nodeName)) graph.getNodeIndex(nodeName) else -1
     new NodeInstance(nodeId, isPositive, graph)
   }
 }

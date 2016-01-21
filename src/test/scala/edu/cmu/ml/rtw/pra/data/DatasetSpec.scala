@@ -23,6 +23,9 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   val instanceFilename = "/instance file"
   val instanceFileContents = "node1\tnode2\t1\nnode3\tnode4\t-1\n"
 
+  val missingInstanceFilename = "/missing instance file"
+  val missingInstanceFileContents = "node1\tmissing node\t1\n"
+
   val instanceGraphFilename = "/instance graph file"
   val instanceGraphFileContents =
     // the (positive) instance
@@ -39,6 +42,7 @@ class DatasetSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(instanceFilename, instanceFileContents)
   fileUtil.addFileToBeRead(instanceGraphFilename, instanceGraphFileContents)
   fileUtil.addFileToBeRead(badDatasetFilename, badDatasetFile)
+  fileUtil.addFileToBeRead(missingInstanceFilename, missingInstanceFileContents)
   fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\tnode5\n6\tnode6\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n2\trel2\n3\trel3\n")
   val graphOnDisk = new GraphOnDisk("/graph/", Outputter.justLogger, fileUtil)
@@ -49,6 +53,11 @@ class DatasetSpec extends FlatSpecLike with Matchers {
         DatasetReader.readNodePairFile(badDatasetFilename, Some(graphOnDisk), fileUtil)
       }
     })
+  }
+
+  it should "create instances with isInGraph() = false when the node name isn't in the graph" in {
+    val dataset = DatasetReader.readNodePairFile(missingInstanceFilename, Some(graphOnDisk), fileUtil)
+    dataset.instances(0).isInGraph() should be(false)
   }
 
   it should "correctly read an instance dataset file" in {
