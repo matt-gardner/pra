@@ -11,6 +11,8 @@ import scala.collection.JavaConverters._
 
 import org.scalatest._
 
+import gnu.trove.{TIntObjectHashMap => TMap}
+
 class DatasetSpec extends FlatSpecLike with Matchers {
 
   val datasetFile = "node1\tnode2\t1\n" + "node1\tnode3\t-1\n"
@@ -72,41 +74,41 @@ class DatasetSpec extends FlatSpecLike with Matchers {
     // should figure out what was going on with those graphs, and put this test back in.
     //graph1.entries.size should be(4)
 
-    graph1.getNode(0).edges should be(Map())
+    graph1.getNode(0).edges should be(new TMap())
     graph1.getNode("node1").edges.size should be(1)
-    graph1.getNode("node1").edges(graph1.getEdgeIndex("rel1"))._1.size should be(0)
-    graph1.getNode("node1").edges(graph1.getEdgeIndex("rel1"))._2.size should be(1)
-    graph1.getNode("node1").edges(graph1.getEdgeIndex("rel1"))._2(0) should be(graph1.getNodeIndex("node3"))
+    graph1.getNode("node1").edges.get(graph1.getEdgeIndex("rel1"))._1.size should be(0)
+    graph1.getNode("node1").edges.get(graph1.getEdgeIndex("rel1"))._2.size should be(1)
+    graph1.getNode("node1").edges.get(graph1.getEdgeIndex("rel1"))._2(0) should be(graph1.getNodeIndex("node3"))
     graph1.getNode("node2").edges.size should be(1)
-    graph1.getNode("node2").edges(graph1.getEdgeIndex("rel2"))._1.size should be(1)
-    graph1.getNode("node2").edges(graph1.getEdgeIndex("rel2"))._1(0) should be(graph1.getNodeIndex("node3"))
-    graph1.getNode("node2").edges(graph1.getEdgeIndex("rel2"))._2.size should be(0)
+    graph1.getNode("node2").edges.get(graph1.getEdgeIndex("rel2"))._1.size should be(1)
+    graph1.getNode("node2").edges.get(graph1.getEdgeIndex("rel2"))._1(0) should be(graph1.getNodeIndex("node3"))
+    graph1.getNode("node2").edges.get(graph1.getEdgeIndex("rel2"))._2.size should be(0)
     graph1.getNode("node3").edges.size should be(2)
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel1"))._1.size should be(1)
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel1"))._1(0) should be(graph1.getNodeIndex("node1"))
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel1"))._2.size should be(0)
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel2"))._1.size should be(0)
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel2"))._2.size should be(1)
-    graph1.getNode("node3").edges(graph1.getEdgeIndex("rel2"))._2(0) should be(graph1.getNodeIndex("node2"))
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel1"))._1.size should be(1)
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel1"))._1(0) should be(graph1.getNodeIndex("node1"))
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel1"))._2.size should be(0)
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel2"))._1.size should be(0)
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel2"))._2.size should be(1)
+    graph1.getNode("node3").edges.get(graph1.getEdgeIndex("rel2"))._2(0) should be(graph1.getNodeIndex("node2"))
 
     val graph2 = dataset.instances(1).graph
     //graph2.entries.size should be(5)
-    graph2.getNode(0).edges should be(Map())
+    graph2.getNode(0).edges should be(new TMap())
     graph2.getNode("node3").edges.size should be(1)
-    graph2.getNode("node3").edges(graph2.getEdgeIndex("rel1"))._1.size should be(0)
-    graph2.getNode("node3").edges(graph2.getEdgeIndex("rel1"))._2.size should be(1)
-    graph2.getNode("node3").edges(graph2.getEdgeIndex("rel1"))._2(0) should be(graph2.getNodeIndex("node5"))
+    graph2.getNode("node3").edges.get(graph2.getEdgeIndex("rel1"))._1.size should be(0)
+    graph2.getNode("node3").edges.get(graph2.getEdgeIndex("rel1"))._2.size should be(1)
+    graph2.getNode("node3").edges.get(graph2.getEdgeIndex("rel1"))._2(0) should be(graph2.getNodeIndex("node5"))
     graph2.getNode("node4").edges.size should be(1)
-    graph2.getNode("node4").edges(graph2.getEdgeIndex("rel3"))._1.size should be(0)
-    graph2.getNode("node4").edges(graph2.getEdgeIndex("rel3"))._2.size should be(1)
-    graph2.getNode("node4").edges(graph2.getEdgeIndex("rel3"))._2(0) should be(graph2.getNodeIndex("node6"))
+    graph2.getNode("node4").edges.get(graph2.getEdgeIndex("rel3"))._1.size should be(0)
+    graph2.getNode("node4").edges.get(graph2.getEdgeIndex("rel3"))._2.size should be(1)
+    graph2.getNode("node4").edges.get(graph2.getEdgeIndex("rel3"))._2(0) should be(graph2.getNodeIndex("node6"))
     graph2.getNode("node5").edges.size should be(1)
-    graph2.getNode("node5").edges(graph2.getEdgeIndex("rel1"))._1.size should be(1)
-    graph2.getNode("node5").edges(graph2.getEdgeIndex("rel1"))._1(0) should be(graph2.getNodeIndex("node3"))
-    graph2.getNode("node5").edges(graph2.getEdgeIndex("rel1"))._2.size should be(0)
+    graph2.getNode("node5").edges.get(graph2.getEdgeIndex("rel1"))._1.size should be(1)
+    graph2.getNode("node5").edges.get(graph2.getEdgeIndex("rel1"))._1(0) should be(graph2.getNodeIndex("node3"))
+    graph2.getNode("node5").edges.get(graph2.getEdgeIndex("rel1"))._2.size should be(0)
     graph2.getNode("node6").edges.size should be(1)
-    graph2.getNode("node6").edges(graph2.getEdgeIndex("rel3"))._1.size should be(1)
-    graph2.getNode("node6").edges(graph2.getEdgeIndex("rel3"))._1(0) should be(graph2.getNodeIndex("node4"))
-    graph2.getNode("node6").edges(graph2.getEdgeIndex("rel3"))._2.size should be(0)
+    graph2.getNode("node6").edges.get(graph2.getEdgeIndex("rel3"))._1.size should be(1)
+    graph2.getNode("node6").edges.get(graph2.getEdgeIndex("rel3"))._1(0) should be(graph2.getNodeIndex("node4"))
+    graph2.getNode("node6").edges.get(graph2.getEdgeIndex("rel3"))._2.size should be(0)
   }
 }

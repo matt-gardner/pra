@@ -38,6 +38,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   lazy val pathFinder = createPathFinder()
+  val emptySubgraph: Subgraph = Map()
 
   def createPathFinder(): PathFinder[T]
 
@@ -94,7 +95,11 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   }
 
   def getLocalSubgraph(instance: T): Subgraph = {
-    pathFinder.getLocalSubgraph(instance)
+    if (instance.isInGraph()) {
+      pathFinder.getLocalSubgraph(instance)
+    } else {
+      emptySubgraph
+    }
   }
 
   def extractFeatures(instance: T, subgraph: Subgraph): Option[MatrixRow] = {

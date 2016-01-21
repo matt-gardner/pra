@@ -138,10 +138,11 @@ abstract class BfsPathFinder[T <: Instance](
         resultsByPathType.getOrElseUpdate(pathType, new mutable.HashSet[(Int, Int)]).add((source, node))
       }
       if (stepsLeft > 0) {
-        for (entry <- graph.getNode(node).edges) {
-          val relation = entry._1
-          val inEdges = entry._2._1
-          val outEdges = entry._2._2
+        val n = graph.getNode(node)
+        for (relation <- n.edges.keys) {
+          val edges = n.edges.get(relation)
+          val inEdges = edges._1
+          val outEdges = edges._2
           if (inEdges.length + outEdges.length <= maxFanOut) {
             for (nextNode <- inEdges) {
               if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {

@@ -11,10 +11,13 @@ import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
 import org.json4s._
 
+import gnu.trove.{TIntObjectHashMap => TMap}
+import gnu.trove.{TIntHashSet => TSet}
+
 trait Graph {
   protected def entries: Array[Node]
 
-  val emptyNode = Node(Map())
+  val emptyNode = Node(new TMap())
 
   def getNode(i: Int): Node = {
     if (i < entries.size) {
@@ -44,11 +47,11 @@ trait Graph {
     entries.par.zipWithIndex.flatMap(nodeIndex => {
       val node = nodeIndex._1
       val index = nodeIndex._2
-      node.edges.flatMap(relationEdges => {
-        val relation = relationEdges._1
+      node.edges.keys.flatMap(relation => {
         val relationName = getEdgeName(relation)
-        val inEdges = relationEdges._2._1
-        val outEdges = relationEdges._2._2
+        val edges = node.edges.get(relation)
+        val inEdges = edges._1
+        val outEdges = edges._2
         val inEdgeTriples = inEdges.map(sourceIndex => {
           (sourceIndex, relation, index)
         }).toSet
@@ -91,7 +94,7 @@ object Graph {
       case "remote" => {
         val hostname = (params \ "hostname").extract[String]
         val port = (params \ "port").extract[Int]
-        Some(new RemoteGraph(hostname, port, 40))
+        Some(new RemoteGraph(hostname, port, 60))
       }
       case other => {
         val graphDirectory = params match {
@@ -111,12 +114,13 @@ object Graph {
 }
 
 // The edges map is (relation -> (in edges, out edges)).
-case class Node(edges: Map[Int, (Array[Int], Array[Int])]) {
+case class Node(edges: TMap[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])]) {
 
   // We'll save ourselves some time and memory and only create this when it's asked for.  Hopefully
   // it won't exacerbate memory issues too much.  But, especially when using random walks to
   // compute PPR, this can take a lot of time if it's recomputed every time it's asked for.
-  private lazy val _connectedNodes = edges.flatMap(keyValue => keyValue._2._1 ++ keyValue._2._2).toSet
+  private lazy val _connectedNodes = edges.getValues(
+    new Array[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])](0)).flatMap(value => value._1 ++ value._2).toSet
 
   def getAllConnectedNodes(): Set[Int] = _connectedNodes
 }
@@ -153,16 +157,12 @@ class GraphOnDisk(
   override def getNumEdgeTypes() = edgeDict.size
 
   def loadGraph(): Array[Node] = {
-    outputter.info(s"Loading graph")
+    outputter.info(s"Loading graph, with initial size ${nodeDict.size}")
     val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
     outputter.info(s"Iterating through file")
     var i = 0
-    for (line <- fileUtil.getLineIterator(graphFile)) {
+    for ((source, target, relation) <- fileUtil.getLineIterator(graphFile, fileUtil.intTripleFromLine _)) {
       fileUtil.logEvery(1000000, i)
-      val fields = line.split("\t")
-      val source = fields(0).toInt
-      val target = fields(1).toInt
-      val relation = fields(2).toInt
       graphBuilder.addEdge(source, target, relation)
       i += 1
     }
@@ -204,7 +204,7 @@ class GraphBuilder(
   val nodeDict: Dictionary = new MutableConcurrentDictionary,
   val edgeDict: Dictionary = new MutableConcurrentDictionary
 ) {
-  type MutableGraphEntry = mutable.HashMap[Int, mutable.HashMap[Boolean, Set[Int]]]
+  type MutableGraphEntry = TMap[(mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int])]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
   (0 until entries.size).par.foreach(i => { entries(i) = new MutableGraphEntry })
   var maxIndexSeen = -1
@@ -214,16 +214,27 @@ class GraphBuilder(
     addEdge(nodeDict.getIndex(source), nodeDict.getIndex(target), edgeDict.getIndex(relation))
   }
 
+  def getOrUpdate(entry: MutableGraphEntry, relation: Int): (mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int]) = {
+    val edges = entry.get(relation)
+    if (edges == null) {
+      val newEdges = (new mutable.ArrayBuffer[Int], new mutable.ArrayBuffer[Int])
+      entry.put(relation, newEdges)
+      newEdges
+    } else {
+      edges
+    }
+  }
+
   def addEdge(source: Int, target: Int, relation: Int) {
     if (source > maxIndexSeen) maxIndexSeen = source
     if (target > maxIndexSeen) maxIndexSeen = target
     if (source >= entries.size || target >= entries.size) {
       growEntries()
     }
-    val sourceMap = entries(source).getOrElseUpdate(relation, new mutable.HashMap[Boolean, Set[Int]])
-    sourceMap.update(false, sourceMap.getOrElse(false, Set()) + target)
-    val targetMap = entries(target).getOrElseUpdate(relation, new mutable.HashMap[Boolean, Set[Int]])
-    targetMap.update(true, targetMap.getOrElse(true, Set()) + source)
+    val sourceEdges = getOrUpdate(entries(source), relation)
+    sourceEdges._2 += target
+    val targetEdges = getOrUpdate(entries(target), relation)
+    targetEdges._1 += source
     edgesAdded += 1
   }
 
@@ -246,14 +257,9 @@ class GraphBuilder(
     val finalized = new Array[Node](finalSize)
     (0 until finalSize).par.foreach(i => {
       if (entries(i) == null) {
-        finalized(i) = new Node(Map())
+        finalized(i) = new Node(new TMap())
       } else {
-        finalized(i) = new Node(entries(i).map(entry => {
-          val relation = entry._1
-          val inEdges = entry._2.getOrElse(true, Set()).toList.sorted.toArray
-          val outEdges = entry._2.getOrElse(false, Set()).toList.sorted.toArray
-          (relation -> (inEdges, outEdges))
-        }).toMap)
+        finalized(i) = new Node(entries(i))
       }
     })
     outputter.info("Graph object built")

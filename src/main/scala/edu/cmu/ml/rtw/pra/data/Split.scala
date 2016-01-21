@@ -47,7 +47,8 @@ sealed abstract class Split[T <: Instance](
         }
       }
     } else {
-      val instances = lines.par.map(lineToInstance(graph.get)).seq
+      val g = graph.get
+      val instances = lines.par.map(lineToInstance(g)).seq
       new Dataset[T](instances, fileUtil)
     }
   }

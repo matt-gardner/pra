@@ -125,6 +125,7 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
 
   private def getNodeFromServer(id: Int): (Node, String) = {
     println("Getting node " + id + " from server")
+    if (id == -1) throw new RuntimeException("how did this happen?")
     val result = getFromServer[NodeResponse](GetNodeById(id))
     updateNodeCache(result)
     result match {
@@ -165,6 +166,9 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
 
   def getFromServer[T <: GraphResponse](message: GraphMessage): T = {
     val (socket, out, in) = sockets.take()
+    if (sockets.size == 0) {
+      println("Ran out of sockets")
+    }
     out.writeObject(message)
     val result = in.readObject().asInstanceOf[T]
     sockets.put((socket, out, in))
@@ -252,26 +256,25 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
   }
 
   class Handler(socket: Socket) extends Thread {
-    println("Got a new client")
-    println("isConnected: " + socket.isConnected)
+    println(s"Got a new client: ${socket.getInetAddress}")
     val out = new ObjectOutputStream(socket.getOutputStream)
     val in = new ObjectInputStream(socket.getInputStream)
 
     override def run() {
-      println("Handling requests")
       while (!socket.isClosed) {
         try {
-          println("Waiting for message")
           val message = in.readObject()
           message match {
             case GetNodeById(id) => {
-              println("Requested node " + id)
-              val node = graph.getNode(id)
-              val nodeName = graph.getNodeName(id)
-              out.writeObject(NodePresent(id, nodeName, node))
+              if (id < 0 || id >= graph.getNumNodes) {
+                out.writeObject(NodeAbsent(""))
+              } else {
+                val node = graph.getNode(id)
+                val nodeName = graph.getNodeName(id)
+                out.writeObject(NodePresent(id, nodeName, node))
+              }
             }
             case GetNodeByName(name) => {
-              println("Requested node " + name)
               if (graph.hasNode(name)) {
                 val node = graph.getNode(name)
                 val id = graph.getNodeIndex(name)
@@ -281,12 +284,14 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
               }
             }
             case GetEdgeById(id) => {
-              println("Requested edge " + id)
-              val name = graph.getEdgeName(id)
-              out.writeObject(EdgePresent(id, name))
+              if (id < 0 || id > graph.getNumEdgeTypes()) {
+                out.writeObject(EdgeAbsent(""))
+              } else {
+                val name = graph.getEdgeName(id)
+                out.writeObject(EdgePresent(id, name))
+              }
             }
             case GetEdgeByName(name) => {
-              println("Requested edge " + name)
               if (graph.hasEdge(name)) {
                 val id = graph.getEdgeIndex(name)
                 out.writeObject(EdgePresent(id, name))
@@ -295,7 +300,6 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
               }
             }
             case GetGraphStats => {
-              println("Requested graph stats")
               out.writeObject(StatsResponse(graph.getNumNodes(), graph.getNumEdgeTypes()))
             }
           }
@@ -353,7 +357,13 @@ object RunRemoteGraphServer {
 
     val praBase = "/dev/null"
     val outputter = new Outputter(JNothing, praBase, "running graph")
-    val graph = Graph.create(JString(graphFile), praBase, outputter, fileUtil).get
+    val graph = Graph.create(JString(graphFile), praBase, outputter, fileUtil).get.asInstanceOf[GraphOnDisk]
+    val start = scala.compat.Platform.currentTime
+    println("Loading graph before starting the server")
+    println(s"Graph has ${graph._entries.size} entries")
+    val end = scala.compat.Platform.currentTime
+    val seconds = (end - start) / 1000.0
+    println(s"Took $seconds seconds to load the graph")
     val server = new RemoteGraphServer(graph, port)
     println(s"Starting graph server on port $port")
     server.start()
