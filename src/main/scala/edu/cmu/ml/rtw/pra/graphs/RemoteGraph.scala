@@ -47,7 +47,6 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
   val edgesNotPresent = new concurrent.TrieMap[String, Boolean]
 
   lazy val (numNodes, numEdgeTypes) = {
-    println("Getting graph stats from server")
     val result = getFromServer[StatsResponse](GetGraphStats)
     (result.numNodes, result.numEdgeTypes)
   }
@@ -124,7 +123,6 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
   override def getNumEdgeTypes(): Int = numEdgeTypes
 
   private def getNodeFromServer(id: Int): (Node, String) = {
-    println("Getting node " + id + " from server")
     if (id == -1) throw new RuntimeException("how did this happen?")
     val result = getFromServer[NodeResponse](GetNodeById(id))
     updateNodeCache(result)
@@ -135,7 +133,6 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
   }
 
   private def getNodeFromServer(name: String): (Node, Int) = {
-    println("Getting node " + name + " from server")
     val result = getFromServer[NodeResponse](GetNodeByName(name))
     updateNodeCache(result)
     result match {
@@ -145,7 +142,6 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
   }
 
   private def getEdgeFromServer(id: Int): (Int, String) = {
-    println("Getting edge " + id + " from server")
     val result = getFromServer[EdgeResponse](GetEdgeById(id))
     updateEdgeCache(result)
     result match {
@@ -155,7 +151,6 @@ class RemoteGraph(val hostname: String, val port: Int, val numConnections: Int) 
   }
 
   private def getEdgeFromServer(name: String): (Int, String) = {
-    println("Getting edge " + name + " from server")
     val result = getFromServer[EdgeResponse](GetEdgeByName(name))
     updateEdgeCache(result)
     result match {
@@ -304,6 +299,10 @@ class RemoteGraphServer(graph: Graph, port: Int) extends Thread {
             }
           }
         } catch {
+          case e: java.net.SocketException => {
+            println("Connection reset")
+            socket.close()
+          }
           case e: InterruptedException => {
             println("Closing the handler socket")
             socket.close()
