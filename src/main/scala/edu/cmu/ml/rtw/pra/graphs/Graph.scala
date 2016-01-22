@@ -43,25 +43,23 @@ trait Graph {
   // take up a lot of memory and a lot of time.  The point here is to write these to disk in
   // particular formats, for the occasion that you would like to do this.  It doesn't make much
   // sense if the graph already exists on disk.
-  def getAllTriples(): Set[(Int, Int, Int)] = {
+  def getAllTriples(): Seq[(Int, Int, Int)] = {
     entries.par.zipWithIndex.flatMap(nodeIndex => {
       val node = nodeIndex._1
       val index = nodeIndex._2
-      node.edges.keys.flatMap(relation => {
+      node.edges.keys.par.flatMap(relation => {
         val relationName = getEdgeName(relation)
-        val edges = node.edges.get(relation)
-        val inEdges = edges._1
-        val outEdges = edges._2
-        val inEdgeTriples =
-          (for (i <- 0 until inEdges.size) yield (inEdges.get(i), relation, index)).toSet
+        // We only need to do the out edges, because the in edges will be caught as out edges for
+        // the other node.
+        val outEdges = node.edges.get(relation)._2
         val outEdgeTriples =
-          (for (i <- 0 until outEdges.size) yield (outEdges.get(i), relation, index)).toSet
-        inEdgeTriples ++ outEdgeTriples
+          (for (i <- 0 until outEdges.size) yield (index, relation, outEdges.get(i)))
+        outEdgeTriples
       })
-    }).seq.toSet
+    }).seq
   }
 
-  def getAllTriplesAsStrings(): Set[(String, String, String)] = {
+  def getAllTriplesAsStrings(): Seq[(String, String, String)] = {
     getAllTriples.par.map(triple => {
       (getNodeName(triple._1), getEdgeName(triple._2), getNodeName(triple._3))
     }).seq
@@ -80,6 +78,16 @@ trait Graph {
 
   def writeToGraphChiLines(): Seq[String] = {
     getAllTriples.map(triple => triple._1 + "\t" + triple._2 + "\t" + triple._3).toSeq
+  }
+
+  def writeToBinaryFile(filename: String, fileUtil: FileUtil = new FileUtil) {
+    val out = fileUtil.getDataOutputStream(filename)
+    for ((source, relation, target) <- getAllTriples) {
+      out.writeInt(source)
+      out.writeInt(target)
+      out.writeInt(relation)
+    }
+    out.close()
   }
 }
 
@@ -132,8 +140,15 @@ class GraphOnDisk(
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 ) extends Graph {
-  lazy val _entries: Array[Node] = loadGraph()
-  val graphFile = graphDir + "graph_chi/edges.tsv"
+  val (graphFile, fileIsBinary) = {
+    if (fileUtil.fileExists(graphDir + "edges.dat")) {
+      (graphDir + "edges.dat", true)
+    } else {
+      (graphDir + "graph_chi/edges.tsv", false)
+    }
+  }
+
+  lazy val _entries: Array[Node] = if (fileIsBinary) loadGraphFromBinaryFile() else loadGraph()
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv")(0).toInt
 
   lazy val nodeDict = {
@@ -186,6 +201,26 @@ class GraphOnDisk(
       lineNum += 1
     }
     fileUtil.processFile(graphFile, addEdge _)
+    outputter.info("Done reading graph file")
+    graphBuilder.build
+  }
+
+  def loadGraphFromBinaryFile(): Array[Node] = {
+    outputter.info(s"Loading graph from binary file, with initial size ${nodeDict.size}")
+    val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
+    outputter.info(s"Iterating through file")
+    val in = fileUtil.getDataInputStream(graphFile)
+    try {
+      while (true) {
+        val source = in.readInt()
+        val target = in.readInt()
+        val relation = in.readInt()
+        graphBuilder.addEdge(source, target, relation)
+      }
+    } catch {
+      case e: java.io.EOFException => { }
+    }
+    in.close()
     outputter.info("Done reading graph file")
     graphBuilder.build
   }

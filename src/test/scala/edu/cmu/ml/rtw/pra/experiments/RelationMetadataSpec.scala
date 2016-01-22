@@ -35,6 +35,11 @@ class RelationMetadataSpec extends FlatSpecLike with Matchers {
   val kbDirectory = "/dev/null/"
   val fixedSplitRelation = "/test/fb/relation"
   val crossValidatedRelation = "/CV/fb/relation"
+
+  edgeDict.getIndex(relation)
+  edgeDict.getIndex(relation2)
+  edgeDict.getIndex(fixedSplitRelation)
+  edgeDict.getIndex(crossValidatedRelation)
   val graph = new GraphInMemory(Array[Node](), new MutableConcurrentDictionary, edgeDict)
   val fileUtil = new FakeFileUtil()
   fileUtil.addFileToBeRead(inversesFile, inversesFileContents)

@@ -2,7 +2,7 @@ organization := "edu.cmu.ml.rtw"
 
 name := "pra"
 
-version := "3.1"
+version := "3.2"
 
 scalaVersion := "2.11.7"
 
@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-compress" % "1.9",
   // Scala utility libraries
   "org.json4s" %% "json4s-native" % "3.2.11",
-  "edu.cmu.ml.rtw" %% "matt-util" % "1.2.3",
+  "edu.cmu.ml.rtw" %% "matt-util" % "1.2.4",
   // Matrix stuff, both for java and scala
   "net.sf.trove4j" % "trove4j" % "2.0.2",
   "org.scalanlp" %% "breeze" % "0.10",

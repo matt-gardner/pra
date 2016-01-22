@@ -45,12 +45,7 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.2 (current snapshot):
-
-- Implemented remote graphs.  This means that if you have a really large graph that takes a long
-  time to load, or is too big to fit in memory along with all of your feature computation, you can
-start a graph server once somewhere and let it run, while just passing the code a reference to
-where the server is running.  (CURRENTLY IN PROGRESS)
+Version 3.2:
 
 - Allow for feature extraction and classification over _nodes_ in the graph, instead of only _node
   pairs_.  This means that in addition to classifying _relations_ between two entities, you can
@@ -61,6 +56,14 @@ now also classify entity _types_ based on the features of your graph.
 structures for all training / test instances would be kept in memory when computing a feature
 matrix, and this could get very unwieldy.  Now we compute them one at a time, only keeping the
 final feature vector.
+
+- Implemented remote graphs.  This means that if you have a really large graph that takes a long
+  time to load, or is too big to fit in memory along with all of your feature computation, you can
+start a graph server once somewhere and let it run, while just passing the code a reference to
+where the server is running.  The trouble is that it's _way_ too slow.  To make this really
+feasible, I need to push more of the computation to the graph, so you don't have to do so much
+socket communication.  I did significantly increase the efficiency of loading the graph and
+storing it in memory as part of this, so runtimes improve quite a bit.
 
 Version 3.1 (released on 11/9/2015):
 

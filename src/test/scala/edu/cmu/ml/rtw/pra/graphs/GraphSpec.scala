@@ -14,8 +14,25 @@ import org.json4s.JsonDSL._
 class GraphSpec extends FlatSpecLike with Matchers {
 
   val praBase = "/praBase/"
-  val fileUtil = new FakeFileUtil
   val outputter = Outputter.justLogger
+
+  val graphFilename = "/graph/graph_chi/edges.tsv"
+  val graphFileContents = "1\t2\t1\n" +
+      "1\t3\t1\n" +
+      "1\t4\t2\n" +
+      "2\t1\t4\n" +
+      "5\t1\t3\n" +
+      "6\t1\t1\n"
+
+  val nodeDictFile = "/graph/node_dict.tsv"
+  val nodeDictFileContents = "1\t1\n2\t2\n3\t3\n4\t4\n5\t5\n6\t6\n"
+  val edgeDictFile = "/graph/edge_dict.tsv"
+  val edgeDictFileContents = "1\t1\n2\t2\n3\t3\n4\t4\n"
+
+  val fileUtil = new FakeFileUtil
+  fileUtil.addFileToBeRead(graphFilename, graphFileContents)
+  fileUtil.addFileToBeRead(nodeDictFile, nodeDictFileContents)
+  fileUtil.addFileToBeRead(edgeDictFile, edgeDictFileContents)
 
   "Graph.create" should "return None with empty params" in {
     val params = JNothing
@@ -61,5 +78,19 @@ class GraphSpec extends FlatSpecLike with Matchers {
     graph shouldBe a [RemoteGraph]
     graph.asInstanceOf[RemoteGraph].hostname should be(hostname)
     graph.asInstanceOf[RemoteGraph].port should be(port)
+  }
+
+  "getAllTriples" should "return correct triples" in {
+    val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+    val triples = graph.getAllTriples()
+    // Triple format is (source, relation, target), while in the graph file above it's (source,
+    // target, relation).
+    triples.size should be(6)
+    triples should contain((1, 1, 2))
+    triples should contain((1, 1, 3))
+    triples should contain((1, 2, 4))
+    triples should contain((2, 4, 1))
+    triples should contain((5, 3, 1))
+    triples should contain((6, 1, 1))
   }
 }

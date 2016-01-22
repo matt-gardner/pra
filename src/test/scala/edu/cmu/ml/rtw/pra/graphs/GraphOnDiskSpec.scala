@@ -2,6 +2,7 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
+import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
@@ -13,22 +14,26 @@ import gnu.trove.{TIntObjectHashMap => TMap}
 class GraphOnDiskSpec extends FlatSpecLike with Matchers {
 
   val outputter = Outputter.justLogger
-  val graphFilename = "/graph/graph_chi/edges.tsv"
+  val graphDir = "src/test/resources/fake_graph/"
+  val graphFilename = graphDir + "graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
       "1\t3\t1\n" +
       "1\t4\t2\n" +
       "2\t1\t4\n" +
       "5\t1\t3\n" +
       "6\t1\t1\n"
+  val nodeDictFile = graphDir + "node_dict.tsv"
+  val nodeDictFileContents = "1\t1\n2\t2\n3\t3\n4\t4\n5\t5\n6\t6\n"
+  val edgeDictFile = graphDir + "edge_dict.tsv"
+  val edgeDictFileContents = "1\t1\n2\t2\n3\t3\n4\t4\n"
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
-  fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n5\t5\n6\t6\n")
-  fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
+  fileUtil.addFileToBeRead(nodeDictFile, nodeDictFileContents)
+  fileUtil.addFileToBeRead(edgeDictFile, edgeDictFileContents)
 
-  "loadGraph" should "correctly read in a graph" in {
-    val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
-    graph.entries.size should be(7)
+  def testGraphIsCorrect(graph: Graph) {
+    graph.getNumNodes() should be(7)
     graph.getNode(0).edges should be(new TMap())
     graph.getNode(1).edges.size should be(4)
     graph.getNode(1).edges.get(1)._1.size should be(1)
@@ -68,5 +73,41 @@ class GraphOnDiskSpec extends FlatSpecLike with Matchers {
     graph.getNode(6).edges.get(1)._1.size should be(0)
     graph.getNode(6).edges.get(1)._2.size should be(1)
     graph.getNode(6).edges.get(1)._2.get(0) should be(1)
+    graph.getNode("6").edges.size should be(1)
+    graph.getNode("6").edges.get(1)._1.size should be(0)
+    graph.getNode("6").edges.get(1)._2.size should be(1)
+    graph.getNode("6").edges.get(1)._2.get(0) should be(1)
+    graph.hasNode("1") should be(true)
+    graph.hasNode("2") should be(true)
+    graph.hasNode("3") should be(true)
+    graph.hasNode("4") should be(true)
+    graph.hasNode("5") should be(true)
+    graph.hasNode("6") should be(true)
+    graph.hasNode("other") should be(false)
+    graph.hasEdge("1") should be(true)
+    graph.hasEdge("2") should be(true)
+    graph.hasEdge("3") should be(true)
+    graph.hasEdge("4") should be(true)
+    graph.hasEdge("other") should be(false)
+  }
+
+  "loadGraph" should "correctly read in a graph" in {
+    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+    testGraphIsCorrect(graph)
+  }
+
+  "loadGraphFromBinaryFile" should "correctly load the graph" in {
+    // We're going to test both reading _and_ writing here, by starting with a graph as loaded
+    // above, writing it to a binary file, then reading it, and testing whether the entries are
+    // correct.
+    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+    val realFileUtil = new FileUtil
+    realFileUtil.mkdirs(graphDir)
+    realFileUtil.writeContentsToFile(nodeDictFile, nodeDictFileContents)
+    realFileUtil.writeContentsToFile(edgeDictFile, edgeDictFileContents)
+    graph.writeToBinaryFile(graphDir + "edges.dat", realFileUtil)
+    val graphFromBinaryFile = new GraphOnDisk(graphDir, outputter, realFileUtil)
+    testGraphIsCorrect(graphFromBinaryFile)
+    realFileUtil.deleteDirectory(graphDir)
   }
 }
