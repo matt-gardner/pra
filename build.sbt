@@ -2,13 +2,17 @@ organization := "edu.cmu.ml.rtw"
 
 name := "pra"
 
-version := "3.2"
+version := "3.2.1-SNAPSHOT"
 
 scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 javacOptions ++= Seq("-Xlint:unchecked")
+
+javaOptions ++= Seq("-Xmx150g")
+
+//javaOptions ++= Seq("-agentpath:/home/mattg/clone/yjp-2015-build-15084/bin/linux-x86-64/libyjpagent.so=delay=10000")
 
 crossScalaVersions := Seq("2.11.2", "2.10.3")
 

@@ -111,6 +111,10 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     }
   }
 
+  def extractFeaturesAsStrings(instance: T, subgraph: Subgraph): Seq[String] = {
+    featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
+  }
+
   def extractFeatures(subgraphs: Map[T, Subgraph]): FeatureMatrix = {
     val matrix_rows = subgraphs.par.flatMap(entry => {
       extractFeatures(entry._1, entry._2) match {
