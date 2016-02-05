@@ -1,5 +1,6 @@
-package edu.cmu.ml.rtw.pra.features
+package edu.cmu.ml.rtw.pra.features.extractors
 
+import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
 import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary

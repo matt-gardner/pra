@@ -1,5 +1,7 @@
-package edu.cmu.ml.rtw.pra.features
+package edu.cmu.ml.rtw.pra.features.extractors
 
+import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
+import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 

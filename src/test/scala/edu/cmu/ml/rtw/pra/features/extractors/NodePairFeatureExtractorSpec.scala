@@ -1,4 +1,4 @@
-package edu.cmu.ml.rtw.pra.features
+package edu.cmu.ml.rtw.pra.features.extractors
 
 import org.scalatest._
 
@@ -10,11 +10,13 @@ import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
+import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
 
-class FeatureExtractorSpec extends FlatSpecLike with Matchers {
+class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
   val factory = new BasicPathTypeFactory
   val fileUtil = new FakeFileUtil

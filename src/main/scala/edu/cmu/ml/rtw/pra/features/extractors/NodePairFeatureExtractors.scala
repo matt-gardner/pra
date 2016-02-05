@@ -1,24 +1,28 @@
-package edu.cmu.ml.rtw.pra.features
+package edu.cmu.ml.rtw.pra.features.extractors
 
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
+import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
+import edu.cmu.ml.rtw.pra.features.Subgraph
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.Pair
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
 
-import scala.collection.JavaConverters._
 import scala.util.control.Exception.allCatch
 import scala.math.log10
 import scala.math.abs
-import scala.io.Source
 
 import org.json4s._
-import org.json4s.native.JsonMethods._
 
-trait FeatureExtractor[T <: Instance] {
-  def extractFeatures(instance: T, subgraph: Subgraph): Seq[String]
+trait NodePairFeatureExtractor extends FeatureExtractor[NodePairInstance] {
+
+  // TODO(matt): implement this for all possible extractors.
+  override def getFeatureMatcher(
+    feature: String,
+    graph: Graph
+  ): Option[FeatureMatcher[NodePairInstance]] = None
 }
 
 object NodePairFeatureExtractor {
@@ -26,7 +30,7 @@ object NodePairFeatureExtractor {
     params: JValue,
     outputter: Outputter,
     fileUtil: FileUtil
-  ): FeatureExtractor[NodePairInstance] = {
+  ): NodePairFeatureExtractor = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
@@ -49,7 +53,7 @@ object NodePairFeatureExtractor {
   }
 }
 
-class PraFeatureExtractor extends FeatureExtractor[NodePairInstance] {
+class PraFeatureExtractor extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
@@ -61,9 +65,20 @@ class PraFeatureExtractor extends FeatureExtractor[NodePairInstance] {
       }
     }).toSeq
   }
+
+  override def getFeatureMatcher(feature: String, graph: Graph) = {
+    Some(new FeatureMatcher[NodePairInstance] {
+      override def isFinished(stepsTaken: Int): Boolean = {
+      }
+      override def edgeOk(edgeId: Int, stepsTaken: Int): Boolean = {
+      }
+      override def nodeOk(nodeId: Int, stepsTaken: Int): Boolean = {
+      }
+    })
+  }
 }
 
-class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor[NodePairInstance] {
+class PraFeatureExtractorWithFilter(params: JValue) extends NodePairFeatureExtractor {
   val filter = PathTypeFilterCreator.create(params \ "filter")
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
@@ -79,7 +94,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends FeatureExtractor[Nod
   }
 }
 
-class OneSidedFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodePairInstance] {
+class OneSidedFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -105,7 +120,7 @@ class OneSidedFeatureExtractor(outputter: Outputter) extends FeatureExtractor[No
   }
 }
 
-class CategoricalComparisonFeatureExtractor extends FeatureExtractor[NodePairInstance]{
+class CategoricalComparisonFeatureExtractor extends NodePairFeatureExtractor{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -118,7 +133,7 @@ class CategoricalComparisonFeatureExtractor extends FeatureExtractor[NodePairIns
   }
 }
 
-class NumericalComparisonFeatureExtractor extends FeatureExtractor[NodePairInstance]{
+class NumericalComparisonFeatureExtractor extends NodePairFeatureExtractor{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -136,7 +151,7 @@ class NumericalComparisonFeatureExtractor extends FeatureExtractor[NodePairInsta
   def isDoubleNumber(s: String): Boolean = (allCatch opt s.toDouble).isDefined
 }
 
-class PathBigramsFeatureExtractor extends FeatureExtractor[NodePairInstance] {
+class PathBigramsFeatureExtractor extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
@@ -162,7 +177,7 @@ class PathBigramsFeatureExtractor extends FeatureExtractor[NodePairInstance] {
 
 class VectorSimilarityFeatureExtractor(
     val params: JValue,
-    fileUtil: FileUtil = new FileUtil) extends FeatureExtractor[NodePairInstance]{
+    fileUtil: FileUtil = new FileUtil) extends NodePairFeatureExtractor{
   implicit val formats = DefaultFormats
 
   val allowedParamKeys = Seq("name", "matrix path", "max similar vectors")
@@ -215,7 +230,7 @@ class VectorSimilarityFeatureExtractor(
   }
 }
 
-class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
+class AnyRelFeatureExtractor extends NodePairFeatureExtractor{
 
   val ANY_REL = "@ANY_REL@"
 
@@ -250,7 +265,7 @@ class AnyRelFeatureExtractor extends FeatureExtractor[NodePairInstance]{
   }
 }
 
-class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]{
+class AnyRelAliasOnlyFeatureExtractor extends NodePairFeatureExtractor{
 
   val ANY_REL = "@ANY_REL@"
   val ALIAS = "@ALIAS@"
@@ -291,70 +306,6 @@ class AnyRelAliasOnlyFeatureExtractor extends FeatureExtractor[NodePairInstance]
       } else {
         List[String]()
       }
-    }).toSeq
-  }
-}
-
-object NodeFeatureExtractor {
-  def create(
-    params: JValue,
-    outputter: Outputter,
-    fileUtil: FileUtil
-  ): FeatureExtractor[NodeInstance] = {
-    params match {
-      case JString("PathAndEndNodeFeatureExtractor") => new PathAndEndNodeFeatureExtractor(outputter)
-      case JString("PathOnlyFeatureExtractor") => new PathOnlyFeatureExtractor(outputter)
-      case JString(other) => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
-      case jval: JValue => {
-        (jval \ "name") match {
-          case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
-        }
-      }
-    }
-  }
-}
-
-class PathAndEndNodeFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodeInstance] {
-  override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
-    val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        val endNode = graph.getNodeName(end)
-        if (start == instance.node) {
-          path + ":" + endNode
-        } else {
-          outputter.fatal(s"node: ${instance.node}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be the instance node")
-        }
-      })
-    }).toSeq
-  }
-}
-
-class PathOnlyFeatureExtractor(outputter: Outputter) extends FeatureExtractor[NodeInstance] {
-  override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
-    val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        if (start == instance.node) {
-          path
-        } else {
-          outputter.fatal(s"node: ${instance.node}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be the instance node")
-        }
-      })
     }).toSeq
   }
 }

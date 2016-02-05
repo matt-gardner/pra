@@ -6,6 +6,11 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
+import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
+import edu.cmu.ml.rtw.pra.features.extractors.FeatureMatcher
+import edu.cmu.ml.rtw.pra.features.extractors.NodeFeatureExtractor
+import edu.cmu.ml.rtw.pra.features.extractors.NodePairFeatureExtractor
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -163,6 +168,30 @@ class NodePairSubgraphFeatureGenerator(
 
   def createPathFinder() = NodePairPathFinder.create(params \ "path finder", relation,
     relationMetadata, outputter, fileUtil)
+
+  // This method finds nodes in the graph that are connected by the set of input features.  This is
+  // essentially going backward from feature generation; instead of taking a subgraph between two
+  // nodes and finding features, we're taking features and finding a subgraph (which then gives us
+  // a set of nodes to return).  This is really similar to the PathFollower logic in the old PRA
+  // way of doing things, but does not worry about any kind of probability calculation (and the
+  // features are potentially more complicated, so some parts of this are a little trickier).
+  def getRelatedNodes(node: String, features: Seq[String], graph: Graph): Set[String] = {
+    features.par.flatMap(feature => {
+      val matchers = featureExtractors.flatMap(_.getFeatureMatcher(feature, graph) match {
+        case None => Seq()
+        case Some(matcher) => Seq(matcher)
+      })
+      matchers.flatMap(matcher => findMatchingNodes(node, matcher, graph)).toSet
+    }).seq.toSet
+  }
+
+  def findMatchingNodes(
+    node: String,
+    featureMatcher: FeatureMatcher[NodePairInstance],
+    graph: Graph
+  ): Set[String] = {
+    Set()
+  }
 }
 
 class NodeSubgraphFeatureGenerator(

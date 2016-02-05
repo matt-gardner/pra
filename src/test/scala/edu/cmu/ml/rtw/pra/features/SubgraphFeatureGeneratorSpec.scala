@@ -4,6 +4,9 @@ import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
+import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
+import edu.cmu.ml.rtw.pra.features.extractors.OneSidedFeatureExtractor
+import edu.cmu.ml.rtw.pra.features.extractors.PraFeatureExtractor
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -15,10 +18,6 @@ import org.scalatest._
 
 import org.json4s._
 import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods._
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   type Subgraph = Map[PathType, Set[(Int, Int)]]
@@ -99,6 +98,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
             override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
               Seq("feature1", "feature2")
             }
+            override def getFeatureMatcher(feature: String) = None
           })
         }
       }

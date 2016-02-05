@@ -45,7 +45,15 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.2:
+Version 3.3 (current snapshot):
+
+- Started work on a kind of PathFollower for SFE - that is, given a node in the graph, and a set
+  of features, find all other nodes that are reachable by those features.  This is both easier and
+more complicated than the PathFollower in PRA; we don't have to compute probabilities, but we do
+potentially have more complicated features that make this computation difficult (I'm planning on
+punting on the complicated ones for now...).
+
+Version 3.2 (released on 1/21/2016):
 
 - Allow for feature extraction and classification over _nodes_ in the graph, instead of only _node
   pairs_.  This means that in addition to classifying _relations_ between two entities, you can
@@ -62,8 +70,9 @@ final feature vector.
 start a graph server once somewhere and let it run, while just passing the code a reference to
 where the server is running.  The trouble is that it's _way_ too slow.  To make this really
 feasible, I need to push more of the computation to the graph, so you don't have to do so much
-socket communication.  I did significantly increase the efficiency of loading the graph and
-storing it in memory as part of this, so runtimes improve quite a bit.
+socket communication (i.e., make a remote BfsPathFinder, or SubgraphFeatureGenerator).  I did
+significantly increase the efficiency of loading the graph and storing it in memory as part of
+this, so runtimes improve quite a bit, at least.
 
 Version 3.1 (released on 11/9/2015):
 
