@@ -67,17 +67,19 @@ class PraFeatureExtractor extends NodePairFeatureExtractor {
   }
 
   override def getFeatureMatcher(feature: String, graph: Graph) = {
-    Some(new FeatureMatcher[NodePairInstance] {
-      override def isFinished(stepsTaken: Int): Boolean = {
-        false
-      }
-      override def edgeOk(edgeId: Int, stepsTaken: Int): Boolean = {
-        false
-      }
-      override def nodeOk(nodeId: Int, stepsTaken: Int): Boolean = {
-        false
-      }
-    })
+    val factory = new BasicPathTypeFactory(graph)
+    try {
+      val pathType = factory.fromHumanReadableString(feature).asInstanceOf[BaseEdgeSequencePathType]
+      Some(new FeatureMatcher[NodePairInstance] {
+        override def isFinished(stepsTaken: Int): Boolean = stepsTaken >= pathType.numHops
+        override def edgeOk(edgeId: Int, stepsTaken: Int): Boolean = {
+          stepsTaken < pathType.numHops && pathType.edgeTypes(stepsTaken) == edgeId
+        }
+        override def nodeOk(nodeId: Int, stepsTaken: Int): Boolean = true
+      })
+    } catch {
+      case e: ArrayIndexOutOfBoundsException => None
+    }
   }
 }
 
