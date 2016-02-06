@@ -19,5 +19,7 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
     val feature = "-rel1-rel2-"
     val matcher = new PraFeatureExtractor().getFeatureMatcher(feature, graph).get
     matcher.isFinished(0) should be(false)
+    matcher.isFinished(1) should be(false)
+    matcher.isFinished(2) should be(true)
   }
 }

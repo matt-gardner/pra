@@ -32,6 +32,7 @@ public class VectorPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
                                Map<Integer, Vector> embeddingsMap,
                                double spikiness,
                                double resetWeight) {
+    super(graph);
     this.resetWeight = Math.exp(spikiness * resetWeight);
     this.spikiness = spikiness;
     this.graph = graph;

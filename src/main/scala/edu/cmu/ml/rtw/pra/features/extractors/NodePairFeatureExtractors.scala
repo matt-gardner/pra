@@ -69,10 +69,13 @@ class PraFeatureExtractor extends NodePairFeatureExtractor {
   override def getFeatureMatcher(feature: String, graph: Graph) = {
     Some(new FeatureMatcher[NodePairInstance] {
       override def isFinished(stepsTaken: Int): Boolean = {
+        false
       }
       override def edgeOk(edgeId: Int, stepsTaken: Int): Boolean = {
+        false
       }
       override def nodeOk(nodeId: Int, stepsTaken: Int): Boolean = {
+        false
       }
     })
   }

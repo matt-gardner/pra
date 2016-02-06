@@ -6,6 +6,7 @@ import java.util.Random;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import edu.cmu.ml.rtw.pra.graphs.Graph;
 import edu.cmu.ml.rtw.users.matt.util.Dictionary;
 import edu.cmu.ml.rtw.users.matt.util.Vector;
 
@@ -15,10 +16,25 @@ import edu.cmu.ml.rtw.users.matt.util.Vector;
  */
 public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory {
 
+  private final Graph _graph;
+
+  public BaseEdgeSequencePathTypeFactory(Graph graph) {
+    this._graph = graph;
+  }
+
   protected abstract BaseEdgeSequencePathType newInstance(int[] edgeTypes, boolean[] reverse);
 
   @Override
   public PathType fromString(String string) {
+    return fromString(string, null);
+  }
+
+  @Override
+  public PathType fromHumanReadableString(String string) {
+    return fromString(string, _graph);
+  }
+
+  private PathType fromString(String string, Graph graph) {
     // Description is formatted like -1-2-3-4-; doing split("-") would result in an empty string as
     // the first element, so we call substring(1) first.
     String[] parts = string.substring(1).split("-");
@@ -30,7 +46,11 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
         reverse[i] = true;
         parts[i] = parts[i].substring(1);
       }
-      edgeTypes[i] = Integer.parseInt(parts[i]);
+      if (graph == null) {
+        edgeTypes[i] = Integer.parseInt(parts[i]);
+      } else {
+        edgeTypes[i] = graph.getEdgeIndex(parts[i]);
+      }
     }
     return newInstance(edgeTypes, reverse);
   }

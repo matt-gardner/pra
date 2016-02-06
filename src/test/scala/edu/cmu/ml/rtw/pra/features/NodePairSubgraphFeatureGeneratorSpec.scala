@@ -25,7 +25,18 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   "getRelatedEntities" should "get matchers from the feature extractors, then union the results" in {
     // A lot of set up for this simple test...
-    val matchers = Seq(EmptyNodePairFeatureMatcher, EmptyNodePairFeatureMatcher)
+    val matchers = Seq(
+      new FeatureMatcher[NodePairInstance] {
+        override def isFinished(stepsTaken: Int) = true
+        override def edgeOk(edgeId: Int, stepsTaken: Int) = false
+        override def nodeOk(nodeId: Int, stepsTaken: Int) = false
+      },
+      new FeatureMatcher[NodePairInstance] {
+        override def isFinished(stepsTaken: Int) = true
+        override def edgeOk(edgeId: Int, stepsTaken: Int) = false
+        override def nodeOk(nodeId: Int, stepsTaken: Int) = false
+      }
+    )
     val extractors = Seq(
       new NodePairFeatureExtractor {
         override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = null
@@ -42,20 +53,21 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     )
     val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter) {
       override def createExtractors(params: JValue) = extractors
-      override def findMatchingEntities(
-        entity: String,
+      override def findMatchingNodes(
+        node: String,
         featureMatcher: FeatureMatcher[NodePairInstance],
         graph: Graph
       ): Set[String] = {
+        println(s"Matcher: $featureMatcher")
         featureMatcher match {
-          case m if m == matchers(0) => Set("entity 1", "entity 2")
-          case m if m == matchers(1) => Set("entity 2", "entity 3")
+          case m if m == matchers(0) => Set("node 1", "node 2")
+          case m if m == matchers(1) => Set("node 2", "node 3")
         }
       }
     }
 
     // Now the actual test.
-    generator.getRelatedEntities("ignored", Seq("ignored"), graph) should be(
-      Set("entity 1", "entity 2", "entity 3"))
+    generator.getRelatedNodes("ignored", Seq("ignored"), graph) should be(
+      Set("node 1", "node 2", "node 3"))
   }
 }

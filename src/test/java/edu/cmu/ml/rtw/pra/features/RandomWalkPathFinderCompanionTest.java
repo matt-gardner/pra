@@ -20,7 +20,13 @@ import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentIndex;
 import edu.cmu.ml.rtw.users.matt.util.Pair;
 
 public class RandomWalkPathFinderCompanionTest extends TestCase {
-  private BasicPathTypeFactory factory = new BasicPathTypeFactory();
+  private int sourceNode = 1;
+  private int targetNode = 2;
+  private Pair<Integer, Integer> sourceTargetPair =
+      new Pair<Integer, Integer>(sourceNode, targetNode);
+  private int intermediateNode = 3;
+  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
+  private BasicPathTypeFactory factory = new BasicPathTypeFactory(graph);
   private PathType type1 = factory.fromString("-1-");
   private PathType type2 = factory.fromString("-2-");
   private PathType type_2 = factory.fromString("-_2-");
@@ -35,12 +41,6 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private int type_2Index = pathDict.getIndex(type_2);
   private int type_3Index = pathDict.getIndex(type_3);
 
-  private int sourceNode = 1;
-  private int targetNode = 2;
-  private Pair<Integer, Integer> sourceTargetPair =
-      new Pair<Integer, Integer>(sourceNode, targetNode);
-  private int intermediateNode = 3;
-  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
   private NodePairInstance instance = new NodePairInstance(sourceNode, targetNode, true, graph);
   private List<NodePairInstance> instances = Lists.newArrayList();
 

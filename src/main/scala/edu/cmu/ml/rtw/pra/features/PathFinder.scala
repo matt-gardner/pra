@@ -160,7 +160,7 @@ class GraphChiPathFinder(
 
   def createPathTypeFactory(params: JValue, graph: GraphOnDisk): PathTypeFactory = {
     (params \ "name") match {
-      case JNothing => new BasicPathTypeFactory()
+      case JNothing => new BasicPathTypeFactory(graph)
       case JString("VectorPathTypeFactory") => createVectorPathTypeFactory(params, graph)
       case other => throw new IllegalStateException("Unregonized path type factory")
     }

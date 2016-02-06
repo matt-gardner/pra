@@ -18,7 +18,7 @@ import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
 // This class also tests BaseEdgeSequencePathTypeFactory, which has the implementations of most of
 // these methods.
 public class BasicPathTypeFactoryTest extends TestCase {
-    private BasicPathTypeFactory factory = new BasicPathTypeFactory();
+    private BasicPathTypeFactory factory = new BasicPathTypeFactory(null);
     private PathType type1 = factory.fromString("-1-");
     private PathType type12 = factory.fromString("-1-2-");
     private PathType type1234 = factory.fromString("-1-2-3-4-");

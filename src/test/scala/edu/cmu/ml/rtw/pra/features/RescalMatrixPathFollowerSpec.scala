@@ -19,7 +19,7 @@ import edu.cmu.ml.rtw.users.matt.util.Pair
 class RescalMatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
   val numNodes = 3
-  val path_type_factory = new BasicPathTypeFactory()
+  val path_type_factory = new BasicPathTypeFactory(null)
   val path_types = Seq(
     path_type_factory.fromString("-1-"),
     path_type_factory.fromString("-1-2-"),

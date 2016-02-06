@@ -18,7 +18,6 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
 
   val fileUtil = new FakeFileUtil
-  val factory = new BasicPathTypeFactory
 
   val graphFilename = "/graph/graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
@@ -45,6 +44,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
 
   val relation = "rel1"
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val factory = new BasicPathTypeFactory(graph)
   val instance = new NodePairInstance(5, 3, true, graph)
   val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
 
@@ -52,7 +52,6 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     new NodePairBfsPathFinder(params, relation, RelationMetadata.empty, outputter, fileUtil)
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
-    val factory = new BasicPathTypeFactory
     val finder = makeFinder()
     finder.findPaths(data)
     val results53 = finder.results(instance)

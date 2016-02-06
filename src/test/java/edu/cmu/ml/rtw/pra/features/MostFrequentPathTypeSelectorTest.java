@@ -14,7 +14,7 @@ public class MostFrequentPathTypeSelectorTest extends TestCase {
   private MostFrequentPathTypeSelector selector = new MostFrequentPathTypeSelector();
 
   public void testSelectPaths() {
-    PathTypeFactory factory = new BasicPathTypeFactory();
+    PathTypeFactory factory = new BasicPathTypeFactory(null);
     PathType type1 = factory.fromString("-1-");
     PathType type2 = factory.fromString("-2-");
     Map<PathType, Integer> counts = Maps.newHashMap();

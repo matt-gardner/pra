@@ -93,7 +93,7 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
     val port = 9877
     val remoteGraphServer = new RemoteGraphServer(graphOnDisk, port)
     remoteGraphServer.start()
-    val graph = new RemoteGraph("localhost", port, 1)
+    val graph = new RemoteGraph("localhost", port, 2)
     testGraphIsCorrect(graph)
     graph.close()
     remoteGraphServer.quit()
@@ -109,7 +109,7 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
     }
     thread.start()
     Thread.sleep(100)
-    val graph = new RemoteGraph("localhost", port, 1)
+    val graph = new RemoteGraph("localhost", port, 2)
     testGraphIsCorrect(graph)
     graph.close()
     thread.interrupt()

@@ -19,7 +19,6 @@ import org.scalatest._
 class OutputterSpec extends FlatSpecLike with Matchers {
   val nodeDict = new MutableConcurrentDictionary
   val edgeDict = new MutableConcurrentDictionary
-  val factory = new BasicPathTypeFactory
   val emptyOutputter = Outputter.justLogger
 
   val graph = {
@@ -46,6 +45,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictFile)
     new GraphOnDisk("/graph/", emptyOutputter, fileUtil)
   }
+  val factory = new BasicPathTypeFactory(graph)
 
   "getNode" should "return node string" in {
     emptyOutputter.getNode(1, graph) should be("node1")

@@ -22,8 +22,8 @@ class LexicalizedPathTypeSpec extends FlatSpecLike with Matchers {
   edgeDict.getIndex("rel1")
   edgeDict.getIndex("rel2")
 
-  val factory = new LexicalizedPathTypeFactory(JNothing)
   val graph = new GraphInMemory(Array[Node](), nodeDict, edgeDict)
+  val factory = new LexicalizedPathTypeFactory(JNothing, graph)
 
   "stringDescription" should "encode nodes and edges with null graph" in {
     val pathType = new LexicalizedPathType(Array(1, 2), Array(3, 4), Array(true, false), JNothing)

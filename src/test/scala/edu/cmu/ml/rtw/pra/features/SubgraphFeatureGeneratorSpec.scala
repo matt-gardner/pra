@@ -7,6 +7,7 @@ import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
 import edu.cmu.ml.rtw.pra.features.extractors.OneSidedFeatureExtractor
 import edu.cmu.ml.rtw.pra.features.extractors.PraFeatureExtractor
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.Dictionary
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
@@ -39,8 +40,8 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   def getSubgraph(instance: NodePairInstance) = {
-    val pathType1 = new BasicPathTypeFactory().fromString("-1-")
-    val pathType2 = new BasicPathTypeFactory().fromString("-2-")
+    val pathType1 = new BasicPathTypeFactory(graph).fromString("-1-")
+    val pathType2 = new BasicPathTypeFactory(graph).fromString("-2-")
     val nodePairs1 = Set((instance.source, 1))
     val nodePairs2 = Set((instance.target, 2))
     Map(instance -> Map(pathType1 -> nodePairs1, pathType2 -> nodePairs2))
@@ -81,7 +82,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     // And we're only checking for one training instance, because that's all there is in the
     // dataset.
     val subgraph = generator.getLocalSubgraphs(dataset)(instance)
-    val factory = new BasicPathTypeFactory
+    val factory = new BasicPathTypeFactory(graph)
     subgraph(factory.fromString("-1-")) should contain((1, 2))
     subgraph(factory.fromString("-3-_3-")) should contain((1, 7))
     subgraph(factory.fromString("-1-2-")) should contain((1, 3))
@@ -98,7 +99,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
             override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
               Seq("feature1", "feature2")
             }
-            override def getFeatureMatcher(feature: String) = None
+            override def getFeatureMatcher(feature: String, graph: Graph) = None
           })
         }
       }

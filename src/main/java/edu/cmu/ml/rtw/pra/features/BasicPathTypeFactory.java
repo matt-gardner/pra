@@ -1,5 +1,7 @@
 package edu.cmu.ml.rtw.pra.features;
 
+import edu.cmu.ml.rtw.pra.graphs.Graph;
+
 import java.util.Random;
 
 /**
@@ -8,6 +10,10 @@ import java.util.Random;
 public class BasicPathTypeFactory extends BaseEdgeSequencePathTypeFactory {
 
   private final BasicPathType emptyPathType = new BasicPathType();
+
+  public BasicPathTypeFactory(Graph graph) {
+    super(graph);
+  }
 
   @Override
   public PathType emptyPathType() {

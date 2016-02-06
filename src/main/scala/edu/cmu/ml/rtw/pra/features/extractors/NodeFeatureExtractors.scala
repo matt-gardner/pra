@@ -4,6 +4,7 @@ import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.Subgraph
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
 
 import org.json4s._
@@ -11,7 +12,7 @@ import org.json4s._
 trait NodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
 
   // This is not implemented yet (and may never be, depending on if it's every useful).
-  override def getFeatureMatcher(feature: String) = None
+  override def getFeatureMatcher(feature: String, graph: Graph) = None
 }
 
 object NodeFeatureExtractor {
