@@ -27,6 +27,8 @@ import org.json4s.Formats
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonDSL.WithDouble._
 
+import gnu.trove.{TIntArrayList => TList}
+
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
   outputter: Outputter,
@@ -175,22 +177,111 @@ class NodePairSubgraphFeatureGenerator(
   // a set of nodes to return).  This is really similar to the PathFollower logic in the old PRA
   // way of doing things, but does not worry about any kind of probability calculation (and the
   // features are potentially more complicated, so some parts of this are a little trickier).
-  def getRelatedNodes(node: String, features: Seq[String], graph: Graph): Set[String] = {
+  //
+  // The parameters are the node to search from, whether this node is the source entity or the
+  // target entity, the set of features to test, and the graph to use for the testing.
+  //
+  // TODO(matt): This is actually getting a bit involved...  Maybe I should move this code to a new
+  // object...
+  def getRelatedNodes(
+    node: String,
+    isSource: Boolean,
+    features: Seq[String],
+    graph: Graph
+  ): Set[String] = {
     features.par.flatMap(feature => {
-      val matchers = featureExtractors.flatMap(_.getFeatureMatcher(feature, graph) match {
-        case None => Seq()
-        case Some(matcher) => Seq(matcher)
-      })
+      val matchers = featureExtractors.flatMap(extractor => {
+        val npExtractor = extractor.asInstanceOf[NodePairFeatureExtractor]
+        npExtractor.getFeatureMatcher(feature, isSource, graph) match {
+          case None => Seq()
+          case Some(matcher) => Seq(matcher)
+        }
+      }).toSet  // toSet here because there's potentially some overlap in the feature extractors
       matchers.flatMap(matcher => findMatchingNodes(node, matcher, graph)).toSet
     }).seq.toSet
   }
 
   def findMatchingNodes(
-    node: String,
+    nodeName: String,
     featureMatcher: FeatureMatcher[NodePairInstance],
     graph: Graph
   ): Set[String] = {
-    Set()
+    if (!graph.hasNode(nodeName)) return Set()
+    val queue = new mutable.Queue[(Int, Int)]  // (nodeId, stepsTaken)
+    val foundNodes = new mutable.HashSet[String]
+
+    val nodeId = graph.getNodeIndex(nodeName)
+    queue += Tuple2(nodeId, 0)
+    while (!queue.isEmpty) {
+      val (currentNodeId, stepsTaken) = queue.dequeue
+      // Are we done?
+      if (!featureMatcher.isFinished(stepsTaken)) {
+        // No, we're not done.  Follow another edge type.
+        val node = graph.getNode(currentNodeId)
+        featureMatcher.allowedEdges(stepsTaken) match {
+          case None => {
+            // We weren't given an allowed edge type, so we just need to try all of them that are
+            // at this node.
+            for (edgeType <- node.edges.keys) {
+              if (featureMatcher.edgeOk(edgeType, true, stepsTaken)) {
+                val connected = node.edges.get(edgeType)._1
+                queueNextNodes(connected, stepsTaken, featureMatcher, queue)
+              }
+              if (featureMatcher.edgeOk(edgeType, false, stepsTaken)) {
+                val connected = node.edges.get(edgeType)._2
+                queueNextNodes(connected, stepsTaken, featureMatcher, queue)
+              }
+            }
+          }
+          case Some(edgeTypes) => {
+            // For each of the allowed edge types, we see if the current node has the edge type,
+            // then queue up the allowed nodes connected to that edge type.
+            for ((edgeType, reverse) <- edgeTypes) {
+              if (node.edges.containsKey(edgeType)) {
+                val n = if (reverse) node.edges.get(edgeType)._1 else node.edges.get(edgeType)._2
+                queueNextNodes(n, stepsTaken, featureMatcher, queue)
+              }
+            }
+          }
+        }
+      } else {
+        // Yes, we're done.  Is this an allowed final node?
+        if (featureMatcher.nodeOk(currentNodeId, stepsTaken)) {
+          foundNodes += graph.getNodeName(currentNodeId)
+        }
+      }
+    }
+    foundNodes.toSet
+  }
+
+  // Given the list of nodes connected to the current node, queue the ones that are allowed.
+  private def queueNextNodes(
+    connectedNodes: TList,
+    stepsTaken: Int,
+    featureMatcher: FeatureMatcher[NodePairInstance],
+    queue: mutable.Queue[(Int, Int)]
+  ) {
+    featureMatcher.allowedNodes(stepsTaken) match {
+      case None => {
+        // If the matcher doesn't specify a priori which nodes are allowed, we check all of them
+        // and add them if applicable.
+        for (i <- 0 until connectedNodes.size) {
+          val nextNode = connectedNodes.get(i)
+          if (featureMatcher.nodeOk(nextNode, stepsTaken)) {
+            queue += Tuple2(nextNode, stepsTaken + 1)
+          }
+        }
+      }
+      case Some(allowedNodes) => {
+        // Here we just check to see which of the allowed nodes are present.  The efficiency of
+        // contains() on the TList might not be great, but I don't think it'll be a big issue here.
+        for (node <- allowedNodes) {
+          if (connectedNodes.contains(node)) {
+            queue += Tuple2(node, stepsTaken + 1)
+          }
+        }
+      }
+    }
   }
 }
 

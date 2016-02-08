@@ -1,14 +1,6 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Random;
-
-import com.google.common.annotations.VisibleForTesting;
-
 import edu.cmu.ml.rtw.pra.graphs.Graph;
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
 
 /**
  * Represents a path type as a sequence of edges.  This is an abstract base class, allowing for
@@ -34,6 +26,7 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
     return fromString(string, _graph);
   }
 
+  // This method assumes good input!  Do error checking somewhere else, if you need to do any.
   private PathType fromString(String string, Graph graph) {
     // Description is formatted like -1-2-3-4-; doing split("-") would result in an empty string as
     // the first element, so we call substring(1) first.

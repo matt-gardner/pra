@@ -99,7 +99,6 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
             override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
               Seq("feature1", "feature2")
             }
-            override def getFeatureMatcher(feature: String, graph: Graph) = None
           })
         }
       }

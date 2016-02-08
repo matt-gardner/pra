@@ -18,9 +18,29 @@ import org.json4s._
 
 trait NodePairFeatureExtractor extends FeatureExtractor[NodePairInstance] {
 
-  // TODO(matt): implement this for all possible extractors.
-  override def getFeatureMatcher(
+  /**
+   * This method essentially goes backward from a FeatureExtractor.
+   * FeatureExtractor.extractFeatures lets you take a subgraph and get features out.  This method
+   * takes features in, then lets you filter the graph to only subgraphs that would have generated
+   * this feature.
+   *
+   * The default implementation here is to return None, and we will override it in the few cases
+   * where I've put in the effort to make feature matching work.
+   *
+   * I originally had this as part of FeatureExtractor, with this overriding a base method there.
+   * But, I need to have startFromSourceNode as part of this method, and it's not applicable to
+   * NodeInstances.  So, I'm just putting it here on this class.
+   *
+   * @param feature A string description of the feature we're trying to match.  If the extractor
+   * did not produce this string, or the feature is otherwise unmatchable, we will return None.
+   * @param startFromSourceNode We could be given either the source node or the target node and
+   * asked to match features; this tells us which one we're trying to match.
+   * @param graph The graph is necessary to go from the human-readable string representation of the
+   * feature to actual edge ids.
+   */
+  def getFeatureMatcher(
     feature: String,
+    startFromSourceNode: Boolean,
     graph: Graph
   ): Option[FeatureMatcher[NodePairInstance]] = None
 }
@@ -66,24 +86,16 @@ class PraFeatureExtractor extends NodePairFeatureExtractor {
     }).toSeq
   }
 
-  override def getFeatureMatcher(feature: String, graph: Graph) = {
-    val factory = new BasicPathTypeFactory(graph)
-    try {
-      val pathType = factory.fromHumanReadableString(feature).asInstanceOf[BaseEdgeSequencePathType]
-      Some(new FeatureMatcher[NodePairInstance] {
-        override def isFinished(stepsTaken: Int): Boolean = stepsTaken >= pathType.numHops
-        override def edgeOk(edgeId: Int, stepsTaken: Int): Boolean = {
-          stepsTaken < pathType.numHops && pathType.edgeTypes(stepsTaken) == edgeId
-        }
-        override def nodeOk(nodeId: Int, stepsTaken: Int): Boolean = true
-      })
-    } catch {
-      case e: ArrayIndexOutOfBoundsException => None
-    }
+  override def getFeatureMatcher(
+    feature: String,
+    startFromSourceNode: Boolean,
+    graph: Graph
+  ): Option[FeatureMatcher[NodePairInstance]] = {
+    PraFeatureMatcher.create(feature, startFromSourceNode, graph)
   }
 }
 
-class PraFeatureExtractorWithFilter(params: JValue) extends NodePairFeatureExtractor {
+class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor {
   val filter = PathTypeFilterCreator.create(params \ "filter")
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {

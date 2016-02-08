@@ -10,9 +10,6 @@ import edu.cmu.ml.rtw.users.matt.util.FileUtil
 import org.json4s._
 
 trait NodeFeatureExtractor extends FeatureExtractor[NodeInstance] {
-
-  // This is not implemented yet (and may never be, depending on if it's every useful).
-  override def getFeatureMatcher(feature: String, graph: Graph) = None
 }
 
 object NodeFeatureExtractor {
