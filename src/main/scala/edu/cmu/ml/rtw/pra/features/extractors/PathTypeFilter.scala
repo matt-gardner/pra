@@ -1,6 +1,7 @@
 package edu.cmu.ml.rtw.pra.features.extractors
 
 import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
+import edu.cmu.ml.rtw.pra.features.LexicalizedPathType
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.JsonHelper
@@ -12,16 +13,17 @@ trait PathTypeFilter {
   def shouldKeepPath(pathType: PathType, graph: Graph): Boolean
 }
 
-object PathTypeFilterCreator {
+object PathTypeFilter {
   def create(params: JValue): PathTypeFilter = {
     JsonHelper.extractWithDefault(params, "type", "basic") match {
       case "basic" => new BasicPathTypeFilter(params)
+      case "lexicalized" => new LexicalizedPathTypeFilter(params)
       case _ => throw new IllegalStateException("Unrecognized path type filter")
     }
   }
 }
 
-class BasicPathTypeFilter(params: JValue) extends PathTypeFilter {
+abstract class EdgeSequenceFilter(params: JValue) extends PathTypeFilter {
   implicit val formats = DefaultFormats
   val allowedParamKeys = Seq("type", "includes", "excludes")
   JsonHelper.ensureNoExtras(params, "BasicPathTypeFilter", allowedParamKeys)
@@ -30,26 +32,22 @@ class BasicPathTypeFilter(params: JValue) extends PathTypeFilter {
   val excludes = parseParamStr(JsonHelper.extractWithDefault(params, "excludes", Seq[String]()))
 
   override def shouldKeepPath(pathType: PathType, graph: Graph): Boolean = {
-    pathType match {
-      case p: BaseEdgeSequencePathType => { _shouldKeepPath(p, graph) }
-      case _ => { throw new IllegalStateException("I cannot filter this path type...") }
-    }
+    val pathTypeSeq = pathTypeToSeq(pathType)
+    _shouldKeepPath(pathTypeSeq, graph)
   }
+
+  def pathTypeToSeq(pathType: PathType): Seq[(Int, Boolean)]
 
   def parseParamStr(paramStr: Seq[String]): Seq[Seq[String]] = paramStr.map(_.split(",").toSeq)
 
-  def _shouldKeepPath(pathType: BaseEdgeSequencePathType, graph: Graph): Boolean = {
-    val included = includes.exists(pathMatchesFilter(pathTypeToSeq(pathType), graph))
+  def _shouldKeepPath(pathTypeSeq: Seq[(Int, Boolean)], graph: Graph): Boolean = {
+    val included = includes.exists(pathMatchesFilter(pathTypeSeq, graph))
     if (included) {
-      val excluded = excludes.exists(pathMatchesFilter(pathTypeToSeq(pathType), graph))
+      val excluded = excludes.exists(pathMatchesFilter(pathTypeSeq, graph))
       !excluded
     } else {
       false
     }
-  }
-
-  def pathTypeToSeq(pathType: BaseEdgeSequencePathType): Seq[(Int, Boolean)] = {
-    pathType.getEdgeTypes.zip(pathType.getReverse).toSeq
   }
 
   def pathMatchesFilter(edges: Seq[(Int,Boolean)], graph: Graph)(filter: Seq[String]): Boolean = {
@@ -82,6 +80,29 @@ class BasicPathTypeFilter(params: JValue) extends PathTypeFilter {
           return false
         }
       }
+    }
+  }
+}
+
+class BasicPathTypeFilter(params: JValue) extends EdgeSequenceFilter(params) {
+  def pathTypeToSeq(pathType: PathType): Seq[(Int, Boolean)] = {
+    pathType match {
+      case p: BaseEdgeSequencePathType => { p.getEdgeTypes.zip(p.getReverse).toSeq }
+      case _ => { throw new IllegalStateException("I cannot filter this path type...") }
+    }
+  }
+}
+
+// For filtering LexicalizedPathTypes.  Currently this is pretty limited, as you can only filter
+// these path types by their edge sequence, matching the functionality with
+// BaseEdgeSequencePathTypes.  The main reasons for this are: (1) I didn't need anything more
+// complicated, so I just did the simple thing, and (2) I didn't want to have to define a language
+// to specify filters that used both edges and nodes.
+class LexicalizedPathTypeFilter(params: JValue) extends EdgeSequenceFilter(params) {
+  def pathTypeToSeq(pathType: PathType): Seq[(Int, Boolean)] = {
+    pathType match {
+      case p: LexicalizedPathType => { p.edgeTypes.zip(p.reverse).toSeq }
+      case _ => { throw new IllegalStateException("I cannot filter this path type...") }
     }
   }
 }

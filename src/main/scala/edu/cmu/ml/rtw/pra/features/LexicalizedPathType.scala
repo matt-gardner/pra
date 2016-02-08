@@ -48,6 +48,23 @@ class LexicalizedPathType(
     stringDescription(graph, edgeMap)
   }
 
+  def encodeAsHumanReadableStringWithoutNodes(graph: Graph, edgeMap: Map[Int, String] = Map()) = {
+    val builder = new StringBuilder()
+    for (i <- 0 until numHops) {
+      builder.append("-")
+      if (reverse(i)) {
+        builder.append("_")
+      }
+      val edgeName = edgeMap.get(edgeTypes(i)) match {
+        case Some(name) => name
+        case None => graph.getEdgeName(edgeTypes(i))
+      }
+      builder.append(edgeName)
+    }
+    builder.append("-")
+    builder.toString()
+  }
+
   def stringDescription(graph: Graph, edgeMap: Map[Int, String]) = {
     val builder = new StringBuilder()
     for (i <- 0 until numHops) {
@@ -259,5 +276,14 @@ class LexicalizedPathTypeFactory(params: JValue, graph: Graph) extends PathTypeF
       j += 1
     }
     new LexicalizedPathType(combinedEdgeTypes, combinedNodes, combinedReverse, params)
+  }
+
+  def reversePathType(pathType: LexicalizedPathType): LexicalizedPathType = {
+    // A bunch of boxing and unboxing here, but oh well.  This isn't called in a place where
+    // efficiency is really critical.
+    val reversedEdgeTypes = pathType.edgeTypes.toSeq.reverse.toArray
+    val reversedNodes = pathType.nodes.toSeq.reverse.toArray
+    val reversedReverse = pathType.reverse.toSeq.reverse.map(!_).toArray
+    new LexicalizedPathType(reversedEdgeTypes, reversedNodes, reversedReverse, pathType.params)
   }
 }

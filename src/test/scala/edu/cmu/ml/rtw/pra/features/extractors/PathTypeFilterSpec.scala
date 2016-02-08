@@ -11,7 +11,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
-class BasicPathTypeFilterSpec extends FlatSpecLike with Matchers {
+class PathTypeFilterSpec extends FlatSpecLike with Matchers {
 
   val edgeDict = new MutableConcurrentDictionary
   edgeDict.getIndex("edge1")

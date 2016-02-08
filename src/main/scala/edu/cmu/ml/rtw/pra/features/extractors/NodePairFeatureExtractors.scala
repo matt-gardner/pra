@@ -5,6 +5,7 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
+import edu.cmu.ml.rtw.pra.features.LexicalizedPathType
 import edu.cmu.ml.rtw.pra.features.Subgraph
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.users.matt.util.FileUtil
@@ -52,7 +53,7 @@ object NodePairFeatureExtractor {
     fileUtil: FileUtil
   ): NodePairFeatureExtractor = {
     params match {
-      case JString("PraFeatureExtractor") => new PraFeatureExtractor
+      case JString("PraFeatureExtractor") => new PraFeatureExtractor(JNothing)
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
       case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(outputter)
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
@@ -65,6 +66,7 @@ object NodePairFeatureExtractor {
           case JString("VectorSimilarityFeatureExtractor") => {
             new VectorSimilarityFeatureExtractor(jval, fileUtil)
           }
+          case JString("PraFeatureExtractor") => new PraFeatureExtractor(jval)
           case JString("PraFeatureExtractorWithFilter") => new PraFeatureExtractorWithFilter(jval)
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
@@ -73,13 +75,32 @@ object NodePairFeatureExtractor {
   }
 }
 
-class PraFeatureExtractor extends NodePairFeatureExtractor {
+class PraFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
+  // If this is set to true, we will output nodes as part of the path type when encoding features.
+  // This requires that the PathTypeFactory in the PathFinder has been set to
+  // LexicalizePathTypeFactory, so we have path types that actually keep the nodes around.  If
+  // includeNodes is true and we don't have lexicalized path types, this will crash.
+  val includeNodes = JsonHelper.extractWithDefault(params, "include nodes", false)
+
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        Seq(entry._1.encodeAsHumanReadableString(graph))
+        val pathType = entry._1
+        val feature = if (includeNodes) {
+          pathType match {
+            case p: LexicalizedPathType => { p.encodeAsHumanReadableString(graph) }
+            case _ => throw new IllegalStateException(
+              "must have lexicalized path types to include nodes")
+          }
+        } else {
+          pathType match {
+            case p: LexicalizedPathType => { p.encodeAsHumanReadableStringWithoutNodes(graph) }
+            case p => { p.encodeAsHumanReadableString(graph) }
+          }
+        }
+        Seq(feature)
       } else {
         Seq[String]()
       }
@@ -95,8 +116,8 @@ class PraFeatureExtractor extends NodePairFeatureExtractor {
   }
 }
 
-class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor {
-  val filter = PathTypeFilterCreator.create(params \ "filter")
+class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(params) {
+  val filter = PathTypeFilter.create(params \ "filter")
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph

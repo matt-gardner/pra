@@ -73,6 +73,13 @@ class LexicalizedPathTypeSpec extends FlatSpecLike with Matchers {
     })
   }
 
+  "encodeAsHumanReadableStringWithoutNodes" should "look like a normal PRA path" in {
+    val pathType1 = new LexicalizedPathType(Array(1, 2), Array(3, 4), Array(true, false), JNothing)
+    pathType1.encodeAsHumanReadableStringWithoutNodes(graph) should be("-_rel1-rel2-")
+    val pathType2 = new LexicalizedPathType(Array(1, 2), Array(3), Array(true, false), JNothing)
+    pathType2.encodeAsHumanReadableStringWithoutNodes(graph) should be("-_rel1-rel2-")
+  }
+
   "fromString" should "successfully parse an encoded string" in {
     val pathType = new LexicalizedPathType(Array(1, 2), Array(3, 4), Array(true, false), JNothing)
     factory.fromString("-_1->3-2->4") should be(pathType)
@@ -131,4 +138,11 @@ class LexicalizedPathTypeSpec extends FlatSpecLike with Matchers {
       }
     })
   }
+
+  "reversePathType" should "create a new path type in the opposite direction" in {
+    val pathType = factory.fromString("-_1->3-2->")
+    val reversed = factory.reversePathType(pathType)
+    reversed should be(factory.fromString("-_2->3-1->"))
+  }
+
 }

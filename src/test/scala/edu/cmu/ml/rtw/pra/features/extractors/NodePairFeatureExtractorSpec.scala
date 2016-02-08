@@ -11,10 +11,14 @@ import scala.collection.mutable
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
+import edu.cmu.ml.rtw.pra.features.LexicalizedPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.PathType
+import edu.cmu.ml.rtw.pra.features.PathTypeFactory
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
 import edu.cmu.ml.rtw.users.matt.util.Pair
+import edu.cmu.ml.rtw.users.matt.util.TestUtil
+import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
 
 class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
@@ -24,11 +28,16 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
     "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
-  val factory = new BasicPathTypeFactory(graph)
+  val basicFactory = new BasicPathTypeFactory(graph)
+  val lexicalizedFactory = new LexicalizedPathTypeFactory(JNothing, graph)
 
   val instance = new NodePairInstance(1, 2, true, graph)
 
-  def getSubgraph(pathTypes: Seq[String], nodePairs: Seq[Set[(Int, Int)]]) = {
+  def getSubgraph(
+    pathTypes: Seq[String],
+    nodePairs: Seq[Set[(Int, Int)]],
+    factory: PathTypeFactory = basicFactory
+  ) = {
     val subgraph = new mutable.HashMap[PathType, Set[(Int, Int)]]
     for (entry <- pathTypes.zip(nodePairs)) {
       val pathType = factory.fromString(entry._1)
@@ -40,10 +49,42 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   "PraFeatureExtractor" should "extract only standard PRA features" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
-    val extractor = new PraFeatureExtractor
+    val extractor = new PraFeatureExtractor(JNothing)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     features.size should be(1)
     features should contain("-rel1-")
+  }
+
+  it should "crash when trying to include nodes without a lexicalized path type" in {
+    val pathTypes = Seq("-1-", "-2-")
+    val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
+    val params: JValue = ("include nodes" -> true)
+    val extractor = new PraFeatureExtractor(params)
+    TestUtil.expectError(classOf[IllegalStateException], "must have lexicalized path types", new Function() {
+      override def call() {
+        val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
+      }
+    })
+  }
+
+  it should "include nodes in the path type when using lexicalized path types" in {
+    val pathTypes = Seq("-1->1-2->")
+    val nodePairs = Seq(Set((1, 2)))
+    val params: JValue = ("include nodes" -> true)
+    val extractor = new PraFeatureExtractor(params)
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs, lexicalizedFactory))
+    features.size should be(1)
+    features should contain("-rel1->node1-rel2->")
+  }
+
+  it should "except when include nodes is set to false" in {
+    val pathTypes = Seq("-1->1-2->")
+    val nodePairs = Seq(Set((1, 2)))
+    val params: JValue = ("include nodes" -> false)
+    val extractor = new PraFeatureExtractor(params)
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs, lexicalizedFactory))
+    features.size should be(1)
+    features should contain("-rel1-rel2-")
   }
 
   "PathBigramsFeatureExtractor" should "extract bigrams from standard PRA features" in {

@@ -33,7 +33,8 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     "2\t3\t2\n" +
     "2\t4\t2\n" +
     "2\t5\t3\n" +
-    "3\t2\t2\n"
+    "3\t2\t2\n" +
+    "5\t4\t3\n"
   fileUtil.addFileToBeRead(graphFile, graphFileContents)
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
   val relation = "rel3"
@@ -79,20 +80,32 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   "findMatchingNodes" should "find the right nodes with a PraFeatureExtractor matcher" in {
     val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
-    val matcher1 = new PraFeatureExtractor().getFeatureMatcher("-rel1-rel2-", true, graph).get
+    val matcher1 = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel1-rel2-", true, graph).get
     generator.findMatchingNodes("node1", matcher1, graph) should be(Set("node3", "node4"))
     generator.findMatchingNodes("node2", matcher1, graph) should be(Set())
     generator.findMatchingNodes("node3", matcher1, graph) should be(Set())
     generator.findMatchingNodes("unseen node", matcher1, graph) should be(Set())
-    val matcher2 = new PraFeatureExtractor().getFeatureMatcher("-rel3-", false, graph).get
+    val matcher2 = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel3-", false, graph).get
     generator.findMatchingNodes("node1", matcher2, graph) should be(Set())
     generator.findMatchingNodes("node2", matcher2, graph) should be(Set())
     generator.findMatchingNodes("node3", matcher2, graph) should be(Set("node1"))
     generator.findMatchingNodes("100", matcher2, graph) should be(Set("node2"))
     generator.findMatchingNodes("unseen node", matcher2, graph) should be(Set())
-    val matcher3 = new PraFeatureExtractor().getFeatureMatcher("-rel1-_rel2-", true, graph).get
+    val matcher3 = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel1-_rel2-", true, graph).get
     generator.findMatchingNodes("node1", matcher3, graph) should be(Set("node3"))
     generator.findMatchingNodes("node2", matcher3, graph) should be(Set())
     generator.findMatchingNodes("unseen node", matcher3, graph) should be(Set())
+  }
+
+  it should "find the right nodes with a LexicalizedPathType" in {
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
+    val unlexMatcher = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel2-_rel3-", true, graph).get
+    generator.findMatchingNodes("node1", unlexMatcher, graph) should be(Set())
+    generator.findMatchingNodes("node2", unlexMatcher, graph) should be(Set("node1", "100"))
+    generator.findMatchingNodes("node3", unlexMatcher, graph) should be(Set())
+    val matcher = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel2->node3-_rel3->", true, graph).get
+    generator.findMatchingNodes("node1", matcher, graph) should be(Set())
+    generator.findMatchingNodes("node2", matcher, graph) should be(Set("node1"))
+    generator.findMatchingNodes("node3", matcher, graph) should be(Set())
   }
 }
