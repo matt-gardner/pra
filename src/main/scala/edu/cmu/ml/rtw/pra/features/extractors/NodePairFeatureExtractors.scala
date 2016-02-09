@@ -347,3 +347,87 @@ class AnyRelAliasOnlyFeatureExtractor extends NodePairFeatureExtractor{
     }).toSeq
   }
 }
+
+class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
+  val featureName = JsonHelper.extractWithDefault(params, "feature name", "CONNECTED")
+
+  override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    val sourceTarget = (instance.source, instance.target)
+    subgraph.flatMap(entry => {
+      if (entry._2.contains(sourceTarget)) {
+        val pathType = entry._1
+        val numSteps = pathType match {
+          case p: BaseEdgeSequencePathType => { p.edgeTypes.length }
+          case p: LexicalizedPathType => { p.edgeTypes.length }
+          case _ => throw new IllegalStateException("what kind of path type are you using?")
+        }
+        if (numSteps == 1) {
+          Seq(featureName)
+        } else {
+          Seq[String]()
+        }
+      } else {
+        Seq[String]()
+      }
+    }).toSet.toSeq
+  }
+
+  override def getFeatureMatcher(
+    feature: String,
+    startFromSourceNode: Boolean,
+    graph: Graph
+  ): Option[FeatureMatcher[NodePairInstance]] = {
+    if (feature == featureName) {
+      Some(new ConnectedAtOneMatcher())
+    } else {
+      None
+    }
+  }
+}
+
+class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
+  val featureName = JsonHelper.extractWithDefault(params, "feature name", "CONNECTED")
+  val stream = getClass().getResourceAsStream("/freebase_mediators.tsv")
+  val mediators = new FileUtil().getLineIterator(stream).toSet
+
+  override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    val sourceTarget = (instance.source, instance.target)
+    subgraph.flatMap(entry => {
+      if (entry._2.contains(sourceTarget)) {
+        val pathType = entry._1
+        val edges = pathType match {
+          case p: BaseEdgeSequencePathType => { p.edgeTypes }
+          case p: LexicalizedPathType => { p.edgeTypes }
+          case _ => throw new IllegalStateException("what kind of path type are you using?")
+        }
+        if (edges.length == 2) {
+          val firstEdgeName = graph.getEdgeName(edges(0))
+          val secondEdgeName = graph.getEdgeName(edges(1))
+          if (mediators.contains(firstEdgeName) && mediators.contains(secondEdgeName)) {
+            Seq(featureName)
+          } else {
+            Seq[String]()
+          }
+        } else {
+          Seq[String]()
+        }
+      } else {
+        Seq[String]()
+      }
+    }).toSet.toSeq
+  }
+
+  override def getFeatureMatcher(
+    feature: String,
+    startFromSourceNode: Boolean,
+    graph: Graph
+  ): Option[FeatureMatcher[NodePairInstance]] = {
+    if (feature == featureName) {
+      Some(new ConnectedByMediatorMatcher(mediators.map(m => graph.getEdgeIndex(m))))
+    } else {
+      None
+    }
+  }
+}

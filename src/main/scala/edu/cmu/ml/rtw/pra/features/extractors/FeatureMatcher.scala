@@ -185,3 +185,25 @@ case class LexicalizedPraFeatureMatcher(pathType: LexicalizedPathType) extends P
     }
   }
 }
+
+class ConnectedAtOneMatcher extends FeatureMatcher[NodePairInstance] {
+  override def isFinished(stepsTaken: Int) = stepsTaken >= 1
+  override def edgeOk(edgeId: Int, reverse: Boolean, stepsTaken: Int) = stepsTaken == 0
+  override def nodeOk(nodeId: Int, stepsTaken: Int) = true
+  override def allowedEdges(stepsTaken: Int) = None
+  override def allowedNodes(stepsTaken: Int) = None
+}
+
+// The gist here is that we have a set of "mediator" relations that always involve a mediator.
+// That is, assuming we're starting from a non-mediator node, taking one of these edges will
+// _always_ get you to a mediator.  From there, you will only have mediator edges going out, and
+// only of the right type, which are all also in the set.  Because of the way the graph works,
+// then, we don't have to save any state about which edge type we took first - any path through the
+// actual Freebase graph that follows two mediator edges will be the right type.
+class ConnectedByMediatorMatcher(mediators: Set[Int]) extends FeatureMatcher[NodePairInstance] {
+  override def isFinished(stepsTaken: Int) = stepsTaken >= 2
+  override def edgeOk(edgeId: Int, reverse: Boolean, stepsTaken: Int) = mediators.contains(edgeId)
+  override def nodeOk(nodeId: Int, stepsTaken: Int) = true
+  override def allowedEdges(stepsTaken: Int) = Some(mediators.flatMap(m => Seq((m, true), (m, false))))
+  override def allowedNodes(stepsTaken: Int) = None
+}
