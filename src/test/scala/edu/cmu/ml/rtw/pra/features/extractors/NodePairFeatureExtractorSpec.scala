@@ -214,6 +214,15 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     features.size should be(0)
   }
 
+  it should "return the a matcher only when the feature matches" in {
+    val params: JValue = ("feature name" -> "connected feature name")
+    val extractor = new ConnectedAtOneFeatureExtractor(params)
+    extractor.getFeatureMatcher("connected feature name", true, graph) should be(Some(ConnectedAtOneMatcher))
+    extractor.getFeatureMatcher("connected feature name", false, graph) should be(Some(ConnectedAtOneMatcher))
+    extractor.getFeatureMatcher("some other feature", true, graph) should be(None)
+    extractor.getFeatureMatcher("some other feature", false, graph) should be(None)
+  }
+
   "ConnectedByMediatorFeatureExtractor" should "not return anything for non-mediator connections" in {
     val pathTypes = Seq("-2-3-", "-1-", "-1-2-3-", "-6-_7-1-")
     val nodePairs = Seq(Set((1,2)))
@@ -236,5 +245,14 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     extractor.extractFeatures(instance, getSubgraph(Seq("-_6-7-"), Seq(Set((1, 2))))) should be(Seq(feature))
     extractor.extractFeatures(instance, getSubgraph(Seq("-6-_7-"), Seq(Set((1, 2))))) should be(Seq(feature))
     extractor.extractFeatures(instance, getSubgraph(Seq("-_6-_7-"), Seq(Set((1, 2))))) should be(Seq(feature))
+  }
+
+  it should "return the a matcher only when the feature matches" in {
+    val params: JValue = ("feature name" -> "connected feature name")
+    val extractor = new ConnectedByMediatorFeatureExtractor(params)
+    extractor.getFeatureMatcher("connected feature name", true, graph).get shouldBe a [ConnectedByMediatorMatcher]
+    extractor.getFeatureMatcher("connected feature name", false, graph).get shouldBe a [ConnectedByMediatorMatcher]
+    extractor.getFeatureMatcher("some other feature", true, graph) should be(None)
+    extractor.getFeatureMatcher("some other feature", false, graph) should be(None)
   }
 }

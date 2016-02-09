@@ -47,11 +47,12 @@ that license).  You can find the text of that license
 
 Version 3.3 (current snapshot):
 
-- Started work on a kind of PathFollower for SFE - that is, given a node in the graph, and a set
-  of features, find all other nodes that are reachable by those features.  This is both easier and
+- Implemented a kind of PathFollower for SFE - that is, given a node in the graph, and a set of
+  features, find all other nodes that are reachable by those features.  This is both easier and
 more complicated than the PathFollower in PRA; we don't have to compute probabilities, but we do
 potentially have more complicated features that make this computation difficult (I'm planning on
-punting on the complicated ones for now...).
+punting on the complicated ones for now...).  Currently implemented and tested for a few simple
+feature extractors.
 
 Version 3.2 (released on 1/21/2016):
 

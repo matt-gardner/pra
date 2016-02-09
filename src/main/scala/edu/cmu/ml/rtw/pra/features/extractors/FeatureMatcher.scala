@@ -186,7 +186,7 @@ case class LexicalizedPraFeatureMatcher(pathType: LexicalizedPathType) extends P
   }
 }
 
-class ConnectedAtOneMatcher extends FeatureMatcher[NodePairInstance] {
+object ConnectedAtOneMatcher extends FeatureMatcher[NodePairInstance] {
   override def isFinished(stepsTaken: Int) = stepsTaken >= 1
   override def edgeOk(edgeId: Int, reverse: Boolean, stepsTaken: Int) = stepsTaken == 0
   override def nodeOk(nodeId: Int, stepsTaken: Int) = true
@@ -202,7 +202,7 @@ class ConnectedAtOneMatcher extends FeatureMatcher[NodePairInstance] {
 // actual Freebase graph that follows two mediator edges will be the right type.
 //
 // If you don't know what I mean by "mediator", look up Freebase CVTs or mediators.
-class ConnectedByMediatorMatcher(mediators: Set[Int]) extends FeatureMatcher[NodePairInstance] {
+case class ConnectedByMediatorMatcher(mediators: Set[Int]) extends FeatureMatcher[NodePairInstance] {
   override def isFinished(stepsTaken: Int) = stepsTaken >= 2
   override def edgeOk(edgeId: Int, reverse: Boolean, stepsTaken: Int) = mediators.contains(edgeId)
   override def nodeOk(nodeId: Int, stepsTaken: Int) = true

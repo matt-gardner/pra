@@ -118,7 +118,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   it should "find the right nodes with a ConnectedAtOneMatcher" in {
     val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
-    val matcher = new ConnectedAtOneMatcher
+    val matcher = ConnectedAtOneMatcher
     generator.findMatchingNodes("node1", matcher, graph) should be(Set("node2", "node3"))
     generator.findMatchingNodes("node2", matcher, graph) should be(Set("node1", "node3", "node4", "100"))
     generator.findMatchingNodes("node3", matcher, graph) should be(Set("node1", "node2", "50", "node7"))

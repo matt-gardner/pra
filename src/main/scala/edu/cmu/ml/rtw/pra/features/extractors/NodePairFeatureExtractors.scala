@@ -379,7 +379,7 @@ class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtr
     graph: Graph
   ): Option[FeatureMatcher[NodePairInstance]] = {
     if (feature == featureName) {
-      Some(new ConnectedAtOneMatcher())
+      Some(ConnectedAtOneMatcher)
     } else {
       None
     }
@@ -388,8 +388,8 @@ class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtr
 
 class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
   val featureName = JsonHelper.extractWithDefault(params, "feature name", "CONNECTED")
-  val stream = getClass().getResourceAsStream("/freebase_mediator_relations.tsv")
-  val mediators = new FileUtil().getLineIterator(stream).toSet
+  lazy val stream = getClass().getResourceAsStream("/freebase_mediator_relations.tsv")
+  lazy val mediators = new FileUtil().getLineIterator(stream).toSet
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
@@ -425,7 +425,13 @@ class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatur
     graph: Graph
   ): Option[FeatureMatcher[NodePairInstance]] = {
     if (feature == featureName) {
-      Some(new ConnectedByMediatorMatcher(mediators.map(m => graph.getEdgeIndex(m))))
+      Some(new ConnectedByMediatorMatcher(mediators.flatMap(m => {
+        if (graph.hasEdge(m)) {
+          Seq(graph.getEdgeIndex(m))
+        } else {
+          Seq()
+        }
+      }).toSet))
     } else {
       None
     }

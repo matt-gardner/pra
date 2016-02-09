@@ -215,7 +215,7 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
   }
 
   "ConnectedAtOneFeatureExtractor" should "match any length-one connection" in {
-    val matcher = new ConnectedAtOneMatcher
+    val matcher = ConnectedAtOneMatcher
     matcher.isFinished(0) should be(false)
     matcher.isFinished(1) should be(true)
 
