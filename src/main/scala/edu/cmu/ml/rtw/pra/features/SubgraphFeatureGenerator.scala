@@ -198,7 +198,7 @@ class NodePairSubgraphFeatureGenerator(
         }
       }).toSet  // toSet here because there's potentially some overlap in the feature extractors
       matchers.flatMap(matcher => findMatchingNodes(node, matcher, graph)).toSet
-    }).seq.toSet
+    }).seq.toSet -- Set(node)
   }
 
   def findMatchingNodes(
