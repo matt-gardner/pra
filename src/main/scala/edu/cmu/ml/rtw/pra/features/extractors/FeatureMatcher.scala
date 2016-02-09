@@ -200,6 +200,8 @@ class ConnectedAtOneMatcher extends FeatureMatcher[NodePairInstance] {
 // only of the right type, which are all also in the set.  Because of the way the graph works,
 // then, we don't have to save any state about which edge type we took first - any path through the
 // actual Freebase graph that follows two mediator edges will be the right type.
+//
+// If you don't know what I mean by "mediator", look up Freebase CVTs or mediators.
 class ConnectedByMediatorMatcher(mediators: Set[Int]) extends FeatureMatcher[NodePairInstance] {
   override def isFinished(stepsTaken: Int) = stepsTaken >= 2
   override def edgeOk(edgeId: Int, reverse: Boolean, stepsTaken: Int) = mediators.contains(edgeId)

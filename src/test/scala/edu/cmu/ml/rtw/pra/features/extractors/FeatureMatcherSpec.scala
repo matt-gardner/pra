@@ -18,7 +18,13 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
-    "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
+    "1\trel1\n" +
+    "2\trel2\n" +
+    "3\trel3\n" +
+    "4\trel4\n" +
+    "5\t@ALIAS@\n" +
+    "6\t/business/brand/colors\n" +
+    "7\t/business/brand/owner_s\n")
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
   val factory = new BasicPathTypeFactory(graph)
   val lexicalizedFactory = new LexicalizedPathTypeFactory(JNothing, graph)
@@ -91,7 +97,6 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
     matcher.edgeOk(4, true, 0) should be(false)
     matcher.edgeOk(4, false, 0) should be(false)
 
-
     matcher.edgeOk(0, true, 1) should be(false)
     matcher.edgeOk(0, false, 1) should be(false)
     matcher.edgeOk(1, true, 1) should be(false)
@@ -160,7 +165,6 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
     matcher.edgeOk(4, true, 0) should be(false)
     matcher.edgeOk(4, false, 0) should be(false)
 
-
     matcher.edgeOk(0, true, 1) should be(false)
     matcher.edgeOk(0, false, 1) should be(false)
     matcher.edgeOk(1, true, 1) should be(false)
@@ -205,6 +209,115 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
     matcher.allowedEdges(3) should be(None)
 
     matcher.allowedNodes(0) should be(Some(Set(2)))
+    matcher.allowedNodes(1) should be(None)
+    matcher.allowedNodes(2) should be(None)
+    matcher.allowedNodes(3) should be(None)
+  }
+
+  "ConnectedAtOneFeatureExtractor" should "match any length-one connection" in {
+    val matcher = new ConnectedAtOneMatcher
+    matcher.isFinished(0) should be(false)
+    matcher.isFinished(1) should be(true)
+
+    matcher.edgeOk(0, true, 0) should be(true)
+    matcher.edgeOk(0, false, 0) should be(true)
+    matcher.edgeOk(1, true, 0) should be(true)
+    matcher.edgeOk(1, false, 0) should be(true)
+    matcher.edgeOk(2, true, 0) should be(true)
+    matcher.edgeOk(2, false, 0) should be(true)
+    matcher.edgeOk(3, true, 0) should be(true)
+    matcher.edgeOk(3, false, 0) should be(true)
+    matcher.edgeOk(4, true, 0) should be(true)
+    matcher.edgeOk(4, false, 0) should be(true)
+
+    matcher.edgeOk(0, true, 1) should be(false)
+    matcher.edgeOk(0, false, 1) should be(false)
+    matcher.edgeOk(1, true, 1) should be(false)
+    matcher.edgeOk(1, false, 1) should be(false)
+    matcher.edgeOk(2, true, 1) should be(false)
+    matcher.edgeOk(2, false, 1) should be(false)
+    matcher.edgeOk(3, true, 1) should be(false)
+    matcher.edgeOk(3, false, 1) should be(false)
+    matcher.edgeOk(4, true, 1) should be(false)
+    matcher.edgeOk(4, false, 1) should be(false)
+
+    matcher.nodeOk(0, 0) should be(true)
+    matcher.nodeOk(1, 0) should be(true)
+    matcher.nodeOk(2, 0) should be(true)
+    matcher.nodeOk(3, 0) should be(true)
+    matcher.nodeOk(4, 0) should be(true)
+    matcher.nodeOk(0, 1) should be(true)
+    matcher.nodeOk(1, 1) should be(true)
+    matcher.nodeOk(2, 1) should be(true)
+    matcher.nodeOk(3, 1) should be(true)
+    matcher.nodeOk(4, 1) should be(true)
+    matcher.nodeOk(0, 2) should be(true)
+    matcher.nodeOk(1, 2) should be(true)
+    matcher.nodeOk(2, 2) should be(true)
+    matcher.nodeOk(3, 2) should be(true)
+    matcher.nodeOk(4, 2) should be(true)
+
+    matcher.allowedEdges(0) should be(None)
+    matcher.allowedEdges(1) should be(None)
+    matcher.allowedEdges(2) should be(None)
+    matcher.allowedEdges(3) should be(None)
+
+    matcher.allowedNodes(0) should be(None)
+    matcher.allowedNodes(1) should be(None)
+    matcher.allowedNodes(2) should be(None)
+    matcher.allowedNodes(3) should be(None)
+  }
+
+  "ConnectedByMediatorMatcher" should "only allow mediator relations" in {
+    val matcher = new ConnectedByMediatorMatcher(Set(1, 2))
+    matcher.isFinished(0) should be(false)
+    matcher.isFinished(1) should be(false)
+    matcher.isFinished(2) should be(true)
+
+    matcher.edgeOk(0, true, 0) should be(false)
+    matcher.edgeOk(0, false, 0) should be(false)
+    matcher.edgeOk(1, true, 0) should be(true)
+    matcher.edgeOk(1, false, 0) should be(true)
+    matcher.edgeOk(2, true, 0) should be(true)
+    matcher.edgeOk(2, false, 0) should be(true)
+    matcher.edgeOk(3, true, 0) should be(false)
+    matcher.edgeOk(3, false, 0) should be(false)
+    matcher.edgeOk(4, true, 0) should be(false)
+    matcher.edgeOk(4, false, 0) should be(false)
+
+    matcher.edgeOk(0, true, 1) should be(false)
+    matcher.edgeOk(0, false, 1) should be(false)
+    matcher.edgeOk(1, true, 1) should be(true)
+    matcher.edgeOk(1, false, 1) should be(true)
+    matcher.edgeOk(2, true, 1) should be(true)
+    matcher.edgeOk(2, false, 1) should be(true)
+    matcher.edgeOk(3, true, 1) should be(false)
+    matcher.edgeOk(3, false, 1) should be(false)
+    matcher.edgeOk(4, true, 1) should be(false)
+    matcher.edgeOk(4, false, 1) should be(false)
+
+    matcher.nodeOk(0, 0) should be(true)
+    matcher.nodeOk(1, 0) should be(true)
+    matcher.nodeOk(2, 0) should be(true)
+    matcher.nodeOk(3, 0) should be(true)
+    matcher.nodeOk(4, 0) should be(true)
+    matcher.nodeOk(0, 1) should be(true)
+    matcher.nodeOk(1, 1) should be(true)
+    matcher.nodeOk(2, 1) should be(true)
+    matcher.nodeOk(3, 1) should be(true)
+    matcher.nodeOk(4, 1) should be(true)
+    matcher.nodeOk(0, 2) should be(true)
+    matcher.nodeOk(1, 2) should be(true)
+    matcher.nodeOk(2, 2) should be(true)
+    matcher.nodeOk(3, 2) should be(true)
+    matcher.nodeOk(4, 2) should be(true)
+
+    matcher.allowedEdges(0) should be(Some(Set((1, true), (1, false), (2, true), (2, false))))
+    matcher.allowedEdges(1) should be(Some(Set((1, true), (1, false), (2, true), (2, false))))
+    matcher.allowedEdges(2) should be(Some(Set((1, true), (1, false), (2, true), (2, false))))
+    matcher.allowedEdges(3) should be(Some(Set((1, true), (1, false), (2, true), (2, false))))
+
+    matcher.allowedNodes(0) should be(None)
     matcher.allowedNodes(1) should be(None)
     matcher.allowedNodes(2) should be(None)
     matcher.allowedNodes(3) should be(None)
