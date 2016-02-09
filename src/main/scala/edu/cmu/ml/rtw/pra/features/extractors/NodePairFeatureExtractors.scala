@@ -388,7 +388,7 @@ class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtr
 
 class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
   val featureName = JsonHelper.extractWithDefault(params, "feature name", "CONNECTED")
-  val stream = getClass().getResourceAsStream("/freebase_mediators.tsv")
+  val stream = getClass().getResourceAsStream("/freebase_mediator_relations.tsv")
   val mediators = new FileUtil().getLineIterator(stream).toSet
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
