@@ -26,7 +26,13 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv",
-    "1\trel1\n2\trel2\n3\trel3\n4\trel4\n5\t@ALIAS@\n")
+    "1\trel1\n" +
+    "2\trel2\n" +
+    "3\trel3\n" +
+    "4\trel4\n" +
+    "5\t@ALIAS@\n" +
+    "6\t/business/brand/colors\n" +
+    "7\t/business/brand/owner_s\n")
   val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
   val basicFactory = new BasicPathTypeFactory(graph)
   val lexicalizedFactory = new LexicalizedPathTypeFactory(JNothing, graph)
@@ -140,7 +146,6 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("max similar vectors" -> 10)
     val extractor = new VectorSimilarityFeatureExtractor(jval, fileUtil)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
-    println(features)
     features.size should be(6)
     features should contain("VECSIM:-rel1-rel3-")
     features should contain("VECSIM:-rel2-rel3-")
@@ -162,7 +167,6 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
       ("max similar vectors" -> 1)
     val extractor = new VectorSimilarityFeatureExtractor(jval, fileUtil)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
-    println(features)
     features.size should be(5)
     features should contain("VECSIM:-rel1-rel3-")
     features should contain("VECSIM:-rel2-rel3-")
@@ -176,7 +180,6 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)))
     val extractor = new AnyRelFeatureExtractor
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
-    println(features)
     features.size should be(2)
     features should contain("ANYREL:-@ANY_REL@-rel3-")
     features should contain("ANYREL:-rel1-@ANY_REL@-")
@@ -187,10 +190,51 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     val nodePairs = Seq(Set((1,2)), Set((1,5),(2,6)), Set((1,2)), Set((1,2)))
     val extractor = new AnyRelAliasOnlyFeatureExtractor
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
-    println(features)
     features.size should be(3)
     features should contain("ANYREL:-@ALIAS@-@ANY_REL@-@ALIAS@-")
     features should contain("ANYREL:-@ALIAS@-@ANY_REL@-rel2-@ALIAS@-")
     features should contain("ANYREL:-@ALIAS@-rel1-@ANY_REL@-@ALIAS@-")
+  }
+
+  "ConnectedAtOneFeatureExtractor" should "use the provided feature name for one-hop connections" in {
+    val pathTypes = Seq("-2-")
+    val nodePairs = Seq(Set((1,2)))
+    val params: JValue = ("feature name" -> "connected feature name")
+    val extractor = new ConnectedAtOneFeatureExtractor(params)
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
+    features.size should be(1)
+    features should contain("connected feature name")
+  }
+
+  it should "not return anything when there is no direct connection" in {
+    val pathTypes = Seq("-2-3-")
+    val nodePairs = Seq(Set((1,2)))
+    val extractor = new ConnectedAtOneFeatureExtractor(JNothing)
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
+    features.size should be(0)
+  }
+
+  "ConnectedByMediatorFeatureExtractor" should "not return anything for non-mediator connections" in {
+    val pathTypes = Seq("-2-3-", "-1-", "-1-2-3-", "-6-_7-1-")
+    val nodePairs = Seq(Set((1,2)))
+    val extractor = new ConnectedByMediatorFeatureExtractor(JNothing)
+    val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
+    features.size should be(0)
+  }
+
+  it should "return the provided feature name when there is a path involving two mediator relations" in {
+    val feature = "connected feature name"
+    val params: JValue = ("feature name" -> feature)
+    val extractor = new ConnectedByMediatorFeatureExtractor(params)
+
+    // In a real Freebase graph you'll only actually see one of these possibilities (though which
+    // one depends on which of the possible inverses is actually kept in the graph), assuming your
+    // allowed sources and targets are not themselves mediators.  So our simple implementation
+    // allows for all of these combinations, even though three of them wouldn't actually make sense
+    // in a real graph.
+    extractor.extractFeatures(instance, getSubgraph(Seq("-6-7-"), Seq(Set((1, 2))))) should be(Seq(feature))
+    extractor.extractFeatures(instance, getSubgraph(Seq("-_6-7-"), Seq(Set((1, 2))))) should be(Seq(feature))
+    extractor.extractFeatures(instance, getSubgraph(Seq("-6-_7-"), Seq(Set((1, 2))))) should be(Seq(feature))
+    extractor.extractFeatures(instance, getSubgraph(Seq("-_6-_7-"), Seq(Set((1, 2))))) should be(Seq(feature))
   }
 }
