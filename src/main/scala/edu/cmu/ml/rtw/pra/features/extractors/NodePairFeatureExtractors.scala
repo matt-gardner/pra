@@ -60,6 +60,8 @@ object NodePairFeatureExtractor {
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
       case JString("AnyRelAliasOnlyFeatureExtractor") => new AnyRelAliasOnlyFeatureExtractor
+      case JString("ConnectedAtOneFeatureExtractor") => new ConnectedAtOneFeatureExtractor(JNothing)
+      case JString("ConnectedByMediatorFeatureExtractor") => new ConnectedByMediatorFeatureExtractor(JNothing)
       case JString(other) => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
       case jval: JValue => {
         (jval \ "name") match {
@@ -68,6 +70,8 @@ object NodePairFeatureExtractor {
           }
           case JString("PraFeatureExtractor") => new PraFeatureExtractor(jval)
           case JString("PraFeatureExtractorWithFilter") => new PraFeatureExtractorWithFilter(jval)
+          case JString("ConnectedAtOneFeatureExtractor") => new ConnectedAtOneFeatureExtractor(jval)
+          case JString("ConnectedByMediatorFeatureExtractor") => new ConnectedByMediatorFeatureExtractor(jval)
           case other => throw new IllegalStateException(s"Unrecognized feature extractor: $other")
         }
       }
