@@ -8,7 +8,7 @@ scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-javacOptions ++= Seq("-Xlint:unchecked")
+javacOptions ++= Seq("-Xlint:unchecked", "-source", "1.7", "-target", "1.7")
 
 javaOptions in run ++= Seq("-Xmx140g")
 
