@@ -47,8 +47,6 @@ connectInput := true
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 
-instrumentSettings
-
 jacoco.settings
 
 jacoco.reportFormats in jacoco.Config := Seq(
