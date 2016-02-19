@@ -6,7 +6,7 @@ version := "3.2.1-SNAPSHOT"
 
 scalaVersion := "2.11.7"
 
-scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.7")
 
 javacOptions ++= Seq("-Xlint:unchecked", "-source", "1.7", "-target", "1.7")
 
