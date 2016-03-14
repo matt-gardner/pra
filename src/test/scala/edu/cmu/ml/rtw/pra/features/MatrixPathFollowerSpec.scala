@@ -28,7 +28,7 @@ import com.mattg.util.Pair
 class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger
   val numNodes = 100
-  val path_type_factory = new BasicPathTypeFactory()
+  val path_type_factory = new BasicPathTypeFactory(null)
   val relation1File = "/relation 1"
   val relation1FileContents = {
     "Relation 1\n" +

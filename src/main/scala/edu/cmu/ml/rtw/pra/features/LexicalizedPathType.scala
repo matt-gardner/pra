@@ -48,6 +48,23 @@ class LexicalizedPathType(
     stringDescription(graph, edgeMap)
   }
 
+  def encodeAsHumanReadableStringWithoutNodes(graph: Graph, edgeMap: Map[Int, String] = Map()) = {
+    val builder = new StringBuilder()
+    for (i <- 0 until numHops) {
+      builder.append("-")
+      if (reverse(i)) {
+        builder.append("_")
+      }
+      val edgeName = edgeMap.get(edgeTypes(i)) match {
+        case Some(name) => name
+        case None => graph.getEdgeName(edgeTypes(i))
+      }
+      builder.append(edgeName)
+    }
+    builder.append("-")
+    builder.toString()
+  }
+
   def stringDescription(graph: Graph, edgeMap: Map[Int, String]) = {
     val builder = new StringBuilder()
     for (i <- 0 until numHops) {
@@ -124,13 +141,23 @@ class LexicalizedPathType(
   }
 }
 
-class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
+class LexicalizedPathTypeFactory(params: JValue, graph: Graph) extends PathTypeFactory {
 
-  private def parseRelation(relation: String) = {
-    if (relation(0) == '_') {
-      (relation.substring(1).toInt, true)
-    } else {
-      (relation.toInt, false)
+  private def parseRelation(relation: String, graph: Option[Graph]) = {
+    val (rel, reverse) = relation(0) match {
+      case '_' => (relation.substring(1), true)
+      case _ => (relation, false)
+    }
+    graph match {
+      case None => (rel.toInt, reverse)
+      case Some(g) => (g.getEdgeIndex(rel), reverse)
+    }
+  }
+
+  private def parseNode(node: String, graph: Option[Graph]) = {
+    graph match {
+      case None => node.toInt
+      case Some(g) => g.getNodeIndex(node)
     }
   }
 
@@ -139,6 +166,14 @@ class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
   }
 
   override def fromString(string: String) = {
+    _fromString(string, None)
+  }
+
+  override def fromHumanReadableString(string: String) = {
+    _fromString(string, Some(graph))
+  }
+
+  private def _fromString(string: String, graph: Option[Graph]) = {
     // Description is formatted like -rel1->node2-_rel3->node4.  The strategy we'll use here is to
     // split on the '->' first, which will give us 'node-rel' pairs (plus a rel at the front and a
     // node at the end).  We'll parse through these to get the result.
@@ -154,11 +189,11 @@ class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
       val part = part_idx._1
       val index = part_idx._2
       if (index == 0) {
-        Seq(parseRelation(part))
+        Seq(parseRelation(part, graph))
       } else if (index == parts.size - 1) {
         Seq()
       } else {
-        Seq(parseRelation(part.split("-")(1)))
+        Seq(parseRelation(part.split("-")(1), graph))
       }
     })
     val edges = edgesWithReverse.map(_._1).toArray
@@ -172,10 +207,10 @@ class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
         if (part == dummyStr) {
           Seq()
         } else {
-          Seq(part.toInt)
+          Seq(parseNode(part, graph))
         }
       } else {
-        Seq(part.split("-")(0).toInt)
+        Seq(parseNode(part.split("-")(0), graph))
       }
     }).toArray
     new LexicalizedPathType(edges, nodes, reverse, params)
@@ -241,5 +276,14 @@ class LexicalizedPathTypeFactory(params: JValue) extends PathTypeFactory {
       j += 1
     }
     new LexicalizedPathType(combinedEdgeTypes, combinedNodes, combinedReverse, params)
+  }
+
+  def reversePathType(pathType: LexicalizedPathType): LexicalizedPathType = {
+    // A bunch of boxing and unboxing here, but oh well.  This isn't called in a place where
+    // efficiency is really critical.
+    val reversedEdgeTypes = pathType.edgeTypes.toSeq.reverse.toArray
+    val reversedNodes = pathType.nodes.toSeq.reverse.toArray
+    val reversedReverse = pathType.reverse.toSeq.reverse.map(!_).toArray
+    new LexicalizedPathType(reversedEdgeTypes, reversedNodes, reversedReverse, pathType.params)
   }
 }

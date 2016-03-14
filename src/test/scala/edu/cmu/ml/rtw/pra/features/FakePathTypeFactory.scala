@@ -14,6 +14,7 @@ class FakePathTypeFactory extends PathTypeFactory {
   override def encode(path: Path) = pathTypes
 
   override def fromString(string: String) = new FakePathType(string)
+  override def fromHumanReadableString(string: String) = new FakePathType(string)
 
   override def emptyPathType() = new FakePathType("NULL")
 

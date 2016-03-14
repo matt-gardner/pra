@@ -1,5 +1,6 @@
-package edu.cmu.ml.rtw.pra.features
+package edu.cmu.ml.rtw.pra.features.extractors
 
+import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
 import com.mattg.util.MutableConcurrentDictionary
@@ -10,15 +11,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
 
-class BasicPathTypeFilterSpec extends FlatSpecLike with Matchers {
-  val factory = new BasicPathTypeFactory
-  val pathType1 = factory.fromString("-1-")
-  val pathType2 = factory.fromString("-1-2-")
-  val pathType3 = factory.fromString("-1-5-")
-  val pathType4 = factory.fromString("-2-4-")
-  val pathType5 = factory.fromString("-2-5-4-")
-  val pathType6 = factory.fromString("-2-5-6-7-4-")
-  val pathType7 = factory.fromString("-1-_2-")
+class PathTypeFilterSpec extends FlatSpecLike with Matchers {
 
   val edgeDict = new MutableConcurrentDictionary
   edgeDict.getIndex("edge1")
@@ -29,6 +22,14 @@ class BasicPathTypeFilterSpec extends FlatSpecLike with Matchers {
   edgeDict.getIndex("edge6")
   edgeDict.getIndex("edge7")
   val graph = new GraphInMemory(Array[Node](), new MutableConcurrentDictionary, edgeDict)
+  val factory = new BasicPathTypeFactory(graph)
+  val pathType1 = factory.fromString("-1-")
+  val pathType2 = factory.fromString("-1-2-")
+  val pathType3 = factory.fromString("-1-5-")
+  val pathType4 = factory.fromString("-2-4-")
+  val pathType5 = factory.fromString("-2-5-4-")
+  val pathType6 = factory.fromString("-2-5-6-7-4-")
+  val pathType7 = factory.fromString("-1-_2-")
 
   "shouldKeepPath" should "keep all paths with default parameters" in {
     val filter = new BasicPathTypeFilter(JNothing)

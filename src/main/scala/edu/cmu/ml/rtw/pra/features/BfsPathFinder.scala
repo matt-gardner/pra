@@ -44,7 +44,7 @@ abstract class BfsPathFinder[T <: Instance](
   // that node.
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
-  val factory = createPathTypeFactory(params \ "path type factory")
+  val factoryParams = params \ "path type factory"
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   var results: Map[T, Subgraph] = null
@@ -99,13 +99,6 @@ abstract class BfsPathFinder[T <: Instance](
       case onDisk: GraphOnDisk => { onDisk.entries.size }
       case inMemory: GraphInMemory => {}
     }
-    // Note that we're doing two BFS searches for each instance - one from the source, and one from
-    // the target.  But that's extra work!, you might say, because if there are duplicate sources
-    // or targets across instances, we should only have to do the BFS once!  That's true, unless
-    // you want to hold out the edge from the graph correctly.  What you really want is to run a
-    // BFS for each instance holding out just a _single_ edge from the graph - the training edge
-    // that you're trying to learn to predict.  If you share the BFS across multiple training
-    // instances, you won't be holding out the edges correctly.
     instances.par.map(instance => (instance -> getSubgraphForInstance(instance))).seq.toMap
   }
 
@@ -117,11 +110,13 @@ abstract class BfsPathFinder[T <: Instance](
   // do this search.  I was hoping this would give a nice speed up, but some timing results seem
   // like it's about the same.  At least this way I think the code is easier to understand.
   def bfsFromNode(
-      graph: Graph,
-      source: Int,
-      target: Int,
-      unallowedRelations: Set[Int],
-      resultsByPathType: mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]) = {
+    graph: Graph,
+    factory: PathTypeFactory,
+    source: Int,
+    target: Int,
+    unallowedRelations: Set[Int],
+    resultsByPathType: mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+  ) = {
     // The object in this queue is (what node I'm at, what path type got me there, steps left).  If
     // you really want to detect cycles (and I'm not sure it's worth it), instead of the PathType
     // you should keep a Seq[(Int, Int, Boolean)] with edge types, nodes, and reverse.  You can
@@ -178,25 +173,12 @@ abstract class BfsPathFinder[T <: Instance](
       false
   }
 
-  def addToPathType(pathType: Int, relation: Int, isReverse: Boolean, pathDict: Index[PathType]): Int = {
-    try {
-      val prevString = pathDict.getKey(pathType).encodeAsString()
-      val newString = if (isReverse) prevString + "_" + relation + "-" else prevString + relation + "-"
-      pathDict.getIndex(factory.fromString(newString))
-    } catch {
-      case e: NullPointerException => {
-        outputter.fatal(s"NULL PATH TYPE: $pathType")
-        throw e
-      }
-    }
-  }
-
-  def createPathTypeFactory(params: JValue) = {
+  def createPathTypeFactory(params: JValue, graph: Graph) = {
     params match {
-      case JNothing => new BasicPathTypeFactory
-      case JString("BasicPathTypeFactory") => new BasicPathTypeFactory
+      case JNothing => new BasicPathTypeFactory(graph)
+      case JString("BasicPathTypeFactory") => new BasicPathTypeFactory(graph)
       // TODO(matt): allow for configuring this parameter in the spec.
-      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory(JNothing)
+      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory(JNothing, graph)
       case other => throw new IllegalStateException("Unrecognized path type factory specification")
     }
   }
@@ -211,12 +193,21 @@ class NodePairBfsPathFinder(
 ) extends BfsPathFinder[NodePairInstance](params, relation, relationMetadata, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodePairInstance) = {
     val graph = instance.graph
+    val factory = createPathTypeFactory(factoryParams, graph)
     val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val source = instance.source
     val target = instance.target
     val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-    val sourceSubgraph = bfsFromNode(graph, source, target, unallowedEdges, result)
-    val targetSubgraph = bfsFromNode(graph, target, source, unallowedEdges, result)
+
+    // Note that we're doing two BFS searches for each instance - one from the source, and one from
+    // the target.  But that's extra work!, you might say, because if there are duplicate sources
+    // or targets across instances, we should only have to do the BFS once!  That's true, unless
+    // you want to hold out the edge from the graph correctly.  What you really want is to run a
+    // BFS for each instance holding out just a _single_ edge from the graph - the training edge
+    // that you're trying to learn to predict.  If you share the BFS across multiple training
+    // instances, you won't be holding out the edges correctly.
+    val sourceSubgraph = bfsFromNode(graph, factory, source, target, unallowedEdges, result)
+    val targetSubgraph = bfsFromNode(graph, factory, target, source, unallowedEdges, result)
     val sourceKeys = sourceSubgraph.keys.toSet
     val targetKeys = targetSubgraph.keys.toSet
     val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
@@ -244,12 +235,13 @@ class NodeBfsPathFinder(
 ) extends BfsPathFinder[NodeInstance](params, relation, relationMetadata, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodeInstance) = {
     val graph = instance.graph
+    val factory = createPathTypeFactory(factoryParams, graph)
     val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val node = instance.node
     // There's no target to watch out for if we only have a NodeInstance.
     val fakeTarget = -1
     val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-    val subgraph = bfsFromNode(graph, node, fakeTarget, unallowedEdges, result)
+    val subgraph = bfsFromNode(graph, factory, node, fakeTarget, unallowedEdges, result)
     result.mapValues(_.toSet).toMap
   }
 

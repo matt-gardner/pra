@@ -1,9 +1,11 @@
-# PRA (Path Ranking Algorithm)
+[![Build Status](https://travis-ci.org/matt-gardner/pra.svg?branch=master)](https://travis-ci.org/matt-gardner/pra)
+[![Coverage Status](https://coveralls.io/repos/github/matt-gardner/pra/badge.svg?branch=master)](https://coveralls.io/github/matt-gardner/pra?branch=master)
 
-An implementation of the Path Ranking Algorithm (PRA) using GraphChi, a library for efficient
-processing of large graphs on a single machine.  This algorithm learns models that analyze a graph
-and predict missing edges of particular types.  The code here was used to run experiments in the
-following papers:
+# PRA (Path Ranking Algorithm) and SFE (Subgraph Feature Extraction)
+
+PRA and SFE are algorithms that extract feature matrices from graphs, and use those feature
+matrices to do link prediction in that graph.  This repository contains implementations of PRA and
+SFE, as used in the following papers (among others):
 
 * Efficient and Expressive Knowledge Base Completion Using Subgraph Feature Extraction.  Matt
   Gardner and Tom Mitchell.  EMNLP 2015. ([website](http://rtw.ml.cmu.edu/emnlp2015_sfe))
@@ -45,7 +47,19 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.2:
+Version 3.3 (current snapshot):
+
+- Integrated this github repo with Travis CI and coveralls (as seen in the badges at the top of
+  this README).
+
+- Implemented a kind of PathFollower for SFE - that is, given a node in the graph, and a set of
+  features, find all other nodes that are reachable by those features.  This is both easier and
+more complicated than the PathFollower in PRA; we don't have to compute probabilities, but we do
+potentially have more complicated features that make this computation difficult (I'm planning on
+punting on the complicated ones for now...).  Currently implemented and tested for a few simple
+feature extractors.
+
+Version 3.2 (released on 1/21/2016):
 
 - Allow for feature extraction and classification over _nodes_ in the graph, instead of only _node
   pairs_.  This means that in addition to classifying _relations_ between two entities, you can
@@ -62,8 +76,9 @@ final feature vector.
 start a graph server once somewhere and let it run, while just passing the code a reference to
 where the server is running.  The trouble is that it's _way_ too slow.  To make this really
 feasible, I need to push more of the computation to the graph, so you don't have to do so much
-socket communication.  I did significantly increase the efficiency of loading the graph and
-storing it in memory as part of this, so runtimes improve quite a bit.
+socket communication (i.e., make a remote BfsPathFinder, or SubgraphFeatureGenerator).  I did
+significantly increase the efficiency of loading the graph and storing it in memory as part of
+this, so runtimes improve quite a bit, at least.
 
 Version 3.1 (released on 11/9/2015):
 
