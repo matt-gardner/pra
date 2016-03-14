@@ -3,11 +3,11 @@ package edu.cmu.ml.rtw.pra.graphs
 import org.scalatest._
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FakeFileWriter
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FakeFileWriter
+import com.mattg.util.FakeFileUtil
+import com.mattg.util.TestUtil
+import com.mattg.util.TestUtil.Function
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._

@@ -4,8 +4,8 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FakeFileUtil
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._

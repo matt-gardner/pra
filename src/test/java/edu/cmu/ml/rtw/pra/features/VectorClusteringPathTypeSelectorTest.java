@@ -12,11 +12,11 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
 import edu.cmu.ml.rtw.pra.graphs.Node;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
-import edu.cmu.ml.rtw.users.matt.util.TestUtil;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
+import com.mattg.util.FileUtil;
+import com.mattg.util.MutableConcurrentDictionary;
+import com.mattg.util.Pair;
+import com.mattg.util.TestUtil;
+import com.mattg.util.Vector;
 
 public class VectorClusteringPathTypeSelectorTest extends TestCase {
     private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(false, new FileUtil());

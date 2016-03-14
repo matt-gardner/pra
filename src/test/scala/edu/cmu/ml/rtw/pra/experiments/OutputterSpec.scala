@@ -6,8 +6,8 @@ import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FakeFileUtil
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._

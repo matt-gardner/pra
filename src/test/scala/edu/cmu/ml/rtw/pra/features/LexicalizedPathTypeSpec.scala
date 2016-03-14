@@ -4,9 +4,9 @@ import org.scalatest._
 
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.TestUtil
+import com.mattg.util.TestUtil.Function
 
 import org.json4s._
 import org.json4s.JsonDSL._

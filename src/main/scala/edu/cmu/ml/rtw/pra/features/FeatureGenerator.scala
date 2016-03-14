@@ -11,8 +11,8 @@ import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 

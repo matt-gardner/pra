@@ -1,12 +1,12 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.LineFilter
-import edu.cmu.ml.rtw.users.matt.util.IntTriple
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.Dictionary
+import com.mattg.util.FileUtil
+import com.mattg.util.LineFilter
+import com.mattg.util.IntTriple
+import com.mattg.util.JsonHelper
+import com.mattg.util.Pair
 
 import java.io.BufferedReader
 import java.io.FileWriter

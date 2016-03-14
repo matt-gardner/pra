@@ -5,7 +5,7 @@ import org.scalatest._
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom
+import com.mattg.util.FakeRandom
 
 import org.json4s._
 import org.json4s.JsonDSL._

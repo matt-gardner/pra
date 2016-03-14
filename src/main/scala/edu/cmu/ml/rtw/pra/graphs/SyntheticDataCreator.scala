@@ -4,8 +4,8 @@ import scala.collection.mutable
 import scala.util.Random
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._

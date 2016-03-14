@@ -10,7 +10,7 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FakeChiVertex
 import edu.cmu.ml.rtw.pra.features.FakeIntDrunkardContext
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom
+import com.mattg.util.FakeRandom
 
 import org.json4s._
 

@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.features;
 import java.util.List;
 import java.util.Map;
 
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
+import com.mattg.util.MapUtil;
 
 public class MostFrequentPathTypeSelector implements PathTypeSelector {
 

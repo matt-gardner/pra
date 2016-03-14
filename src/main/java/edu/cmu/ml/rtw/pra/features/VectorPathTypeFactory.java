@@ -6,7 +6,7 @@ import java.util.Random;
 import com.google.common.annotations.VisibleForTesting;
 
 import edu.cmu.ml.rtw.pra.graphs.Graph;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
+import com.mattg.util.Vector;
 
 /**
  * Represents a path type as a sequence of (edge, vector) pairs.  We assume that each edge type has

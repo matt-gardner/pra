@@ -20,8 +20,8 @@ import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.graphchi.walks.distributions.TwoKeyCompanion;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
+import com.mattg.util.MapUtil;
+import com.mattg.util.Pair;
 
 public class RandomWalkPathFollowerCompanion extends TwoKeyCompanion {
 

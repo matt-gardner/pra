@@ -16,11 +16,11 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.features.FakePathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
-import edu.cmu.ml.rtw.users.matt.util.TestUtil;
+import com.mattg.util.FakeRandom;
+import com.mattg.util.FileUtil;
+import com.mattg.util.MapUtil;
+import com.mattg.util.Pair;
+import com.mattg.util.TestUtil;
 
 public class RandomWalkPathFollowerTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();

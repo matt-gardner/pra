@@ -13,11 +13,11 @@ import com.google.common.collect.Lists;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.Index;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
-import edu.cmu.ml.rtw.users.matt.util.TestUtil;
+import com.mattg.util.FakeRandom;
+import com.mattg.util.FileUtil;
+import com.mattg.util.Index;
+import com.mattg.util.Pair;
+import com.mattg.util.TestUtil;
 
 public class RandomWalkPathFinderTest extends TestCase {
   private FakePathTypeFactory factory = new FakePathTypeFactory();

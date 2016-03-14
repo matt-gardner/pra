@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.graphchi.preprocessing.VertexIdTranslate
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.Pair
 
 import scala.collection.JavaConverters._
 

@@ -2,9 +2,9 @@ package edu.cmu.ml.rtw.pra.data
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
+import com.mattg.util.FakeFileUtil
+import com.mattg.util.TestUtil
+import com.mattg.util.TestUtil.Function
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._

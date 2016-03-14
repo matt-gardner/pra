@@ -5,10 +5,10 @@ import java.io.FileWriter
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.Dictionary
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
+import com.mattg.util.Pair
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render}

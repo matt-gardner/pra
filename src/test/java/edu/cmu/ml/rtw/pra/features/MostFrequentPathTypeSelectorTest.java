@@ -8,7 +8,7 @@ import junit.framework.TestCase;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import edu.cmu.ml.rtw.users.matt.util.TestUtil;
+import com.mattg.util.TestUtil;
 
 public class MostFrequentPathTypeSelectorTest extends TestCase {
   private MostFrequentPathTypeSelector selector = new MostFrequentPathTypeSelector();

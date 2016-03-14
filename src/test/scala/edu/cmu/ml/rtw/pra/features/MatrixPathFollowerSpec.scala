@@ -21,9 +21,9 @@ import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.Dictionary
+import com.mattg.util.FakeFileUtil
+import com.mattg.util.Pair
 
 class MatrixPathFollowerSpec extends FlatSpecLike with Matchers {
   val outputter = Outputter.justLogger

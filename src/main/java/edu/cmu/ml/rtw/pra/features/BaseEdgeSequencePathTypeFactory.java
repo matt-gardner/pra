@@ -6,8 +6,8 @@ import java.util.Random;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import edu.cmu.ml.rtw.users.matt.util.Dictionary;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
+import com.mattg.util.Dictionary;
+import com.mattg.util.Vector;
 
 /**
  * Represents a path type as a sequence of edges.  This is an abstract base class, allowing for

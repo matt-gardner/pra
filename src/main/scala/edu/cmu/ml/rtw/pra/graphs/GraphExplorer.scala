@@ -10,8 +10,8 @@ import edu.cmu.ml.rtw.pra.features.RandomWalkPathFinder
 import edu.cmu.ml.rtw.pra.features.PathType
 import edu.cmu.ml.rtw.pra.features.PathTypePolicy
 import edu.cmu.ml.rtw.pra.features.SingleEdgeExcluder
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.JsonHelper
+import com.mattg.util.Pair
 
 import scala.collection.JavaConverters._
 

@@ -13,8 +13,8 @@ import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.models.BatchModel
 import edu.cmu.ml.rtw.pra.models.OnlineModel
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent

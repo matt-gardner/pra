@@ -6,8 +6,8 @@ import java.io.PrintWriter
 import scala.collection.mutable
 import scala.math.Ordering.Implicits._
 
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
+import com.mattg.util.FileUtil
+import com.mattg.util.SpecFileReader
 
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}

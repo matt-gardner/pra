@@ -1,6 +1,9 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
+import com.mattg.util.Pair
+import com.mattg.util.SpecFileReader
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.SplitCreator
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -10,11 +13,8 @@ import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PcaDecomposer
 import edu.cmu.ml.rtw.pra.graphs.SimilarityMatrixCreator
-import edu.cmu.ml.rtw.pra.operations.Operation
 import edu.cmu.ml.rtw.pra.operations.NoOp
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.Pair
-import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
+import edu.cmu.ml.rtw.pra.operations.Operation
 
 import scala.collection.mutable
 

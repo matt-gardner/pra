@@ -10,7 +10,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import edu.cmu.ml.rtw.users.matt.util.FileBuffer;
+import com.mattg.util.FileBuffer;
 
 /**
  * Creates a set of PRA files for a Freebase KB (including a graph file, a set of category files,

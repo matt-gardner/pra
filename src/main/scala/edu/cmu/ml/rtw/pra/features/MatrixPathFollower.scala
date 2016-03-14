@@ -18,8 +18,8 @@ import scala.util.control.Breaks._
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.FileUtil
+import com.mattg.util.Pair
 
 // Some of these are vals so that they can be accessed in tests.  That's because they are things
 // that are specified from params.  TODO(matt): change this to take a JValue as input for those

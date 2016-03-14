@@ -39,9 +39,9 @@ import edu.cmu.graphchi.walks.WalkManager;
 import edu.cmu.graphchi.walks.WalkUpdateFunction;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentIndex;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
+import com.mattg.util.FileUtil;
+import com.mattg.util.MutableConcurrentIndex;
+import com.mattg.util.Pair;
 
 /**
  * Finds common path types between pairs of nodes in a given set, using DrunkardMobEngine.

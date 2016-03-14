@@ -4,7 +4,7 @@ import java.io.File
 
 import scala.collection.mutable
 
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import com.mattg.util.FileUtil
 
 trait MetricComputer {
   def computeDatasetMetrics(results_dir: String, split_dir: String, relation_metrics: RelationMetrics): MutableMetrics

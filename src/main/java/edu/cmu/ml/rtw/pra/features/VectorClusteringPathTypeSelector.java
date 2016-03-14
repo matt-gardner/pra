@@ -9,9 +9,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory;
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.users.matt.util.Pair;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
+import com.mattg.util.MapUtil;
+import com.mattg.util.Pair;
+import com.mattg.util.Vector;
 
 public class VectorClusteringPathTypeSelector implements PathTypeSelector {
 

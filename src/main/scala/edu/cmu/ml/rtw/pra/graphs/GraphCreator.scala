@@ -11,11 +11,11 @@ import edu.cmu.graphchi.datablocks.IntConverter
 import edu.cmu.graphchi.preprocessing.EdgeProcessor
 import edu.cmu.graphchi.preprocessing.FastSharder
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.IntTriple
-import edu.cmu.ml.rtw.users.matt.util.Pair
+import com.mattg.util.Dictionary
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FileUtil
+import com.mattg.util.IntTriple
+import com.mattg.util.Pair
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable

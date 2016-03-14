@@ -6,10 +6,10 @@ import java.io.StringReader
 import org.scalatest._
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil
-import edu.cmu.ml.rtw.users.matt.util.TestUtil.Function
+import com.mattg.util.FileUtil
+import com.mattg.util.FakeFileUtil
+import com.mattg.util.TestUtil
+import com.mattg.util.TestUtil.Function
 
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._

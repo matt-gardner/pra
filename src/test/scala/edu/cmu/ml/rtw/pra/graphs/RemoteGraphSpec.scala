@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FakeFileUtil
+import com.mattg.util.FakeFileUtil
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._

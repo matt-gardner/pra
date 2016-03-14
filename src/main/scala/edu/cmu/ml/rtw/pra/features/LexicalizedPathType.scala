@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.graphs.Graph
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.JsonHelper
 
 import java.util.Random
 

@@ -7,8 +7,8 @@ import scala.collection.mutable
 import breeze.linalg._
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FileUtil
 
 class PcaDecomposer(
   graph_dir: String,

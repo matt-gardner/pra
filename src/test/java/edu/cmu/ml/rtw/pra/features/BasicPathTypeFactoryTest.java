@@ -10,10 +10,10 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.graphs.Graph;
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
 import edu.cmu.ml.rtw.pra.graphs.Node;
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.MapUtil;
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
+import com.mattg.util.FakeRandom;
+import com.mattg.util.FileUtil;
+import com.mattg.util.MapUtil;
+import com.mattg.util.MutableConcurrentDictionary;
 
 // This class also tests BaseEdgeSequencePathTypeFactory, which has the implementations of most of
 // these methods.

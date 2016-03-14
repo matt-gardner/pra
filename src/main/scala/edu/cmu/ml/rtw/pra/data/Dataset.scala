@@ -5,7 +5,7 @@ import java.io.FileWriter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
+import com.mattg.util.FileUtil
 
 import scala.collection.JavaConverters._
 

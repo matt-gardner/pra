@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.util.Map;
 
-import edu.cmu.ml.rtw.users.matt.util.ObjectParser;
+import com.mattg.util.ObjectParser;
 
 /**
  * A PathTypeFactory's main job is to take a Path - a sequence of (node, edge, node, edge, ...,

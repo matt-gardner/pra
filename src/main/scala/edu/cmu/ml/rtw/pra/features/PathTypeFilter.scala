@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.graphs.Graph
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 import org.json4s.native.JsonMethods._

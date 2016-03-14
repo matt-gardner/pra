@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.models
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.MatrixRow
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 

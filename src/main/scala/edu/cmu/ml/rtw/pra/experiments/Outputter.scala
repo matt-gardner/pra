@@ -8,8 +8,8 @@ import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.features.PathType
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 

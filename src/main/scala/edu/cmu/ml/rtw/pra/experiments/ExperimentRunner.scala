@@ -1,7 +1,7 @@
 package edu.cmu.ml.rtw.pra.experiments
 
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
+import com.mattg.util.FileUtil
+import com.mattg.util.SpecFileReader
 
 import java.io.File
 

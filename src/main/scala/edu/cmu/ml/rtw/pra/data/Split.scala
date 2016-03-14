@@ -4,8 +4,8 @@ import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 

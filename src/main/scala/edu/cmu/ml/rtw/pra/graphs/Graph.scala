@@ -3,11 +3,11 @@ package edu.cmu.ml.rtw.pra.graphs
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.Dictionary
-import edu.cmu.ml.rtw.users.matt.util.ImmutableDictionary
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.Dictionary
+import com.mattg.util.ImmutableDictionary
+import com.mattg.util.MutableConcurrentDictionary
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 

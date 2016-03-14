@@ -4,9 +4,9 @@ import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.Pair
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.FileUtil
+import com.mattg.util.Pair
+import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.util.control.Exception.allCatch

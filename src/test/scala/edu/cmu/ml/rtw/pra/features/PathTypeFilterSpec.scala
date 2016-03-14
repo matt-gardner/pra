@@ -2,7 +2,7 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
 import edu.cmu.ml.rtw.pra.graphs.Node
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary
+import com.mattg.util.MutableConcurrentDictionary
 
 import org.scalatest._
 

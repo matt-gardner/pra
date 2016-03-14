@@ -1,9 +1,9 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.FileUtil
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
-import edu.cmu.ml.rtw.users.matt.util.SpecFileReader
+import com.mattg.util.FileUtil
+import com.mattg.util.JsonHelper
+import com.mattg.util.SpecFileReader
 
 import scala.collection.concurrent
 import scala.collection.mutable

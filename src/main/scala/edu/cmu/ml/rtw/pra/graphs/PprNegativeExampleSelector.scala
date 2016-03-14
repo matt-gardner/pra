@@ -3,7 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
-import edu.cmu.ml.rtw.users.matt.util.JsonHelper
+import com.mattg.util.JsonHelper
 
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._

@@ -9,10 +9,10 @@ import com.google.common.collect.Maps;
 import edu.cmu.ml.rtw.pra.features.VectorPathTypeFactory.VectorPathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory;
 import edu.cmu.ml.rtw.pra.graphs.Node;
-import edu.cmu.ml.rtw.users.matt.util.FileUtil;
-import edu.cmu.ml.rtw.users.matt.util.MutableConcurrentDictionary;
-import edu.cmu.ml.rtw.users.matt.util.FakeRandom;
-import edu.cmu.ml.rtw.users.matt.util.Vector;
+import com.mattg.util.FileUtil;
+import com.mattg.util.MutableConcurrentDictionary;
+import com.mattg.util.FakeRandom;
+import com.mattg.util.Vector;
 
 public class VectorPathTypeFactoryTest extends TestCase {
     private Vector vector1 = new Vector(new double[]{1,2,3});
