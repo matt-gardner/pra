@@ -405,7 +405,6 @@ object ExperimentScorer {
     n / iters
   }
 
-  // Expected p-value: .55567
   def getSampledPValue(values: Seq[(Double, Double)]) = {
     import scala.util.Random
     val random = new Random
