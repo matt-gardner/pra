@@ -47,7 +47,7 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.3 (current snapshot):
+Version 3.3 (released on 3/22/2016):
 
 - Integrated this github repo with Travis CI and coveralls (as seen in the badges at the top of
   this README).
