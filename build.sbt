@@ -45,6 +45,8 @@ fork := true
 
 connectInput := true
 
+cancelable in Global := true
+
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 
 jacoco.settings
