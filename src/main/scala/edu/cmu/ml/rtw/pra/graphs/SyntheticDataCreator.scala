@@ -21,10 +21,11 @@ import org.json4s.native.JsonMethods._
  * that.
  */
 class SyntheticDataCreator(
-    base_dir: String,
-    params: JValue,
-    outputter: Outputter,
-    fileUtil: FileUtil = new FileUtil()) {
+  base_dir: String,
+  params: JValue,
+  outputter: Outputter,
+  fileUtil: FileUtil = new FileUtil()
+) {
 
   // Extracting parameters first
   implicit val formats = DefaultFormats

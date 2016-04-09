@@ -206,6 +206,12 @@ class NodePairBfsPathFinder(
     // BFS for each instance holding out just a _single_ edge from the graph - the training edge
     // that you're trying to learn to predict.  If you share the BFS across multiple training
     // instances, you won't be holding out the edges correctly.
+    //
+    // It might make sense to have a setting where you _know_ that you don't need to hold out any
+    // edges from the graph, so you can re-use the BFS for each source node.  Except, we've gone
+    // away from bulk processing towards processing individual instances, anyway, for memory
+    // reasons.  This setting would require keeping these subgraphs around in memory, and they are
+    // very large...
     val sourceSubgraph = bfsFromNode(graph, factory, source, target, unallowedEdges, result)
     val targetSubgraph = bfsFromNode(graph, factory, target, source, unallowedEdges, result)
     val sourceKeys = sourceSubgraph.keys.toSet

@@ -11,10 +11,13 @@ import edu.cmu.graphchi.datablocks.IntConverter
 import edu.cmu.graphchi.preprocessing.EdgeProcessor
 import edu.cmu.graphchi.preprocessing.FastSharder
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+
+import com.mattg.pipeline.Step
 import com.mattg.util.Dictionary
-import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.IntTriple
+import com.mattg.util.JsonHelper
+import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.Pair
 
 import scala.collection.JavaConverters._
@@ -24,73 +27,58 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
-// TODO(matt): I like the design of RelationSet a lot better than this, where the params JValue is
-// a class argument instead of an argument to a method.  Fix this.
 // TODO(matt): Add an option to exclude the test edges in a split when creating the graph.  This
 // makes the graph dependent on the split, but is necessary for some experimental protocols.  It
 // should be easy to use seenTriples to implement this - just add the whole test split (including
 // inverses) to the seenTriples object before adding any edges.
 class GraphCreator(
-  baseDir: String,
-  outdir: String,
+  baseGraphDir: String,
+  params: JValue,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) {
+) extends Step(Some(params), fileUtil) {
   implicit val formats = DefaultFormats
+  override val name = "Graph Creator"
+
+  val graphName = (params \ "name").extract[String]
+  val outdir = s"$baseGraphDir/$graphName/"
 
   val matrixOutDir = outdir + "matrices/"
   val inProgressFile = outdir + "in_progress"
   val paramFile = outdir + "params.json"
-  val relationSetDir = "relation_sets/"
 
-  def getRelationSets(params: JValue): Seq[RelationSet] = {
-    val value = params \ "relation sets"
-    value.children.map(rel_set => {
-      (rel_set \ "type") match {
-        case JNothing => new RelationSet(rel_set, outputter, fileUtil)
-        case JString("generated") => generateSyntheticRelationSet(rel_set \ "generation params")
-        case other => throw new IllegalStateException("Bad relation set specification")
-      }
-    })
-  }
-
-  def deduplicateEdges(params: JValue): Boolean = {
-    val value = params \ "deduplicate edges"
-    if (value.equals(JNothing)) {
-      false
-    } else {
-      value.extract[Boolean]
+  val relationSets = (params \ "relation sets").children.map(relationSet => {
+    (relationSet \ "type") match {
+      case JNothing => new RelationSet(relationSet, outputter, fileUtil)
+      case JString("generated") => generateSyntheticRelationSet(relationSet \ "generation params")
+      case other => throw new IllegalStateException("Bad relation set specification")
     }
+  })
+
+  val deduplicateEdges = JsonHelper.extractWithDefault(params, "deduplicate edges", false)
+  val createMatrices = JsonHelper.extractWithDefault(params, "create matrices", false)
+  val maxMatrixFileSize = JsonHelper.extractWithDefault(params, "max matrix file size", 100000)
+
+  override def _runStep() {
+    // TODO(matt): once this is the main entry point, I should totally restructure this code.  You
+    // should be able to specify if you want a binary or a plain text file, if you want to shard
+    // it, and all of this, as parameters.
+    createGraphChiRelationGraph()
   }
 
-  def createMatrices(params: JValue): Boolean = {
-    val value = params \ "create matrices"
-    if (value.equals(JNothing)) {
-      false
-    } else {
-      value.extract[Boolean]
-    }
+  def createGraphChiRelationGraph() {
+    createGraphChiRelationGraph(true)
   }
 
-  def maxMatrixFileSize(params: JValue): Int = {
-    val value = params \ "max matrix file size"
-    if (value.equals(JNothing)) {
-      100000
-    } else {
-      value.extract[Int]
-    }
-  }
-
-  def createGraphChiRelationGraph(params: JValue) {
-    createGraphChiRelationGraph(params, true)
-  }
-
-  def createGraphChiRelationGraph(params: JValue, shouldShardGraph: Boolean) {
-    val name = (params \ "name").extract[String]
+  def createGraphChiRelationGraph(shouldShardGraph: Boolean) {
     outputter.info(s"Creating graph $name in $outdir")
     outputter.info("Making directories")
 
     // Some preparatory stuff
+
+    // TODO(matt): this is handled by the pipeline code, so it should not be repeated here.  Need
+    // to fix the Driver to use this as a Step and implement inProgressFiles for Steps first,
+    // though...
     fileUtil.mkdirOrDie(outdir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)
@@ -100,8 +88,6 @@ class GraphCreator(
     fileUtil.mkdirs(outdir + "graph_chi/")
     val edgeFilename = outdir + "graph_chi/edges.tsv"
     val intEdgeFile = fileUtil.getFileWriter(edgeFilename)
-
-    val relationSets = getRelationSets(params)
 
     outputter.info("Loading aliases")
     val aliases = relationSets.filter(_.isKb).par.map(relationSet => {
@@ -113,7 +99,7 @@ class GraphCreator(
 
     val seenNps = new mutable.HashSet[String]
     val seenTriples: mutable.HashSet[(Int, Int, Int)] = {
-      if (deduplicateEdges(params)) {
+      if (deduplicateEdges) {
         new mutable.HashSet[(Int, Int, Int)]
       } else {
         null
@@ -150,8 +136,8 @@ class GraphCreator(
     // This is for if you want to do the path following step with matrix multiplications instead of
     // with random walks (which I'm expecting to be a lot faster, but haven't finished implementing
     // yet).
-    if (createMatrices(params)) {
-      outputMatrices(edgeFilename, maxMatrixFileSize(params))
+    if (createMatrices) {
+      outputMatrices(edgeFilename, maxMatrixFileSize)
     }
     fileUtil.deleteFile(inProgressFile)
   }
@@ -290,6 +276,7 @@ class GraphCreator(
   var synthetic_data_creator_factory: ISyntheticDataCreatorFactory = new SyntheticDataCreatorFactory
 
   def generateSyntheticRelationSet(params: JValue): RelationSet = {
+    val baseDir = baseGraphDir.replace("graphs/", "")
     val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, outputter, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)

@@ -32,10 +32,8 @@ import org.json4s.native.JsonMethods.{pretty,render,parse}
 // creates all of the sub-objects corresponding to the parameters it has, then performs its
 // computation.  This Driver is the top-level object, and its main computation is an Operation.
 //
-// TODO(matt): The design paradigm mentioned above isn't quite finished yet.  I think all that is
-// left is the relation metadata, though, so it's close (oh, and the Outputter).  Then I should
-// probably revisit the "create all of the necessary input files" job, and see if I can design it
-// better...
+// TODO(matt): Refactor this to make use of the pipeline architecture for the graph, embedding,
+// split, and other required input files.
 class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
   implicit val formats = DefaultFormats
 
