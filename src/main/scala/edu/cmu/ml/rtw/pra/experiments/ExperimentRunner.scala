@@ -15,6 +15,12 @@ object ExperimentRunner {
   val RESULTS_DIR = "/results/"
   val fileUtil = new FileUtil
 
+  // TODO(matt): This whole thing should be restructed to use my pipeline architecture.  Then you
+  // can move from having both ExperimentRunner and ExperimentScorer to having just one main entry
+  // point that will run and score experiments.  A few things have to change for that, though, and
+  // I don't actually use this code to run experiments anymore (I now use it as a library to
+  // generate features for other, more interesting experiments).  So, this will wait until I care
+  // enough to make the change...
   def main(args: Array[String]) {
     if (args.length < 1) {
       println("Must supply a base directory as the first argument to ExperimentRunner")
@@ -67,6 +73,6 @@ object ExperimentRunner {
       println(s"Result directory $result_dir already exists. Skipping...")
       return
     }
-    new Driver(pra_base).runPra(experiment, params)
+    new Driver(pra_base, experiment, params, fileUtil).runPipeline()
   }
 }

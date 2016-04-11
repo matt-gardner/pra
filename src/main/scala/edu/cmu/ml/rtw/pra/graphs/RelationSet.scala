@@ -9,6 +9,7 @@ import com.mattg.util.JsonHelper
 import com.mattg.util.Pair
 
 import java.io.BufferedReader
+import java.io.DataOutputStream
 import java.io.FileWriter
 
 import scala.collection.mutable
@@ -89,7 +90,8 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
   }
 
   def writeRelationEdgesToGraphFile(
-    writer: FileWriter,
+    plainTextWriter: Option[FileWriter],
+    binaryWriter: Option[DataOutputStream],
     seenTriples: mutable.HashSet[(Int, Int, Int)],
     prefixOverride: String,
     seenNps: mutable.HashSet[(String)],
@@ -125,8 +127,8 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
       val ind2 = nodeDict.getIndex(arg2)
 
       if (!isKb) {
-        numEdges += addAliasEdges(arg1, ind1, seenNps, writer, nodeDict, edgeDict, aliases)
-        numEdges += addAliasEdges(arg2, ind2, seenNps, writer, nodeDict, edgeDict, aliases)
+        numEdges += addAliasEdges(arg1, ind1, seenNps, plainTextWriter, binaryWriter, nodeDict, edgeDict, aliases)
+        numEdges += addAliasEdges(arg2, ind2, seenNps, plainTextWriter, binaryWriter, nodeDict, edgeDict, aliases)
       }
 
       if (!aliasesOnly) {
@@ -135,7 +137,7 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
         for (relation <- relationEdges) {
           val prefixed_relation = prefix + relation
           val relation_index = edgeDict.getIndex(prefixed_relation)
-          writeEdgeIfUnseen(ind1, ind2, relation_index, seenTriples, writer)
+          writeEdgeIfUnseen(ind1, ind2, relation_index, seenTriples, plainTextWriter, binaryWriter)
           numEdges += 1
         }
       }
@@ -148,20 +150,22 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
       arg2: Int,
       rel: Int,
       seenTriples: mutable.HashSet[(Int, Int, Int)],
-      writer: FileWriter) {
+      plainTextWriter: Option[FileWriter],
+      binaryWriter: Option[DataOutputStream]) {
     if (seenTriples != null) {
       val triple = (arg1, arg2, rel)
       if (seenTriples.contains(triple)) return
       seenTriples.add(triple)
     }
-    writer.write(s"${arg1}\t${arg2}\t${rel}\n")
+    writeTriple(arg1, arg2, rel, plainTextWriter, binaryWriter)
   }
 
   def addAliasEdges(
       np: String,
-      np_index: Int,
+      npIndex: Int,
       seenNps: mutable.HashSet[String],
-      writer: FileWriter,
+      plainTextWriter: Option[FileWriter],
+      binaryWriter: Option[DataOutputStream],
       nodeDict: Dictionary,
       edgeDict: Dictionary,
       aliases: Seq[(String, Map[String, Seq[String]])]): Int = {
@@ -174,12 +178,27 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
       val currentAliases = aliasSet._2
       val concepts = currentAliases.getOrElse(np, Nil)
       for (concept <- concepts) {
-        val concept_index = nodeDict.getIndex(concept)
-        writer.write(s"${np_index}\t${concept_index}\t${aliasIndex}\n")
+        val conceptIndex = nodeDict.getIndex(concept)
+        writeTriple(npIndex, conceptIndex, aliasIndex, plainTextWriter, binaryWriter)
         numEdges += 1
       }
     }
     return numEdges
+  }
+
+  def writeTriple(
+    source: Int,
+    target: Int,
+    relation: Int,
+    plainTextWriter: Option[FileWriter],
+    binaryWriter: Option[DataOutputStream]
+  ) {
+    plainTextWriter.foreach(_.write(s"${source}\t${target}\t${relation}\n"))
+    binaryWriter.foreach(w => {
+      w.writeInt(source)
+      w.writeInt(target)
+      w.writeInt(relation)
+    })
   }
 
   def replaceRelation(relation: String): String = {

@@ -35,17 +35,15 @@ class GraphCreator(
   baseGraphDir: String,
   params: JValue,
   outputter: Outputter,
-  fileUtil: FileUtil = new FileUtil
+  fileUtil: FileUtil
 ) extends Step(Some(params), fileUtil) {
   implicit val formats = DefaultFormats
   override val name = "Graph Creator"
 
   val graphName = (params \ "name").extract[String]
   val outdir = s"$baseGraphDir/$graphName/"
-
-  val matrixOutDir = outdir + "matrices/"
-  val inProgressFile = outdir + "in_progress"
-  val paramFile = outdir + "params.json"
+  override val inProgressFile = outdir + "in_progress"
+  override val paramFile = outdir + "params.json"
 
   val relationSets = (params \ "relation sets").children.map(relationSet => {
     (relationSet \ "type") match {
@@ -55,39 +53,42 @@ class GraphCreator(
     }
   })
 
+  // TODO(matt): this could use some work.  Really, we just want to take the union of the required
+  // inputs to the RelationSets.  And we want to use None instead of null here.  But, that'll wait
+  // for another day.
+  val inputRelationFiles = relationSets.map(_.relationFile)
+  val inputAliasFiles = relationSets.map(_.aliasFile).filterNot(_ == null)
+  override val inputs: Set[(String, Option[Step])] = (inputRelationFiles ++ inputAliasFiles).map((_, None)).toSet
+
   val deduplicateEdges = JsonHelper.extractWithDefault(params, "deduplicate edges", false)
-  val createMatrices = JsonHelper.extractWithDefault(params, "create matrices", false)
+  val outputBinaryFile = JsonHelper.extractWithDefault(params, "output binary file", true)
+  val outputPlainTextFile = JsonHelper.extractWithDefault(params, "output plain text file", false)
+  val shouldShardGraph = JsonHelper.extractWithDefault(params, "shard plain text graph", false)
+  val outputMatrices = JsonHelper.extractWithDefault(params, "output matrices", false)
   val maxMatrixFileSize = JsonHelper.extractWithDefault(params, "max matrix file size", 100000)
 
+  val matrixOutDir = outdir + "matrices/"
+  val plainTextFilename = outdir + "graph_chi/edges.tsv"
+  val binaryFilename = outdir + "edges.dat"
+
+  override val outputs = {
+    val tmp = new mutable.ListBuffer[String]
+    if (outputBinaryFile) tmp += binaryFilename
+    if (outputPlainTextFile) tmp += plainTextFilename
+    if (outputMatrices) tmp += matrixOutDir
+    tmp.toSet
+  }
+
+  // This is from old, experimental code that didn't pan out...
+  override def parametersMatch(params1: JValue, params2: JValue): Boolean = {
+    super.parametersMatch(
+      params1.removeField(_._1.equals("denser matrices")),
+      params2.removeField(_._1.equals("denser matrices"))
+    )
+  }
+
   override def _runStep() {
-    // TODO(matt): once this is the main entry point, I should totally restructure this code.  You
-    // should be able to specify if you want a binary or a plain text file, if you want to shard
-    // it, and all of this, as parameters.
-    createGraphChiRelationGraph()
-  }
-
-  def createGraphChiRelationGraph() {
-    createGraphChiRelationGraph(true)
-  }
-
-  def createGraphChiRelationGraph(shouldShardGraph: Boolean) {
     outputter.info(s"Creating graph $name in $outdir")
-    outputter.info("Making directories")
-
-    // Some preparatory stuff
-
-    // TODO(matt): this is handled by the pipeline code, so it should not be repeated here.  Need
-    // to fix the Driver to use this as a Step and implement inProgressFiles for Steps first,
-    // though...
-    fileUtil.mkdirOrDie(outdir)
-    fileUtil.touchFile(inProgressFile)
-    val params_out = fileUtil.getFileWriter(paramFile)
-    params_out.write(pretty(render(params)))
-    params_out.close
-
-    fileUtil.mkdirs(outdir + "graph_chi/")
-    val edgeFilename = outdir + "graph_chi/edges.tsv"
-    val intEdgeFile = fileUtil.getFileWriter(edgeFilename)
 
     outputter.info("Loading aliases")
     val aliases = relationSets.filter(_.isKb).par.map(relationSet => {
@@ -97,6 +98,24 @@ class GraphCreator(
     val nodeDict = new MutableConcurrentDictionary()
     val edgeDict = new MutableConcurrentDictionary()
 
+    createGraphFiles(aliases, nodeDict, edgeDict)
+
+    // Adding edges is now finished, and the dictionaries aren't getting any more entries, so we
+    // can output them.
+    outputDictionariesToDisk(nodeDict, edgeDict)
+
+    // This is for if you want to do the path following step with matrix multiplications instead of
+    // with random walks.  This was basically a failed experiment, and is not recommended.
+    if (outputMatrices) {
+      createMatrices(outdir + "graph_chi/edges.tsv", maxMatrixFileSize)
+    }
+  }
+
+  def createGraphFiles(
+    aliases: Seq[(String, Map[String, Seq[String]])],
+    nodeDict: MutableConcurrentDictionary,
+    edgeDict: MutableConcurrentDictionary
+  ) {
     val seenNps = new mutable.HashSet[String]
     val seenTriples: mutable.HashSet[(Int, Int, Int)] = {
       if (deduplicateEdges) {
@@ -106,40 +125,48 @@ class GraphCreator(
       }
     }
     val prefixes = getSvoPrefixes(relationSets)
+
+    val plainTextFile = if (outputPlainTextFile) {
+      fileUtil.mkdirs(outdir + "graph_chi/")
+      Some(fileUtil.getFileWriter(plainTextFilename))
+    } else {
+      None
+    }
+
+    val binaryFile = if (outputBinaryFile) {
+      Some(fileUtil.getDataOutputStream(outdir + "edges.dat"))
+    } else {
+      None
+    }
+
     var numEdges = 0
     for (relationSet <- relationSets) {
       outputter.info("Adding edges to the graph from " + relationSet.relationFile)
       val prefix = prefixes(relationSet)
-      numEdges += relationSet.writeRelationEdgesToGraphFile(intEdgeFile,
-                                                            seenTriples,
-                                                            prefix,
-                                                            seenNps,
-                                                            aliases,
-                                                            nodeDict,
-                                                            edgeDict)
+      numEdges += relationSet.writeRelationEdgesToGraphFile(
+        plainTextFile,
+        binaryFile,
+        seenTriples,
+        prefix,
+        seenNps,
+        aliases,
+        nodeDict,
+        edgeDict
+      )
     }
-    intEdgeFile.close()
+    plainTextFile.foreach(_.close())
+    binaryFile.foreach(_.close())
 
-    // Adding edges is now finished, and the dictionaries aren't getting any more entries, so we
-    // can output them.
-    outputDictionariesToDisk(nodeDict, edgeDict)
-
-    // Now decide how many shards to do, based on the number of edges that are in the graph.
-    val numShards = getNumShards(numEdges)
-    val writer = fileUtil.getFileWriter(outdir + "num_shards.tsv")
-    writer.write(numShards + "\n")
-    writer.close()
-    if (shouldShardGraph) {
-      shardGraph(edgeFilename, numShards)
+    if (outputPlainTextFile && shouldShardGraph) {
+      // Now decide how many shards to do, based on the number of edges that are in the graph.
+      val numShards = getNumShards(numEdges)
+      val writer = fileUtil.getFileWriter(outdir + "num_shards.tsv")
+      writer.write(numShards + "\n")
+      writer.close()
+      if (shouldShardGraph) {
+        shardGraph(plainTextFilename, numShards)
+      }
     }
-
-    // This is for if you want to do the path following step with matrix multiplications instead of
-    // with random walks (which I'm expecting to be a lot faster, but haven't finished implementing
-    // yet).
-    if (createMatrices) {
-      outputMatrices(edgeFilename, maxMatrixFileSize)
-    }
-    fileUtil.deleteFile(inProgressFile)
   }
 
   /**
@@ -196,7 +223,7 @@ class GraphCreator(
     }
   }
 
-  def outputMatrices(filename: String, maxMatrixFileSize: Int) {
+  def createMatrices(filename: String, maxMatrixFileSize: Int) {
     outputter.info("Creating matrices")
     fileUtil.mkdirs(outdir + "matrices/")
     outputter.info("Reading edge file")

@@ -1,9 +1,11 @@
 package edu.cmu.ml.rtw.pra.experiments
 
+import com.mattg.pipeline.Step
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.Pair
 import com.mattg.util.SpecFileReader
+
 import edu.cmu.ml.rtw.pra.data.Split
 import edu.cmu.ml.rtw.pra.data.SplitCreator
 import edu.cmu.ml.rtw.pra.graphs.Graph
@@ -34,10 +36,26 @@ import org.json4s.native.JsonMethods.{pretty,render,parse}
 //
 // TODO(matt): Refactor this to make use of the pipeline architecture for the graph, embedding,
 // split, and other required input files.
-class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
+class Driver(
+  praBase: String,
+  methodName: String,
+  params: JValue,
+  fileUtil: FileUtil
+) extends Step(Some(params), fileUtil) {
   implicit val formats = DefaultFormats
+  override val name = "Driver"
 
-  def runPra(methodName: String, params: JValue) {
+  val outputter = new Outputter(params \ "output", praBase, methodName, fileUtil)
+  override val inProgressFile = outputter.baseDir + "in_progress"
+  override val paramFile = outputter.baseDir + "params.json"
+
+  // TODO(matt): this will eventually include the split, embeddings, and whatever else.
+  override val inputs = getGraphInput(params \ "graph")
+
+  // TODO(matt): define this correctly.
+  override val outputs = Set[String]()
+
+  override def _runStep() {
     val baseKeys = Seq("graph", "split", "relation metadata", "operation", "output")
     JsonHelper.ensureNoExtras(params, "base", baseKeys)
 
@@ -46,9 +64,7 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     // this _after_ we create the output directory with outputter.begin(), so that two experiments
     // needing the same graph won't both try to create it, or think that it's done while it's still
     // being made.  We'll delete the output directory in the case of a no op.
-    val outputter = new Outputter(params \ "output", praBase, methodName, fileUtil)
     outputter.begin()
-    createGraphIfNecessary(params \ "graph", outputter)
     createEmbeddingsIfNecessary(params, outputter)
     createSimilarityMatricesIfNecessary(params, outputter)
     createDenserMatricesIfNecessary(params, outputter)
@@ -68,8 +84,6 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     }
 
     val start_time = System.currentTimeMillis
-
-    outputter.writeGlobalParams(params)
 
     for (relation <- split.relations()) {
       val relation_start = System.currentTimeMillis
@@ -96,57 +110,40 @@ class Driver(praBase: String, fileUtil: FileUtil = new FileUtil()) {
     outputter.info(s"Total time: $minutes minutes and $seconds seconds")
   }
 
-  def createGraphIfNecessary(params: JValue, outputter: Outputter) {
-    var graph_name = ""
-    var params_specified = false
+  def getGraphInput(graphParams: JValue): Set[(String, Option[Step])] = {
+    var graphName = ""
+    var paramsSpecified = false
     // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
     // just use the path as is.  Otherwise, we have some processing to do.
-    params match {
+    graphParams match {
       case JNothing => {}
       case JString(path) if (path.startsWith("/")) => {
         if (!fileUtil.fileExists(path)) {
           throw new IllegalStateException("Specified path to graph does not exist!")
         }
       }
-      case JString(name) => graph_name = name
+      case JString(name) => graphName = name
       case jval => {
         jval \ "name" match {
           case JString(name) => {
-            graph_name = name
-            params_specified = true
+            graphName = name
+            paramsSpecified = true
           }
           case other => { }
         }
       }
     }
-    if (graph_name != "") {
-      // Here we need to see if the graph has already been created, and (if so) whether the graph
-      // as specified matches what's already been created.
-      val graph_dir = s"${praBase}graphs/${graph_name}/"
-      val creator = new GraphCreator(praBase, graph_dir, outputter, fileUtil)
-      if (fileUtil.fileExists(graph_dir)) {
-        fileUtil.blockOnFileDeletion(creator.inProgressFile)
-        val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
-        if (params_specified == true && !graphParamsMatch(current_params, params)) {
-          outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-          outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
-          outputter.fatal(s"Difference: ${current_params.diff(params)}")
-          throw new IllegalStateException("Graph parameters don't match!")
-        }
+    if (graphName != "") {
+      val graphDir = s"${praBase}graphs/${graphName}/"
+      if (paramsSpecified) {
+        val creator = new GraphCreator(s"${praBase}graphs", graphParams, outputter, fileUtil)
+        Set((graphDir, Some(creator)))
       } else {
-        creator.createGraphChiRelationGraph(params)
+        Set((graphDir, None))
       }
+    } else {
+      Set()
     }
-  }
-
-  // There is a check in the code to make sure that the graph parameters used to create a
-  // particular graph in a directory match the parameters you're trying to use with the same graph
-  // directory.  But, some things might not matter in that check, like which dense matrices have
-  // been created for that graph.  This method specifies which things, exactly, don't matter when
-  // comparing two graph parameter specifications.
-  def graphParamsMatch(params1: JValue, params2: JValue): Boolean = {
-    return params1.removeField(_._1.equals("denser matrices")) ==
-      params2.removeField(_._1.equals("denser matrices"))
   }
 
   def createEmbeddingsIfNecessary(params: JValue, outputter: Outputter) {

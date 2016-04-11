@@ -206,7 +206,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       np1Index + "\t" + np2Index + "\t" + embedded2Index + "\n",
       np1Index + "\t" + np2Index + "\t" + verb2Index + "\n")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
@@ -227,7 +227,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n",
       np1Index + "\t" + np2Index + "\t" + replacedIndex + "\n")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
@@ -245,7 +245,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       np2Index + "\t" + concept1Index + "\t" + aliasRelationIndex + "\n",
       np2Index + "\t" + concept2Index + "\t" + aliasRelationIndex + "\n")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
@@ -265,7 +265,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
       concept1Index + "\t" + concept2Index + "\t" + relation2Index + "\n")
     println("IN THIS TEST")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, prefix, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, prefix, seenNps, aliases, nodeDict, edgeDict)
     println("DONE WITH THIS TEST")
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
@@ -283,7 +283,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     val expected = List(concept1Index + "\t" + concept2Index + "\t" + relation1Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + relation2Index + "\n")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, null, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, null, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
@@ -298,7 +298,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     val expected = List(concept1Index + "\t" + concept2Index + "\t" + relationNoPrefix1Index + "\n",
       concept1Index + "\t" + concept2Index + "\t" + relationNoPrefix2Index + "\n")
     val numEdges = relationSet.writeRelationEdgesToGraphFile(
-      writer, null, null, seenNps, aliases, nodeDict, edgeDict)
+      Some(writer), None, null, null, seenNps, aliases, nodeDict, edgeDict)
     numEdges should be(expected.size)
     writer.expectWritten(expected.asJava)
   }
