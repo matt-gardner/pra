@@ -70,9 +70,14 @@ class GraphCreator(
   val matrixOutDir = outdir + "matrices/"
   val plainTextFilename = outdir + "graph_chi/edges.tsv"
   val binaryFilename = outdir + "edges.dat"
+  val nodeDictFilename = outdir + "node_dict.tsv"
+  val edgeDictFilename = outdir + "edge_dict.tsv"
 
   override val outputs = {
     val tmp = new mutable.ListBuffer[String]
+    tmp += outdir
+    tmp += nodeDictFilename
+    tmp += edgeDictFilename
     if (outputBinaryFile) tmp += binaryFilename
     if (outputPlainTextFile) tmp += plainTextFilename
     if (outputMatrices) tmp += matrixOutDir
@@ -102,7 +107,13 @@ class GraphCreator(
 
     // Adding edges is now finished, and the dictionaries aren't getting any more entries, so we
     // can output them.
-    outputDictionariesToDisk(nodeDict, edgeDict)
+    outputter.info("Outputting dictionaries to disk")
+    val nodeDictFile = fileUtil.getFileWriter(nodeDictFilename)
+    val edgeDictFile = fileUtil.getFileWriter(edgeDictFilename)
+    nodeDict.writeToWriter(nodeDictFile)
+    nodeDictFile.close()
+    edgeDict.writeToWriter(edgeDictFile)
+    edgeDictFile.close()
 
     // This is for if you want to do the path following step with matrix multiplications instead of
     // with random walks.  This was basically a failed experiment, and is not recommended.
@@ -189,17 +200,6 @@ class GraphCreator(
   ////////////////////////////////////////////////////////
   // Other boilerplate
   ////////////////////////////////////////////////////////
-
-  def outputDictionariesToDisk(nodeDict: Dictionary, edgeDict: Dictionary) {
-    outputter.info("Outputting dictionaries to disk")
-    val nodeDictFile = fileUtil.getFileWriter(outdir + "node_dict.tsv")
-    nodeDict.writeToWriter(nodeDictFile)
-    nodeDictFile.close()
-
-    val edgeDictFile = fileUtil.getFileWriter(outdir + "edge_dict.tsv")
-    edgeDict.writeToWriter(edgeDictFile)
-    edgeDictFile.close()
-  }
 
   def getNumShards(numEdges: Int) = {
     if (numEdges < 5000000) {
