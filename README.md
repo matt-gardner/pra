@@ -24,6 +24,12 @@ experiments, talk to me.
 See [the github.io page](http://matt-gardner.github.io/pra/) for code documentation.  Please feel
 free to file bugs, feature requests, or send pull requests.
 
+If the Travis CI badge above says that the build is failing, just click on the badge, go to `Build
+History`, and find the most recent commit with a passing build, and check that one out to use the
+code.  Or, if you're using this as a library, just specify the most recent released version in your
+library dependencies with `sbt` or `mvn`, and it should be based on a passing build (see the
+changelog below for the most recent version).
+
 # NOTE
 
 This code generally takes quite a bit of memory.  That's probably a byproduct of how it was
