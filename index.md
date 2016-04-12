@@ -31,7 +31,7 @@ repository, so all you have to do is include it as a managed dependency.  If you
 include the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "edu.cmu.ml.rtw" %% "pra" % "3.0"
+libraryDependencies += "edu.cmu.ml.rtw" %% "pra" % "3.3"
 ```
 
 If you are using maven, you can include the PRA code by putting the following under
@@ -41,19 +41,11 @@ If you are using maven, you can include the PRA code by putting the following un
 <dependency>
   <groupId>edu.cmu.ml.rtw</groupdId>
   <artifactId>pra_2.11</artifactId>
-  <version>3.0</version>
+  <version>3.3</version>
 </dependency>
 ```
 
-Available PRA versions:
-
-- 3.0
-
-- 2.0
-
-- 1.1
-
-- 1.0
+Most recent PRA version: 3.3
 
 See the [changelog](https://github.com/matt-gardner/pra) in the code's README for more info on
 what's new in each version.
@@ -62,7 +54,10 @@ Please note that in between versions the parameters available (and how they are 
 change.  If you are seeing configuration errors, or errors when processing parameters, you could
 either look in the code to see what the available options are (I've tried to make those relatively
 easy to find...), or you should be sure you have a tagged version of the code checked out.  The
-documentation on this site reflects version 3.0.
+documentation on this site reflects version 3.0.  So, yes, this documentation is out of date,
+though some of it is still applicable.  You can also look at the example directory in the github
+repo for example experiment configurations that should be working.  If you have trouble, just ask
+me for help.
 
 ## License
 
