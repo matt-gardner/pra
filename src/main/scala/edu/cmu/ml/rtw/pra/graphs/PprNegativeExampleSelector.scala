@@ -40,7 +40,7 @@ class PprNegativeExampleSelector(
     allowedSources: Set[Int],
     allowedTargets: Set[Int]
   ): Dataset[NodePairInstance] = {
-    outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances")
+    outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances)")
 
     val start = compat.Platform.currentTime
     outputter.info("Computing PPR scores...")
