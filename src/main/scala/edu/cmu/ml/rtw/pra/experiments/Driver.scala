@@ -74,7 +74,7 @@ class Driver(
       new RelationMetadata(params \ "relation metadata", praBase, outputter, fileUtil)
     val split = Split.create(params \ "split", praBase, outputter, fileUtil)
 
-    val graph = Graph.create(params \ "graph", praBase, outputter, fileUtil)
+    val graph = Graph.create(params \ "graph", praBase + "/graphs/", outputter, fileUtil)
 
     val operation =
       Operation.create(params \ "operation", graph, split, relationMetadata, outputter, fileUtil)

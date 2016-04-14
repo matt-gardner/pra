@@ -356,7 +356,7 @@ object RunRemoteGraphServer {
 
     val praBase = "/dev/null"
     val outputter = new Outputter(JNothing, praBase, "running graph")
-    val graph = Graph.create(JString(graphDir), praBase, outputter, fileUtil).get.asInstanceOf[GraphOnDisk]
+    val graph = Graph.create(JString(graphDir), praBase + "/graphs/", outputter, fileUtil).get.asInstanceOf[GraphOnDisk]
     val start = scala.compat.Platform.currentTime
     println("Loading graph before starting the server")
     println(s"Graph has ${graph._entries.size} entries")

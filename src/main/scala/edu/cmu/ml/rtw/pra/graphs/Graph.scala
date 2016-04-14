@@ -94,7 +94,7 @@ trait Graph {
 object Graph {
   implicit val formats = DefaultFormats
 
-  def create(params: JValue, praBase: String, outputter: Outputter, fileUtil: FileUtil): Option[Graph] = {
+  def create(params: JValue, graphBaseDir: String, outputter: Outputter, fileUtil: FileUtil): Option[Graph] = {
     val graphType = JsonHelper.extractWithDefault(params, "type", "default")
     graphType match {
       case "remote" => {
@@ -106,8 +106,8 @@ object Graph {
         val graphDirectory = params match {
           case JNothing => None
           case JString(path) if (path.startsWith("/")) => Some(path)
-          case JString(name) => Some(praBase + "/graphs/" + name + "/")
-          case jval => Some(praBase + "/graphs/" + (jval \ "name").extract[String] + "/")
+          case JString(name) => Some(graphBaseDir + name + "/")
+          case jval => Some(graphBaseDir + (jval \ "name").extract[String] + "/")
         }
         val graph = graphDirectory match {
           case None => None
