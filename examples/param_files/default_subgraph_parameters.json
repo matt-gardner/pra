@@ -4,8 +4,10 @@
     "features": {
       "type": "subgraphs",
       "path finder": {
+        "type": "RandomWalkPathFinder",
         "walks per source": 200,
-        "path finding iterations": 3
+        "path finding iterations": 3,
+        "path accept policy": "paired-only"
       }
     },
     "learning": {

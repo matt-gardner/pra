@@ -8,7 +8,7 @@ load default_subgraph_parameters
         "PraFeatureExtractor"
       ],
       "feature size": -1
-    }
+    },
     "learning": {
       "l1 weight": 0.5,
       "l2 weight": 0.01

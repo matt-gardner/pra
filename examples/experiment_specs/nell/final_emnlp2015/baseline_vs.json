@@ -4,7 +4,9 @@ load new_feature_experiment_base
   "operation": {
     "type": "train and test",
     "features": {
+      "type": "pra",
       "path finder": {
+        "type": "RandomWalkPathFinder",
         "path type factory": {
           "name": "VectorPathTypeFactory",
           "spikiness": 3,
@@ -22,7 +24,7 @@ load new_feature_experiment_base
         "walks per path": 50,
         "matrix accept policy": "paired-targets-only"
       }
-    }
+    },
     "learning": {
       "l1 weight": 0.05,
       "l2 weight": 1.0

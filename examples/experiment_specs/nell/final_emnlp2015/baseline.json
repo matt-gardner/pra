@@ -4,7 +4,9 @@ load new_feature_experiment_base
   "operation": {
     "type": "train and test",
     "features": {
+      "type": "pra",
       "path finder": {
+        "type": "RandomWalkPathFinder",
         "walks per source": 100,
         "path finding iterations": 3,
         "path accept policy": "paired-only"
@@ -16,7 +18,7 @@ load new_feature_experiment_base
         "walks per path": 50,
         "matrix accept policy": "paired-targets-only"
       }
-    }
+    },
     "learning": {
       "l1 weight": 0.005,
       "l2 weight": 1.0
