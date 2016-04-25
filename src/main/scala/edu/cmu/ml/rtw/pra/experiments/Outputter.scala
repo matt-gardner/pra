@@ -46,7 +46,6 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
   }
 
   def begin() {
-    fileUtil.mkdirOrDie(baseDir)
   }
 
   def clean() {

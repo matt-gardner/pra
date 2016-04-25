@@ -114,18 +114,24 @@ class SplitCreator(
 
     for (relation <- relations) {
       val fixed = relation.replace("/", "_")
-      val training_file = s"${fromSplitDir}${fixed}/training.tsv"
-      val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
-      val training_instances = DatasetReader.readNodePairFile(training_file, Some(graph), fileUtil)
-      val new_training_instances =
-        addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
-      val testing_instances = DatasetReader.readNodePairFile(testing_file, Some(graph), fileUtil)
-      val new_testing_instances =
-        addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
-      fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings)
-      fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings)
+
+      val training_file = s"${fromSplitDir}${fixed}/training.tsv"
+      if (fileUtil.fileExists(training_file)) {
+        val training_instances = DatasetReader.readNodePairFile(training_file, Some(graph), fileUtil)
+        val new_training_instances =
+          addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+        fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings)
+      }
+
+      val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
+      if (fileUtil.fileExists(testing_file)) {
+        val testing_instances = DatasetReader.readNodePairFile(testing_file, Some(graph), fileUtil)
+        val new_testing_instances =
+          addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+        fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings)
+      }
     }
     fileUtil.deleteFile(inProgressFile)
   }
