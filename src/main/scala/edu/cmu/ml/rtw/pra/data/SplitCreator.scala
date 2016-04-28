@@ -120,16 +120,22 @@ class SplitCreator(
       val training_file = s"${fromSplitDir}${fixed}/training.tsv"
       if (fileUtil.fileExists(training_file)) {
         val training_instances = DatasetReader.readNodePairFile(training_file, Some(graph), fileUtil)
+        val filtered_training_instances = training_instances.instances
+          .filterNot(i => i.source == -1 || i.target == -1)
+        val training_data = new Dataset[NodePairInstance](filtered_training_instances)
         val new_training_instances =
-          addNegativeExamples(training_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+          addNegativeExamples(training_data, relation, domains.toMap, ranges.toMap, graph.nodeDict)
         fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings)
       }
 
       val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
       if (fileUtil.fileExists(testing_file)) {
         val testing_instances = DatasetReader.readNodePairFile(testing_file, Some(graph), fileUtil)
+        val filtered_testing_instances = testing_instances.instances
+          .filterNot(i => i.source == -1 || i.target == -1)
+        val testing_data = new Dataset[NodePairInstance](filtered_testing_instances)
         val new_testing_instances =
-          addNegativeExamples(testing_instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+          addNegativeExamples(testing_data, relation, domains.toMap, ranges.toMap, graph.nodeDict)
         fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings)
       }
     }
@@ -146,13 +152,23 @@ class SplitCreator(
     val allowedSources = if (domain == null) null else {
       val fixed = domain.replace("/", "_")
       val domain_file = s"${relationMetadata}category_instances/${fixed}"
-      fileUtil.readIntegerSetFromFile(domain_file, node_dict)
+      if (fileUtil.fileExists(domain_file)) {
+        Some(fileUtil.readIntegerSetFromFile(domain_file, node_dict))
+      } else {
+        outputter.warn(s"Didn't find a category file for type $domain (domain of relation $relation)")
+        None
+      }
     }
     val range = if (ranges == null) null else ranges(relation)
     val allowedTargets = if (range == null) null else {
       val fixed = range.replace("/", "_")
       val range_file = s"${relationMetadata}category_instances/${fixed}"
-      fileUtil.readIntegerSetFromFile(range_file, node_dict)
+      if (fileUtil.fileExists(range_file)) {
+        Some(fileUtil.readIntegerSetFromFile(range_file, node_dict))
+      } else {
+        outputter.warn(s"Didn't find a category file for type $range (range of relation $relation)")
+        None
+      }
     }
     negativeExampleSelector.selectNegativeExamples(data, allowedSources, allowedTargets)
   }

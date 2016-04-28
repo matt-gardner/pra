@@ -153,7 +153,7 @@ class CreateMatrices[T <: Instance](
 ) extends Operation[T] {
   val paramKeys = Seq("type", "features", "data")
   val dataOptions = Seq("both", "training", "testing")
-  val dataToUse = JsonHelper.extractOptionWithDefault(params, "data", dataOptions, "both")
+  val dataToUse = JsonHelper.extractChoiceWithDefault(params, "data", dataOptions, "both")
 
   override def runRelation(relation: String) {
     outputter.info(s"Creating feature matrices for relation ${relation}; using data: ${dataToUse}")

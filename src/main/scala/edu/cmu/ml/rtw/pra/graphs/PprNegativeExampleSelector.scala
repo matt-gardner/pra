@@ -37,14 +37,16 @@ class PprNegativeExampleSelector(
    */
   def selectNegativeExamples(
     data: Dataset[NodePairInstance],
-    allowedSources: Set[Int],
-    allowedTargets: Set[Int]
+    allowedSources: Option[Set[Int]],
+    allowedTargets: Option[Set[Int]]
   ): Dataset[NodePairInstance] = {
     outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances)")
 
     val start = compat.Platform.currentTime
     outputter.info("Computing PPR scores...")
-    val pprValues = pprComputer.computePersonalizedPageRank(data, allowedSources, allowedTargets)
+    val sources = data.instances.map(_.source).toSet
+    val targets = data.instances.map(_.target).toSet
+    val pprValues = pprComputer.computePersonalizedPageRank(sources, targets, allowedSources, allowedTargets)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
     outputter.info(s"  took ${seconds} seconds")
@@ -78,7 +80,9 @@ class PprNegativeExampleSelector(
     // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
     // and create a set of potential predictions.
     outputter.info("Computing PPR scores for the sources...")
-    val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
+    val sources = data.instances.map(_.source).toSet
+    val targets = data.instances.map(_.target).toSet
+    val pprValues = pprComputer.computePersonalizedPageRank(sources, targets, Some(range), Some(Set[Int]()))
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
     outputter.info(s"  took ${seconds} seconds")
@@ -99,7 +103,7 @@ class PprNegativeExampleSelector(
     outputter.debug("Finding potential predictions to add to the KB (for a single source)")
     val data = new Dataset[NodePairInstance](Seq(new NodePairInstance(source, -1, true, graph)))
 
-    val pprValues = pprComputer.computePersonalizedPageRank(data, range, Set[Int]())
+    val pprValues = pprComputer.computePersonalizedPageRank(Set(source), Set(), Some(range), Some(Set[Int]()))
     pprValues(source).toSeq.sortBy(-_._2).take(negativesPerPositive).map(_._1).toSet
   }
 

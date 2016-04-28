@@ -47,9 +47,10 @@ trait PprComputer {
   // instance in the dataset.  So, data.instances(x).graph should equal the graph passed to
   // PprComputerCreator for all x, or bad things might happen.
   def computePersonalizedPageRank(
-    data: Dataset[NodePairInstance],
-    allowedSources: Set[Int],
-    allowedTargets: Set[Int]
+    sources: Set[Int],
+    targets: Set[Int],
+    allowedSources: Option[Set[Int]],
+    allowedTargets: Option[Set[Int]]
   ): Map[Int, Map[Int, Int]]
 }
 
@@ -62,9 +63,10 @@ object PprComputerCreator {
         params, graph.asInstanceOf[GraphOnDisk], random)
       case "Fake" => new PprComputer {
         override def computePersonalizedPageRank(
-          data: Dataset[NodePairInstance],
-          allowedSources: Set[Int],
-          allowedTargets: Set[Int]
+          sources: Set[Int],
+          targets: Set[Int],
+          allowedSources: Option[Set[Int]],
+          allowedTargets: Option[Set[Int]]
         ) = {
           Map[Int, Map[Int, Int]]()
         }
@@ -90,12 +92,11 @@ class InMemoryPprComputer(
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   override def computePersonalizedPageRank(
-    data: Dataset[NodePairInstance],
-    allowedSources: Set[Int],
-    allowedTargets: Set[Int]
+    sources: Set[Int],
+    targets: Set[Int],
+    allowedSources: Option[Set[Int]],
+    allowedTargets: Option[Set[Int]]
   ) = {
-    val sources = if (allowedSources.size > 0) data.instances.map(_.source).toSet else Set[Int]()
-    val targets = if (allowedTargets.size > 0) data.instances.map(_.target).toSet else Set[Int]()
     outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
@@ -103,7 +104,7 @@ class InMemoryPprComputer(
 
   // This method is getting called multiple times in parallel, so I'm just going to do everything
   // sequentially inside here.
-  def pprFromNode(node: Int, allowed: Set[Int]): Map[Int, Int] = {
+  def pprFromNode(node: Int, allowed: Option[Set[Int]]): Map[Int, Int] = {
     val targetCounts = new mutable.HashMap[Int, Int].withDefaultValue(0)
     if (allowed.size == 0) return targetCounts.toMap
 
@@ -115,8 +116,17 @@ class InMemoryPprComputer(
         val index = random.nextInt(nextNodes.size)
         currentNode = nextNodes(index)
         // Check to see if we're at a node we want to keep track of.
-        if (allowed.contains(currentNode) && currentNode != node) {
-          targetCounts.update(currentNode, targetCounts(currentNode) + 1)
+        allowed match {
+          case None => {
+            if (currentNode != node) {
+              targetCounts.update(currentNode, targetCounts(currentNode) + 1)
+            }
+          }
+          case Some(a) => {
+            if (a.contains(currentNode) && currentNode != node) {
+              targetCounts.update(currentNode, targetCounts(currentNode) + 1)
+            }
+          }
         }
         // And reset with probability resetProbability.
         if (random.nextDouble() < resetProbability) {
@@ -144,9 +154,10 @@ class GraphChiPprComputer(
   val numShards = graph.numShards
 
   def computePersonalizedPageRank(
-    data: Dataset[NodePairInstance],
-    allowedSources: Set[Int],
-    allowedTargets: Set[Int]
+    sources: Set[Int],
+    targets: Set[Int],
+    allowedSources: Option[Set[Int]],
+    allowedTargets: Option[Set[Int]]
   ) = {
     val engine = new DrunkardMobEngine[EmptyType, Integer](graphFile, numShards, new IntDrunkardFactory())
     engine.setEdataConverter(new IntConverter());
@@ -162,9 +173,6 @@ class GraphChiPprComputer(
     }
     val job = engine.addJob("ppr", EdgeDirection.IN_AND_OUT_EDGES, this, companion)
     val translate = engine.getVertexIdTranslate;
-    val positiveInstances = data.getPositiveInstances
-    val sources = positiveInstances.map(_.source).toSet
-    val targets = positiveInstances.map(_.target).toSet
     val walkSources = sources ++ targets
     val translatedSources = walkSources.map(x => translate.forward(x)).toList.sorted
     val javaTranslatedSources = new java.util.ArrayList[Integer]
