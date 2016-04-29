@@ -1,0 +1,16 @@
+{
+  "graph": "freebase",
+  "split": {
+    "type":"add negatives to split",
+    "from split":"hanie",
+    "name":"hanie_with_negatives",
+    "relation metadata":"freebase",
+    "graph":"freebase",
+    "negative instances":{
+      "negative to positive ratio":10
+    }
+  },
+  "operation": {
+    "type": "no op"
+  }
+}
