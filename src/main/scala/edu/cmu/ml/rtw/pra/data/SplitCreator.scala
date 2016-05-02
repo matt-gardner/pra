@@ -153,7 +153,9 @@ class SplitCreator(
       val fixed = domain.replace("/", "_")
       val domain_file = s"${relationMetadata}category_instances/${fixed}"
       if (fileUtil.fileExists(domain_file)) {
-        Some(fileUtil.readIntegerSetFromFile(domain_file, node_dict))
+        // The true in this line says that we should drop nodes from the set if they don't show up
+        // in the dictionary.
+        Some(fileUtil.readIntegerSetFromFile(domain_file, Some(node_dict), true))
       } else {
         outputter.warn(s"Didn't find a category file for type $domain (domain of relation $relation)")
         None
@@ -164,7 +166,9 @@ class SplitCreator(
       val fixed = range.replace("/", "_")
       val range_file = s"${relationMetadata}category_instances/${fixed}"
       if (fileUtil.fileExists(range_file)) {
-        Some(fileUtil.readIntegerSetFromFile(range_file, node_dict))
+        // The true in this line says that we should drop nodes from the set if they don't show up
+        // in the dictionary.
+        Some(fileUtil.readIntegerSetFromFile(range_file, Some(node_dict), true))
       } else {
         outputter.warn(s"Didn't find a category file for type $range (range of relation $relation)")
         None

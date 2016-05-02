@@ -142,7 +142,7 @@ object Split {
     outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): Split[_ <: Instance] = {
-    val instanceType = JsonHelper.extractWithDefault(params, "type", "node pair")
+    val instanceType = JsonHelper.extractWithDefault(params, "node or node pair", "node pair")
     instanceType match {
       case "node pair" => new NodePairSplit(params, baseDir, outputter, fileUtil)
       case "node" => new NodeSplit(params, baseDir, outputter, fileUtil)
