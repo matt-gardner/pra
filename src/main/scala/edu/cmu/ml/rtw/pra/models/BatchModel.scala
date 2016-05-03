@@ -18,6 +18,7 @@ import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.util.Random
 
 /**
  * Handles learning and classification for models that do batch training.
@@ -28,6 +29,7 @@ import scala.collection.mutable
  */
 
 abstract class BatchModel[T <: Instance](
+  maxTrainingExamples: Option[Int],
   binarizeFeatures: Boolean,
   outputter: Outputter,
   logLevel: Int
@@ -40,14 +42,25 @@ abstract class BatchModel[T <: Instance](
 
   // TODO(matt): this interface could probably be cleaned up a bit.
   def convertFeatureMatrixToMallet(
-      featureMatrix: FeatureMatrix,
-      dataset: Dataset[T],
-      featureNames: Seq[String],
-      data: InstanceList,
-      alphabet: Alphabet) {
-
+    featureMatrix: FeatureMatrix,
+    dataset: Dataset[T],
+    featureNames: Seq[String],
+    data: InstanceList,
+    alphabet: Alphabet
+  ) {
+    val keptRows = maxTrainingExamples match {
+      case None => featureMatrix.getRows().asScala
+      case Some(max) => {
+        if (featureMatrix.getRows().size < max) {
+          featureMatrix.getRows().asScala
+        } else {
+          val random = new Random()
+          random.shuffle(featureMatrix.getRows().asScala).take(max)
+        }
+      }
+    }
     outputter.info("Separating into positive, negative, unseen")
-    val grouped = featureMatrix.getRows().asScala.groupBy(row => {
+    val grouped = keptRows.groupBy(row => {
       if (row.instance.isPositive == true)
         "positive"
       else if (row.instance.isPositive == false)

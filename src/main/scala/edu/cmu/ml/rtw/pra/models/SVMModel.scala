@@ -35,12 +35,13 @@ class SVMModel[T <: Instance](
   params: JValue,
   outputter: Outputter
 ) extends BatchModel[T](
+  JsonHelper.extractAsOption[Int](params, "max training examples"),
   JsonHelper.extractWithDefault(params, "binarize features", false),
   outputter,
   JsonHelper.extractWithDefault(params, "log level", 3)
 ) {
   implicit val formats = DefaultFormats
-  val allowedParams = Seq("type", "binarize features", "kernel", "log level")
+  val allowedParams = Seq("type", "binarize features", "kernel", "log level", "max training examples")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
   val kernel = createKernel()

@@ -21,11 +21,13 @@ class LogisticRegressionModel[T <: Instance](
   params: JValue,
   outputter: Outputter
 ) extends BatchModel[T](
+  JsonHelper.extractAsOption[Int](params, "max training examples"),
   JsonHelper.extractWithDefault(params, "binarize features", false),
   outputter,
   JsonHelper.extractWithDefault(params, "log level", 3)
 ) {
-  val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features", "log level")
+  val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features", "log level",
+    "max training examples")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
 
   val l1Weight = JsonHelper.extractWithDefault(params, "l1 weight", 0.0)
