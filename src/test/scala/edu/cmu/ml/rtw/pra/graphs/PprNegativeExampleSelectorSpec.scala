@@ -18,11 +18,15 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
 
   "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
     val selector = new PprNegativeExampleSelector(params, graph, outputter) {
-      override def sampleByPrr(data: Dataset[NodePairInstance], pprValues: Map[Int, Map[Int, Int]]) = {
+      override def sampleByPrr(
+        data: Dataset[NodePairInstance],
+        others: Seq[NodePairInstance],
+        pprValues: Map[Int, Map[Int, Int]]
+      ) = {
         Seq((1, 1), (2, 2), (3, 3))
       }
     }
-    val withNegatives = selector.selectNegativeExamples(dataset, Set(), Set())
+    val withNegatives = selector.selectNegativeExamples(dataset, Seq(), None, None)
     withNegatives.getPositiveInstances should be(dataset.getPositiveInstances)
     val negativeInstances = withNegatives.getNegativeInstances
     negativeInstances.size should be(3)
@@ -48,7 +52,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val pprValues = Map(1 -> Map(3 -> 1, 4 -> 1, 5 -> 1), 2 -> Map(3 -> 1, 4 -> 1, 5 -> 1))
-    val negatives = selector.sampleByPrr(dataset, pprValues)
+    val negatives = selector.sampleByPrr(dataset, Seq(), pprValues)
     negatives.size should be(3)
     negatives.toSet should be(Set((3, 3), (4, 4), (5, 5)))
   }
@@ -60,7 +64,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val pprValues = Map(1 -> Map(3 -> 1, 4 -> 1, 5 -> 1), 2 -> Map(3 -> 1, 4 -> 1, 5 -> 1))
-    val negatives = selector.sampleByPrr(dataset, pprValues)
+    val negatives = selector.sampleByPrr(dataset, Seq(), pprValues)
     negatives.size should be(1)
     negatives.toSet should be(Set((1, 1)))
   }
@@ -77,7 +81,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
       }
     }
     val pprValues = Map(1 -> Map(1 -> 1), 2 -> Map(2 -> 1))
-    val negatives = selector.sampleByPrr(dataset, pprValues)
+    val negatives = selector.sampleByPrr(dataset, Seq(), pprValues)
     negatives.size should be(0)
   }
 

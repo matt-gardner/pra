@@ -74,28 +74,28 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     val relation = "rel1"
     val domains = Map(relation -> "c1")
     val ranges = Map(relation -> "c2")
-    var creator = splitCreatorWithFakeNegativeSelector(Set(1), Set(2))
-    creator.addNegativeExamples(goodData, relation, domains, ranges, graph.nodeDict) should be(goodData)
+    var creator = splitCreatorWithFakeNegativeSelector(Some(Set(1)), Some(Set(2)))
+    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(goodData)
     // Adding a test with the wrong sources and targets, just to be sure the test is really // working.
-    creator = splitCreatorWithFakeNegativeSelector(Set(2), Set(1))
-    creator.addNegativeExamples(goodData, relation, domains, ranges, graph.nodeDict) should be(badData)
+    creator = splitCreatorWithFakeNegativeSelector(Some(Set(2)), Some(Set(1)))
+    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(badData)
   }
 
   it should "handle null domains and ranges" in {
-    val creator = splitCreatorWithFakeNegativeSelector(null, null)
-    creator.addNegativeExamples(goodData, "rel1", null, null, graph.nodeDict) should be(goodData)
+    val creator = splitCreatorWithFakeNegativeSelector(None, None)
+    creator.addNegativeExamples(goodData, Seq(), "rel1", null, null, graph.nodeDict) should be(goodData)
   }
 
   it should "throw an error if the relation is missing from domain or range" in {
-    val creator = splitCreatorWithFakeNegativeSelector(null, null)
+    val creator = splitCreatorWithFakeNegativeSelector(None, None)
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, "rel1", Map(), null, graph.nodeDict) should be(goodData)
+        creator.addNegativeExamples(goodData, Seq(), "rel1", Map(), null, graph.nodeDict) should be(goodData)
       }
     })
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, "rel1", null, Map(), graph.nodeDict) should be(goodData)
+        creator.addNegativeExamples(goodData, Seq(), "rel1", null, Map(), graph.nodeDict) should be(goodData)
       }
     })
   }
@@ -110,13 +110,13 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/training.tsv", trainingFile)
     val testingFile = "node1\tnode2\t1\nnode1\tnode2\t-1\n"
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/testing.tsv", testingFile)
-    var creator = splitCreatorWithFakeNegativeSelector(Set(1), Set(2))
+    var creator = splitCreatorWithFakeNegativeSelector(Some(Set(1)), Some(Set(2)))
     creator.createSplit()
     fakeFileUtil.expectFilesWritten()
   }
 
 
-  def splitCreatorWithFakeNegativeSelector(expectedSources: Set[Int], expectedTargets: Set[Int]) = {
+  def splitCreatorWithFakeNegativeSelector(expectedSources: Option[Set[Int]], expectedTargets: Option[Set[Int]]) = {
     new SplitCreator(params, praBase, splitDir, outputter, fakeFileUtil) {
       override def createNegativeExampleSelector(params: JValue) = {
         new FakeNegativeExampleSelector(expectedSources, expectedTargets)
@@ -124,12 +124,13 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     }
   }
 
-  class FakeNegativeExampleSelector(expectedSources: Set[Int], expectedTargets: Set[Int])
+  class FakeNegativeExampleSelector(expectedSources: Option[Set[Int]], expectedTargets: Option[Set[Int]])
       extends PprNegativeExampleSelector(JNothing, new GraphOnDisk("src/test/resources/", outputter), outputter) {
     override def selectNegativeExamples(
         data: Dataset[NodePairInstance],
-        allowedSources: Set[Int],
-        allowedTargets: Set[Int]): Dataset[NodePairInstance] = {
+        otherPositives: Seq[NodePairInstance],
+        allowedSources: Option[Set[Int]],
+        allowedTargets: Option[Set[Int]]): Dataset[NodePairInstance] = {
       if (expectedSources == allowedSources && expectedTargets == allowedTargets) {
         goodData
       } else {

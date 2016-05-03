@@ -20,6 +20,8 @@ class GraphChiPprComputerSpec extends FlatSpecLike with Matchers {
   val graph = new GraphOnDisk("src/test/resources/", outputter)
   val random = new FakeRandom()
   val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
+  val sources = dataset.instances.map(_.source).toSet
+  val targets = dataset.instances.map(_.target).toSet
 
   "processWalksAtVertex" should "move walks the right way" in {
     val manager = new IntWalkManager(1, 1)
@@ -73,7 +75,7 @@ class GraphChiPprComputerSpec extends FlatSpecLike with Matchers {
 
   "computePersonalizedPageRank" should "actually work..." in {
     val computer = new GraphChiPprComputer(params, graph, random)
-    val pprValues = computer.computePersonalizedPageRank(dataset, Set(4, 7, 10), Set(3, 5))
+    val pprValues = computer.computePersonalizedPageRank(sources, targets, Some(Set(4, 7, 10)), Some(Set(3, 5)))
     pprValues(1).size should be >= 2
     pprValues(1)(4) should be > pprValues(1)(7)
     pprValues(1)(7) should be > pprValues(1).getOrElse(10, 0)
@@ -94,10 +96,12 @@ class InMemoryPprComputerSpec extends FlatSpecLike with Matchers {
   val graph = new GraphOnDisk("src/test/resources/", outputter)
   val random = new FakeRandom()
   val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
+  val sources = dataset.instances.map(_.source).toSet
+  val targets = dataset.instances.map(_.target).toSet
 
   "computePersonalizedPageRank" should "actually work..." in {
     val computer = new InMemoryPprComputer(params, graph, outputter)
-    val pprValues = computer.computePersonalizedPageRank(dataset, Set(4, 7, 10), Set(3, 5))
+    val pprValues = computer.computePersonalizedPageRank(sources, targets, Some(Set(4, 7, 10)), Some(Set(3, 5)))
     pprValues(1).size should be >= 2
     pprValues(1)(4) should be > pprValues(1)(7)
     pprValues(1)(7) should be > pprValues(1).getOrElse(10, 0)

@@ -192,10 +192,9 @@ class GraphChiPprComputer(
       }
       val counts = top.map(idcount =>
           (translate.backward(idcount.id), idcount.count)).toMap
-      if (allowed != null) {
-        (originalSource, counts.filter(n => allowed.contains(n._1)))
-      } else {
-        (originalSource, counts)
+      allowed match {
+        case None => (originalSource, counts)
+        case Some(allowed) => (originalSource, counts.filter(n => allowed.contains(n._1)))
       }
     }).toMap.withDefaultValue(Map())
     companion.close()

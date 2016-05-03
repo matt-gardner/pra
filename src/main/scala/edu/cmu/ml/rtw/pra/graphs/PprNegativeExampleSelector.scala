@@ -37,6 +37,7 @@ class PprNegativeExampleSelector(
    */
   def selectNegativeExamples(
     data: Dataset[NodePairInstance],
+    otherPositiveInstances: Seq[NodePairInstance],
     allowedSources: Option[Set[Int]],
     allowedTargets: Option[Set[Int]]
   ): Dataset[NodePairInstance] = {
@@ -50,7 +51,7 @@ class PprNegativeExampleSelector(
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
     outputter.info(s"  took ${seconds} seconds")
-    val negativeExamples = sampleByPrr(data, pprValues)
+    val negativeExamples = sampleByPrr(data, otherPositiveInstances, pprValues)
 
     val negativeData = new Dataset[NodePairInstance](negativeExamples.map(x =>
         new NodePairInstance(x._1, x._2, false, graph)))
@@ -109,28 +110,30 @@ class PprNegativeExampleSelector(
 
   def sampleByPrr(
     data: Dataset[NodePairInstance],
+    otherPositiveInstances: Seq[NodePairInstance],
     pprValues: Map[Int, Map[Int, Int]]
   ): Seq[(Int, Int)] = {
-    val positive_instances = data.getPositiveInstances.map(instance => (instance.source, instance.target))
+    val dataPositives = data.getPositiveInstances.map(instance => (instance.source, instance.target))
+    val positiveInstances = dataPositives ++ otherPositiveInstances.map(i => (i.source, i.target))
     // The amount of weight in excess of 1 here goes to the original source or target.
-    val base_weight = 1.25
-    positive_instances.par.flatMap(instance => {
-      val source_weights = pprValues(instance._1).toArray
-      val total_source_weight = source_weights.map(_._2).sum
-      val target_weights = pprValues(instance._2).toArray
-      val total_target_weight = target_weights.map(_._2).sum
-      val negative_instances = new mutable.HashSet[(Int, Int)]
+    val baseWeight = 1.25
+    dataPositives.par.flatMap(instance => {
+      val sourceWeights = pprValues(instance._1).toArray
+      val totalSourceWeight = sourceWeights.map(_._2).sum
+      val targetWeights = pprValues(instance._2).toArray
+      val totalTargetWeight = targetWeights.map(_._2).sum
+      val negativeInstances = new mutable.HashSet[(Int, Int)]
       var attempts = 0
-      while (negative_instances.size < negativesPerPositive && attempts < maxAttempts) {
+      while (negativeInstances.size < negativesPerPositive && attempts < maxAttempts) {
         attempts += 1
-        val new_source = weightedSample(source_weights, base_weight * total_source_weight, instance._1)
-        val new_target = weightedSample(target_weights, base_weight * total_target_weight, instance._2)
+        val new_source = weightedSample(sourceWeights, baseWeight * totalSourceWeight, instance._1)
+        val new_target = weightedSample(targetWeights, baseWeight * totalTargetWeight, instance._2)
         val new_pair = (new_source, new_target)
-        if (!positive_instances.contains(new_pair)) {
-          negative_instances += new_pair
+        if (!positiveInstances.contains(new_pair)) {
+          negativeInstances += new_pair
         }
       }
-      negative_instances.toSet
+      negativeInstances.toSet
     }).seq.toSet.toSeq
   }
 
