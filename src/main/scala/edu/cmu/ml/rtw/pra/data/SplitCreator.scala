@@ -23,7 +23,7 @@ class SplitCreator(
   // TODO(matt): now that I've added another type, I should clean this up a bit...  And the graph
   // parameter should go under negative instances.
   val paramKeys = Seq("name", "type", "relation metadata", "graph", "percent training",
-    "negative instances", "from split", "relations")
+    "negative instances", "from split", "relations", "generate negatives for")
   JsonHelper.ensureNoExtras(params, "split", paramKeys)
 
   val inProgressFile = SplitCreator.inProgressFile(splitDir)
@@ -31,6 +31,19 @@ class SplitCreator(
   val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split from relation metadata")
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
+  val generateNegativesFor = {
+    val choice = JsonHelper.extractChoiceWithDefault(
+      params,
+      "generate negatives for",
+      Seq("training", "test", "both"),
+      "both"
+    )
+    if (choice == "both") {
+      Set("training", "testing")
+    } else {
+      Set(choice)
+    }
+  }
   val negativeExampleSelector = createNegativeExampleSelector(params \ "negative instances")
 
   def createSplit() {
@@ -128,9 +141,18 @@ class SplitCreator(
       }
 
       if (fileUtil.fileExists(training_file)) {
-        val new_training_instances =
+        val negative_training_instances = if (generateNegativesFor.contains("training")) {
           addNegativeExamples(training_data, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
-        fileUtil.writeLinesToFile(s"${rel_dir}training.tsv", new_training_instances.instancesToStrings)
+        } else {
+          new Dataset[NodePairInstance](Seq())
+        }
+        val new_training_file = s"${rel_dir}training.tsv"
+        fileUtil.copy(training_file, new_training_file)
+        fileUtil.writeLinesToFile(
+          new_training_file,
+          negative_training_instances.instancesToStrings,
+          append=true
+        )
       }
 
       val testing_file = s"${fromSplitDir}${fixed}/testing.tsv"
@@ -139,9 +161,18 @@ class SplitCreator(
         val filtered_testing_instances = testing_instances.instances
           .filterNot(i => i.source == -1 || i.target == -1)
         val testing_data = new Dataset[NodePairInstance](filtered_testing_instances)
-        val new_testing_instances =
+        val negative_testing_instances = if (generateNegativesFor.contains("testing")) {
           addNegativeExamples(testing_data, training_data.instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
-        fileUtil.writeLinesToFile(s"${rel_dir}testing.tsv", new_testing_instances.instancesToStrings)
+        } else {
+          new Dataset[NodePairInstance](Seq())
+        }
+        val new_testing_file = s"${rel_dir}testing.tsv"
+        fileUtil.copy(testing_file, new_testing_file)
+        fileUtil.writeLinesToFile(
+          new_testing_file,
+          negative_testing_instances.instancesToStrings,
+          append=true
+        )
       }
     }
     fileUtil.deleteFile(inProgressFile)

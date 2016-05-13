@@ -32,8 +32,9 @@ class PprNegativeExampleSelector(
   val maxAttempts = negativesPerPositive * 10
 
   /**
-   * Returns a new Dataset that includes the input data and negative instances sampled according to
-   * PPR from the positive examples in the input data.
+   * Returns a collection of negative instances sampled according to PPR from the positive examples
+   * in the input data.  The does _NOT_ merge the newly created negative instances with the
+   * original dataset.  The caller must do that, if they wish.
    */
   def selectNegativeExamples(
     data: Dataset[NodePairInstance],
@@ -55,7 +56,7 @@ class PprNegativeExampleSelector(
 
     val negativeData = new Dataset[NodePairInstance](negativeExamples.map(x =>
         new NodePairInstance(x._1, x._2, false, graph)))
-    data.merge(negativeData)
+    negativeData
   }
 
   /**

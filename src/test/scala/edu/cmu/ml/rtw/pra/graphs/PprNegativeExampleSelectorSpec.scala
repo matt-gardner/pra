@@ -12,11 +12,11 @@ import org.json4s.JsonDSL._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = ("ppr computer" -> ("type" -> "Fake"))
-  val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
   val outputter = Outputter.justLogger
   val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, graph)))
 
-  "selectNegativeExamples" should "just add the sampled negatives to the given data" in {
+  "selectNegativeExamples" should "just return negatives sampled with the given data" in {
     val selector = new PprNegativeExampleSelector(params, graph, outputter) {
       override def sampleByPrr(
         data: Dataset[NodePairInstance],
@@ -26,9 +26,9 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
         Seq((1, 1), (2, 2), (3, 3))
       }
     }
-    val withNegatives = selector.selectNegativeExamples(dataset, Seq(), None, None)
-    withNegatives.getPositiveInstances should be(dataset.getPositiveInstances)
-    val negativeInstances = withNegatives.getNegativeInstances
+    val sampledNegatives = selector.selectNegativeExamples(dataset, Seq(), None, None)
+    sampledNegatives.getPositiveInstances should be(Seq())
+    val negativeInstances = sampledNegatives.getNegativeInstances
     negativeInstances.size should be(3)
     negativeInstances(0).source should be(1)
     negativeInstances(0).target should be(1)
