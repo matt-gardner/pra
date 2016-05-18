@@ -10,7 +10,6 @@ import edu.cmu.ml.rtw.pra.features.FeatureGenerator
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.graphs.Graph
-import edu.cmu.ml.rtw.pra.graphs.GraphExplorer
 import edu.cmu.ml.rtw.pra.models.BatchModel
 import edu.cmu.ml.rtw.pra.models.OnlineModel
 import com.mattg.util.FileUtil
