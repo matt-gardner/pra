@@ -44,8 +44,6 @@ object Operation {
       case "no op" => new NoOp[T]
       case "train and test" =>
         new TrainAndTest(params, graph, split, relationMetadata, outputter, fileUtil)
-      case "explore graph" =>
-        new ExploreGraph(params, graph, split, relationMetadata, outputter, fileUtil)
       case "create matrices" =>
         new CreateMatrices(params, graph, split, relationMetadata, outputter, fileUtil)
       case "sgd train and test" =>
@@ -98,48 +96,6 @@ class TrainAndTest[T <: Instance](
     outputter.outputFeatureMatrix(false, testMatrix, generator.getFeatureNames())
     val scores = model.classifyInstances(testMatrix)
     outputter.outputScores(scores, trainingData)
-  }
-}
-
-class ExploreGraph[T <: Instance](
-  params: JValue,
-  graph: Option[Graph],
-  split: Split[T],
-  relationMetadata: RelationMetadata,
-  outputter: Outputter,
-  fileUtil: FileUtil
-) extends Operation[T] {
-  val paramKeys = Seq("type", "explore", "data")
-  JsonHelper.ensureNoExtras(params, "operation", paramKeys)
-
-  override def runRelation(relation: String) {
-    val dataToUse = JsonHelper.extractWithDefault(params, "data", "both")
-    val data = if (dataToUse == "both") {
-      val trainingData = split.getTrainingData(relation, graph)
-      val testingData = split.getTestingData(relation, graph)
-      if (trainingData == null && testingData == null) {
-        throw new IllegalStateException("Neither training file nor testing file exists for " +
-          "relation " + relation)
-      }
-      if (trainingData == null) {
-        testingData
-      } else if (testingData == null) {
-        trainingData
-      } else {
-        trainingData.merge(testingData)
-      }
-    } else {
-      dataToUse match {
-        case "training" => split.getTrainingData(relation, graph)
-        case "testing" => split.getTestingData(relation, graph)
-        case _ => throw new IllegalStateException(s"unrecognized data specification: $dataToUse")
-      }
-    }
-
-    val explorer = new GraphExplorer(params \ "explore", relation, relationMetadata, outputter)
-    val castData = data.asInstanceOf[Dataset[NodePairInstance]]
-    val pathCountMap = explorer.findConnectingPaths(castData)
-    outputter.outputPathCountMap(pathCountMap, castData)
   }
 }
 
