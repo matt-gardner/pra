@@ -12,7 +12,10 @@ import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
+
+import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
+import com.mattg.util.MutableConcurrentDictionary
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -70,7 +73,7 @@ class LogisticRegressionModel[T <: Instance](
     lr.train(data)
     val features = lr.getSparseFeatures()
     val params = lr.getSparseParams()
-    val bias = lr.getBias()
+    val bias = lr.getBias()  // TODO(matt): why did I not save this for later use?
     val weights = new mutable.ArrayBuffer[Double]()
     var j = 0
     for (i <- 0 until featureNames.size) {
@@ -95,5 +98,28 @@ class LogisticRegressionModel[T <: Instance](
       else
         0.0
     }).sum
+  }
+}
+
+object LogisticRegressionModel {
+  def loadFromFile[T <: Instance](
+    filename: String,
+    dictionary: MutableConcurrentDictionary,
+    outputter: Outputter,
+    fileUtil: FileUtil = new FileUtil
+  ): LogisticRegressionModel[T] = {
+    val featuresAndWeights = fileUtil.mapLinesFromFile(filename, (line) => {
+      val fields = line.split("\t")
+      (fields(0), fields(1).toDouble)
+    }).filter(_._2 != 0.0)
+    val weights = new Array[Double](featuresAndWeights.size + dictionary.size)
+    for ((feature, weight) <- featuresAndWeights) {
+      val featureIndex = dictionary.getIndex(feature)
+      weights(featureIndex) = weight
+    }
+
+    val model = new LogisticRegressionModel[T](JNothing, outputter)
+    model.lrWeights = weights.toSeq
+    model
   }
 }

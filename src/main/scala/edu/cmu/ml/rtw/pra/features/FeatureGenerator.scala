@@ -11,8 +11,10 @@ import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
+
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
+import com.mattg.util.MutableConcurrentDictionary
 
 import scala.collection.JavaConverters._
 
@@ -71,6 +73,7 @@ object FeatureGenerator {
     relation: String,
     relationMetadata: RelationMetadata,
     outputter: Outputter,
+    featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
     fileUtil: FileUtil = new FileUtil
   ): FeatureGenerator[T] = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
@@ -93,9 +96,9 @@ object FeatureGenerator {
       case "subgraphs" => {
         split match {
           case s: NodePairSplit =>
-            new NodePairSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, fileUtil)
+            new NodePairSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, featureDict, fileUtil)
           case s: NodeSplit =>
-            new NodeSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, fileUtil)
+            new NodeSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, featureDict, fileUtil)
         }
       }
       case other => throw new IllegalStateException("Illegal feature type!")

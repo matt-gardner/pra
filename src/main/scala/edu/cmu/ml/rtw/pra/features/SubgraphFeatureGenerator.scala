@@ -33,6 +33,7 @@ import gnu.trove.{TIntArrayList => TList}
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
   outputter: Outputter,
+  val featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
 ) extends FeatureGenerator[T] {
   implicit val formats = DefaultFormats
@@ -40,7 +41,6 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     "include bias", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
-  val featureDict = new MutableConcurrentDictionary
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
   val includeBias = JsonHelper.extractWithDefault(params, "include bias", false)
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
@@ -113,7 +113,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   def extractFeatures(instance: T, subgraph: Subgraph): Option[MatrixRow] = {
     val features = featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
     if (features.size > 0) {
-      Some(createMatrixRow(instance, features.toSet.map(hashFeature).toSeq.sorted))
+      Some(createMatrixRow(instance, features.toSet.map(featureToIndex).toSeq.sorted))
     } else {
       None
     }
@@ -133,7 +133,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     new FeatureMatrix(matrix_rows.asJava)
   }
 
-  def hashFeature(feature: String): Int = {
+  def featureToIndex(feature: String): Int = {
     if (featureSize == -1) {
       featureDict.getIndex(feature)
     } else {
@@ -161,8 +161,10 @@ class NodePairSubgraphFeatureGenerator(
   relation: String,
   relationMetadata: RelationMetadata,
   outputter: Outputter,
+  featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodePairInstance](params, outputter, fileUtil) {
+) extends SubgraphFeatureGenerator[NodePairInstance](params, outputter, featureDict, fileUtil) {
+
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
@@ -291,8 +293,10 @@ class NodeSubgraphFeatureGenerator(
   relation: String,
   relationMetadata: RelationMetadata,
   outputter: Outputter,
+  featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodeInstance](params, outputter, fileUtil) {
+) extends SubgraphFeatureGenerator[NodeInstance](params, outputter, featureDict, fileUtil) {
+
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PathOnlyFeatureExtractor").asInstanceOf[JValue]))

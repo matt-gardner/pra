@@ -11,9 +11,12 @@ import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.models.BatchModel
+import edu.cmu.ml.rtw.pra.models.LogisticRegressionModel
 import edu.cmu.ml.rtw.pra.models.OnlineModel
+
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
+import com.mattg.util.MutableConcurrentDictionary
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent
@@ -47,6 +50,8 @@ object Operation {
         new CreateMatrices(params, graph, split, relationMetadata, outputter, fileUtil)
       case "sgd train and test" =>
         new SgdTrainAndTest(params, graph, split, relationMetadata, outputter, fileUtil)
+      case "hacky hanie operation" =>
+        new HackyHanieOperation(params, graph, split, relationMetadata, outputter, fileUtil)
       case other => throw new IllegalStateException(s"Unrecognized operation: $other")
     }
   }
@@ -77,7 +82,7 @@ class TrainAndTest[T <: Instance](
       relation,
       relationMetadata,
       outputter,
-      fileUtil
+      fileUtil = fileUtil
     )
 
     val trainingData = split.getTrainingData(relation, graph)
@@ -111,6 +116,11 @@ class HackyHanieOperation[T <: Instance](
 
   override def runRelation(relation: String) {
 
+    // TODO(matt): VERY BAD!  But this should be fixable once I make these into Steps.
+    val modelFile = s"/home/mattg/pra/results/animals/sfe/$relation/weights.tsv"
+    val featureDictionary = new MutableConcurrentDictionary
+    val model = LogisticRegressionModel.loadFromFile(modelFile, featureDictionary, outputter, fileUtil)
+
     val generator = FeatureGenerator.create(
       params \ "features",
       graph,
@@ -118,9 +128,16 @@ class HackyHanieOperation[T <: Instance](
       relation,
       relationMetadata,
       outputter,
-      fileUtil
+      featureDictionary,
+      fileUtil = fileUtil
     )
 
+    // Then we test the model.
+    val testingData = split.getTestingData(relation, graph)
+    val testMatrix = generator.createTestMatrix(testingData)
+    outputter.outputFeatureMatrix(false, testMatrix, generator.getFeatureNames())
+    val scores = model.classifyInstances(testMatrix)
+    outputter.outputScores(scores, split.getTrainingData(relation, graph))
   }
 }
 
@@ -145,7 +162,7 @@ class CreateMatrices[T <: Instance](
       relation,
       relationMetadata,
       outputter,
-      fileUtil
+      fileUtil = fileUtil
     )
 
     if (dataToUse == "training" || dataToUse == "both") {
@@ -186,7 +203,7 @@ class SgdTrainAndTest[T <: Instance](
       relation,
       relationMetadata,
       outputter,
-      fileUtil
+      fileUtil = fileUtil
     )
 
     val trainingData = split.getTrainingData(relation, graph)

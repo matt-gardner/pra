@@ -30,13 +30,13 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val relation = "rel3"
   val metadata = RelationMetadata.empty
 
-  val generator = new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fakeFileUtil)
+  val generator = new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil)
   generator.featureDict.getIndex("feature1")
   generator.featureDict.getIndex("feature2")
   generator.featureDict.getIndex("feature3")
 
   def generatorWithParams(params: JValue) = {
-    new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fakeFileUtil)
+    new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil)
   }
 
   def getSubgraph(instance: NodePairInstance) = {
@@ -54,7 +54,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val subgraph = getSubgraph(instance)
     val row = new MatrixRow(instance, Array[Int](), Array[Double]())
     val generator =
-      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fakeFileUtil) {
+      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil) {
         override def constructMatrixRow(_instance: NodePairInstance) = {
           if (_instance != instance) throw new RuntimeException()
           Some(row)
@@ -93,7 +93,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {
     val generator =
-      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fakeFileUtil) {
+      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil) {
         override def createExtractors(params: JValue) = {
           Seq(new FeatureExtractor[NodePairInstance]() {
             override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
@@ -133,10 +133,10 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     })
   }
 
-  "hashFeature" should "use an identity hash if hashing is not enabled" in {
-    generator.hashFeature("feature1") should be(1)
-    generator.hashFeature("feature2") should be(2)
-    generator.hashFeature("feature3") should be(3)
+  "featureToIndex" should "use an identity hash if hashing is not enabled" in {
+    generator.featureToIndex("feature1") should be(1)
+    generator.featureToIndex("feature2") should be(2)
+    generator.featureToIndex("feature3") should be(3)
   }
 
   it should "correctly hash to the feature size when hashing is enabled" in {
@@ -145,11 +145,11 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val hash7 = generator.featureDict.getIndex("hash-7")
     val hash2 = generator.featureDict.getIndex("hash-2")
     val string1 = "a"  // hash code is 97
-    generator.hashFeature(string1) should be(hash7)
+    generator.featureToIndex(string1) should be(hash7)
     val string2 = " "  // hash code is 32
-    generator.hashFeature(string2) should be(hash2)
+    generator.featureToIndex(string2) should be(hash2)
     val string3 = "asdfasdf"  // hash code is -802263448
-    generator.hashFeature(string3) should be(hash2)
+    generator.featureToIndex(string3) should be(hash2)
   }
 
   "createMatrixRow" should "set feature values to 1 and add a bias feature" in {
