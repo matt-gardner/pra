@@ -50,14 +50,7 @@ abstract class BatchModel[T <: Instance](
   ) {
     val keptRows = maxTrainingExamples match {
       case None => featureMatrix.getRows().asScala
-      case Some(max) => {
-        if (featureMatrix.getRows().size < max) {
-          featureMatrix.getRows().asScala
-        } else {
-          val random = new Random()
-          random.shuffle(featureMatrix.getRows().asScala).take(max)
-        }
-      }
+      case Some(max) => Random.shuffle(featureMatrix.getRows().asScala).take(max)
     }
     outputter.info("Separating into positive, negative, unseen")
     val grouped = keptRows.groupBy(row => {

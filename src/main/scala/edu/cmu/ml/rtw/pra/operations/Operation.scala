@@ -98,6 +98,32 @@ class TrainAndTest[T <: Instance](
   }
 }
 
+class HackyHanieOperation[T <: Instance](
+  params: JValue,
+  graph: Option[Graph],
+  split: Split[T],
+  relationMetadata: RelationMetadata,
+  outputter: Outputter,
+  fileUtil: FileUtil
+) extends Operation[T] {
+  val paramKeys = Seq("type", "features", "learning")
+  JsonHelper.ensureNoExtras(params, "operation", paramKeys)
+
+  override def runRelation(relation: String) {
+
+    val generator = FeatureGenerator.create(
+      params \ "features",
+      graph,
+      split,
+      relation,
+      relationMetadata,
+      outputter,
+      fileUtil
+    )
+
+  }
+}
+
 class CreateMatrices[T <: Instance](
   params: JValue,
   graph: Option[Graph],
