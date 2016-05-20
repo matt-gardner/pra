@@ -25,7 +25,7 @@ class PprNegativeExampleSelector(
 
   val negativesPerPositive = JsonHelper.extractWithDefault(params, "negative to positive ratio", 3)
   val maxPotentialPredictions = JsonHelper.extractWithDefault(params, "max potential predictions", 1000)
-  val pprComputer = PprComputerCreator.create(params \ "ppr computer", graph, outputter, random)
+  val pprComputer = PprComputer.create(params \ "ppr computer", graph, outputter, random)
 
   // This is how many times we should try sampling the right number of negatives for each positive
   // before giving up, in case a (source, target) pair is isolated from the graph, for instance.

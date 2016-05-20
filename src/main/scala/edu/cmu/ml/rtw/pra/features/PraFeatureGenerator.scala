@@ -166,52 +166,12 @@ class PraFeatureGenerator(
       new RandomWalkPathFollower(
         graph,
         data.instances.asJava,
-        if (allowedTargets == null) null else allowedTargets.map(x => Integer.valueOf(x)).asJava,
+        allowedTargets match { case None => null; case Some(t) => t.map(x => Integer.valueOf(x)).asJava },
         edgeExcluder,
         pathTypes.asJava,
         walksPerPath,
         acceptPolicy,
         normalize)
-    } else if (name.equals("matrix multiplication")) {
-      val followerParamKeys = Seq("name", "max fan out", "matrix dir", "normalize walk probabilities")
-      JsonHelper.ensureNoExtras(
-        followerParams, "operation -> features -> path follower", followerParamKeys)
-      val max_fan_out = JsonHelper.extractWithDefault(followerParams, "max fan out", 100)
-      val matrix_base = JsonHelper.extractWithDefault(followerParams, "matrix dir", "matrices")
-      val normalize = JsonHelper.extractWithDefault(followerParams, "normalize walk probabilities", true)
-      val matrix_dir = if (matrix_base.endsWith("/")) graph.graphDir + matrix_base else
-        graph.graphDir + matrix_base + "/"
-      new MatrixPathFollower(
-        graph.nodeDict.size,
-        pathTypes,
-        outputter,
-        matrix_dir,
-        data,
-        allowedTargets,
-        edgeExcluder,
-        max_fan_out,
-        normalize,
-        fileUtil)
-    } else if (name.equals("rescal matrix multiplication")) {
-      val followerParamKeys = Seq("name", "rescal dir", "negatives per source", "matrix accept policy")
-      JsonHelper.ensureNoExtras(
-        followerParams, "operation -> features -> path follower", followerParamKeys)
-      val dir = (followerParams \ "rescal dir").extract[String]
-      val rescal_dir = if (dir.endsWith("/")) dir else dir + "/"
-      val acceptPolicy = getMatrixAcceptPolicy(followerParams, isTraining)
-      val negativesPerSource = JsonHelper.extractWithDefault(followerParams, "negatives per source", 15)
-      new RescalMatrixPathFollower(
-        relation,
-        relationMetadata,
-        graph,
-        pathTypes,
-        outputter,
-        rescal_dir,
-        data,
-        negativesPerSource,
-        acceptPolicy,
-        fileUtil
-      )
     } else {
       throw new IllegalStateException("Unrecognized path follower")
     }

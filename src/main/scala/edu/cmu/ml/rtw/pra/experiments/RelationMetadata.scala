@@ -43,7 +43,22 @@ class RelationMetadata(
   val useEmbeddings = JsonHelper.extractWithDefault(params, "use embeddings", false)
   val inversesFile = JsonHelper.extractWithDefault(params, "inverses", baseDir + "inverses.tsv")
   val rangeFile = JsonHelper.extractWithDefault(params, "ranges", baseDir + "ranges.tsv")
+  val domainFile = JsonHelper.extractWithDefault(params, "domains", baseDir + "domains.tsv")
 
+  lazy val ranges = if (fileUtil.fileExists(rangeFile)) {
+    Some(fileUtil.readMapFromTsvFile(rangeFile))
+  } else {
+    outputter.logToFile("No range file found! I hope your accept policy is as you want it...\n")
+    outputter.warn(s"No range file found! (looked in $rangeFile)")
+    None
+  }
+  lazy val domains = if (fileUtil.fileExists(domainFile)) {
+    Some(fileUtil.readMapFromTsvFile(domainFile))
+  } else {
+    outputter.logToFile("No domain file found! I hope your accept policy is as you want it...\n")
+    outputter.warn(s"No domain file found! (looked in $domainFile)")
+    None
+  }
   lazy val embeddings = if (useEmbeddings) fileUtil.readMapListFromTsvFile(embeddingsFile) else null
   lazy val inverses = {
     val _inverses = new mutable.HashMap[String, String]
@@ -94,29 +109,39 @@ class RelationMetadata(
     unallowedEdges.toSeq
   }
 
-  def getAllowedTargets(relation: String, graph: Option[Graph]): Set[Int] = {
-    if (baseDir != null && fileUtil.fileExists(rangeFile)) {
-      val ranges = fileUtil.readMapFromTsvFile(rangeFile)
-      val range = ranges.get(relation) match {
-        case None => throw new IllegalStateException(
-            "You specified a range file, but it doesn't contain an entry for relation " + relation)
-        case Some(r) => r
-      }
-      val fixed = range.replace("/", "_")
-      val cat_file = baseDir + "category_instances/" + fixed
+  def getAllowedTargets(relation: String, graph: Option[Graph]): Option[Set[Int]] = {
+    getDomainOrRange(relation, ranges, graph)
+  }
 
-      val allowedTargets = graph match {
-        case None => Set[Int]()
-        case Some(graph) => {
-          val lines = fileUtil.readLinesFromFile(cat_file)
-          lines.map(line => graph.getNodeIndex(line)).toSet
+  def getAllowedSources(relation: String, graph: Option[Graph]): Option[Set[Int]] = {
+    getDomainOrRange(relation, domains, graph)
+  }
+
+  def getDomainOrRange(
+    relation: String,
+    domainOrRange: Option[Map[String, String]],
+    graph: Option[Graph]
+  ): Option[Set[Int]] = {
+    domainOrRange match {
+      case Some(mapping) => {
+        val category = mapping.get(relation) match {
+          case None => throw new IllegalStateException(
+              "You specified a range/domain file, but it doesn't contain an entry for relation " + relation)
+          case Some(r) => r
         }
+        val fixed = category.replace("/", "_")
+        val cat_file = baseDir + "category_instances/" + fixed
+
+        val allowedNodes = graph match {
+          case None => Some(Set[Int]())
+          case Some(graph) => {
+            val lines = fileUtil.readLinesFromFile(cat_file)
+            Some(lines.map(line => graph.getNodeIndex(line)).toSet)
+          }
+        }
+        allowedNodes
       }
-      allowedTargets
-    } else {
-      outputter.logToFile("No range file found! I hope your accept policy is as you want it...\n")
-      outputter.warn("No range file found!")
-      null
+      case None => None
     }
   }
 }

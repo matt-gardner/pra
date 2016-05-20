@@ -80,52 +80,6 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     companion.getNormalizeWalks should be(false)
   }
 
-  it should "create a matrix path follower" in {
-    val matrixParams =
-      ("name" -> "matrix multiplication") ~
-      ("max fan out" -> 2) ~
-      ("matrix dir" -> "m") ~
-      ("normalize walk probabilities" -> false)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
-    follower.getClass should be(classOf[MatrixPathFollower])
-    val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
-    matrixFollower.maxFanOut should be(2)
-    matrixFollower.normalizeWalkProbabilities should be(false)
-    matrixFollower.matrixDir should be("src/test/resources/m/")
-  }
-
-  it should "normalize the matrix directory" in {
-    val matrixParams =
-      ("name" -> "matrix multiplication") ~
-      ("max fan out" -> 2) ~
-      ("matrix dir" -> "m/") ~
-      ("normalize walk probabilities" -> false)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
-    val matrixFollower = follower.asInstanceOf[MatrixPathFollower]
-    matrixFollower.matrixDir should be("src/test/resources/m/")
-  }
-
-  it should "create a rescal matrix path follower" in {
-    val matrixParams =
-      ("name" -> "rescal matrix multiplication") ~
-      ("rescal dir" -> "/path/to/r/") ~
-      ("negatives per source" -> 23)
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
-    follower.getClass should be(classOf[RescalMatrixPathFollower])
-    val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
-    rescalFollower.negativesPerSource should be(23)
-    rescalFollower.rescalDir should be("/path/to/r/")
-  }
-
-  it should "normalize the rescal directory" in {
-    val matrixParams =
-      ("name" -> "rescal matrix multiplication") ~
-      ("rescal dir" -> "/path/to/r")
-    val follower = generator.createPathFollower(matrixParams, Seq(path1, path2), data, true)
-    val rescalFollower = follower.asInstanceOf[RescalMatrixPathFollower]
-    rescalFollower.rescalDir should be("/path/to/r/")
-  }
-
   it should "throw error with unrecognized path follower" in {
     val badParams: JValue = ("name" -> "bad")
     TestUtil.expectError(classOf[IllegalStateException], "Unrecognized path follower", new Function() {
@@ -139,18 +93,6 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
       def call() {
         val badParams: JValue = ("name" -> "random walks") ~ ("fake" -> "bad")
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
-      }
-    })
-    TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
-      def call() {
-        val badParams: JValue = ("name" -> "matrix multiplication") ~ ("fake" -> "bad")
-        val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
-      }
-    })
-    TestUtil.expectError(classOf[IllegalStateException], "path follower: unexpected key", new Function() {
-      def call() {
-        val badParams: JValue = ("name" -> "rescal matrix multiplication") ~ ("fake" -> "bad")
         val follower = generator.createPathFollower(badParams, Seq(path1, path2), data, true)
       }
     })

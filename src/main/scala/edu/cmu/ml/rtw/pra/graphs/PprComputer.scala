@@ -45,7 +45,10 @@ trait PprComputer {
   //
   // Note also that this whole concept assumes we have a single graph, not one graph for each
   // instance in the dataset.  So, data.instances(x).graph should equal the graph passed to
-  // PprComputerCreator for all x, or bad things might happen.
+  // PprComputerCreator for all x, or bad things might happen.  TODO(matt): There's no reason that
+  // we should require this, actually.  I could just move the graph to be an argument here, and
+  // things would still work.  It would potentially make it inefficient with GraphChi, but I don't
+  // use that anymore.
   def computePersonalizedPageRank(
     sources: Set[Int],
     targets: Set[Int],
@@ -54,7 +57,7 @@ trait PprComputer {
   ): Map[Int, Map[Int, Int]]
 }
 
-object PprComputerCreator {
+object PprComputer {
   def create(params: JValue, graph: Graph, outputter: Outputter, random: Random): PprComputer = {
     val pprComputerType = JsonHelper.extractWithDefault(params, "type", "InMemoryPprComputer")
     pprComputerType match {
