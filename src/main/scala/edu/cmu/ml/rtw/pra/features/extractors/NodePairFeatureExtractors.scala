@@ -56,7 +56,8 @@ object NodePairFeatureExtractor {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor(JNothing)
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedFeatureExtractor") => new OneSidedFeatureExtractor(outputter)
+      case JString("OneSidedPathAndEndNodeFeatureExtractor") => new OneSidedPathAndEndNodeFeatureExtractor(outputter)
+      case JString("OneSidedPathOnlyFeatureExtractor") => new OneSidedPathOnlyFeatureExtractor(outputter)
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
@@ -137,7 +138,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(
   }
 }
 
-class OneSidedFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
+class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -149,6 +150,32 @@ class OneSidedFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtr
           "SOURCE:" + path + ":" + endNode
         } else if (start == instance.target) {
           "TARGET:" + path + ":" + endNode
+        } else {
+          outputter.fatal(s"Source: ${instance.source}")
+          outputter.fatal(s"Target: ${instance.target}")
+          outputter.fatal(s"Left node: ${start}")
+          outputter.fatal(s"Right node: ${end}")
+          outputter.fatal(s"path: ${path}")
+          throw new IllegalStateException("Something is wrong with the subgraph - " +
+            "the first node should always be either the source or the target")
+        }
+      })
+    }).toSeq
+  }
+}
+
+class OneSidedPathOnlyFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
+  override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
+    val graph = instance.graph
+    subgraph.flatMap(entry => {
+      entry._2.map(nodePair => {
+        val (start, end) = nodePair
+        val path = entry._1.encodeAsHumanReadableString(graph)
+        val endNode = graph.getNodeName(end)
+        if (start == instance.source) {
+          "SOURCE:" + path
+        } else if (start == instance.target) {
+          "TARGET:" + path
         } else {
           outputter.fatal(s"Source: ${instance.source}")
           outputter.fatal(s"Target: ${instance.target}")
