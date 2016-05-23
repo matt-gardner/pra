@@ -1,0 +1,31 @@
+{
+  "graph": {
+    "name": "fb15k",
+    "relation sets": [
+      {
+        "is kb": false,
+        "relation file": "/home/mattg/data/freebase/fb15k_train.tsv"
+      },
+      {
+        "is kb": false,
+        "relation file": "/home/mattg/data/freebase/fb15k_valid.tsv"
+      }
+    ]
+  },
+  "split": {
+    "type": "add negatives to split",
+    "from split": "fb15k",
+    "name": "fb15k_with_negatives",
+    "relation metadata": "freebase",
+    "graph": "fb15k",
+    "negative instances": {
+      "negative to positive ratio": 10
+    }
+  },
+  "operation": {
+    "type": "train and test",
+    "learning": {
+      "max training examples": 5000
+    }
+  }
+}
