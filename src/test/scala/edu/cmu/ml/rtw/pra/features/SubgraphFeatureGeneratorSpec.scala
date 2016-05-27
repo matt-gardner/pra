@@ -5,7 +5,6 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
-import edu.cmu.ml.rtw.pra.features.extractors.OneSidedFeatureExtractor
 import edu.cmu.ml.rtw.pra.features.extractors.PraFeatureExtractor
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -116,12 +115,6 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val params: JValue = ("feature extractors" -> List("PraFeatureExtractor"))
     val generator = generatorWithParams(params)
     generator.featureExtractors(0).getClass should be(classOf[PraFeatureExtractor])
-  }
-
-  it should "create OneSidedFeatureExtractors correctly" in {
-    val params: JValue = ("feature extractors" -> List("OneSidedFeatureExtractor"))
-    val generator = generatorWithParams(params)
-    generator.featureExtractors(0).getClass should be(classOf[OneSidedFeatureExtractor])
   }
 
   it should "fail on unrecognized feature extractors" in {

@@ -105,10 +105,10 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("BIGRAM:rel2-@END@")
   }
 
-  "OneSidedFeatureExtractor" should "map each path type entry to a one-sided feature" in {
+  "OneSidedPathAndEndNodeFeatureExtractor" should "map each path type entry to a one-sided feature" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (2, 3)), Set((1, 3)))
-    val extractor = new OneSidedFeatureExtractor(outputter)
+    val extractor = new OneSidedPathAndEndNodeFeatureExtractor(outputter)
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     print(features)
     features.size should be(3)
