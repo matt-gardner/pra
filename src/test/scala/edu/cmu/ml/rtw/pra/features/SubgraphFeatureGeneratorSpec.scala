@@ -20,7 +20,6 @@ import org.json4s._
 import org.json4s.JsonDSL._
 
 class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
-  type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val params: JValue = ("include bias" -> true)
   val outputter = Outputter.justLogger
@@ -39,8 +38,8 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   def getSubgraph(instance: NodePairInstance) = {
-    val pathType1 = new BasicPathTypeFactory(graph).fromString("-1-")
-    val pathType2 = new BasicPathTypeFactory(graph).fromString("-2-")
+    val pathType1 = Path(1, Array(2), Array(1), Array(false))
+    val pathType2 = Path(1, Array(2), Array(2), Array(false))
     val nodePairs1 = Set((instance.source, 1))
     val nodePairs2 = Set((instance.target, 2))
     Map(instance -> Map(pathType1 -> nodePairs1, pathType2 -> nodePairs2))
@@ -49,7 +48,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val instance = new NodePairInstance(1, 2, true, graph)
   val dataset = new Dataset[NodePairInstance](Seq(instance))
 
-  "createMatrixFromData" should "return call constructMatrixRow on all instances" in {
+  "createMatrixFromData" should "call constructMatrixRow on all instances" in {
     val subgraph = getSubgraph(instance)
     val row = new MatrixRow(instance, Array[Int](), Array[Double]())
     val generator =
@@ -81,13 +80,12 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     // And we're only checking for one training instance, because that's all there is in the
     // dataset.
     val subgraph = generator.getLocalSubgraphs(dataset)(instance)
-    val factory = new BasicPathTypeFactory(graph)
-    subgraph(factory.fromString("-1-")) should contain((1, 2))
-    subgraph(factory.fromString("-3-_3-")) should contain((1, 7))
-    subgraph(factory.fromString("-1-2-")) should contain((1, 3))
-    subgraph(factory.fromString("-2-")) should contain((2, 3))
-    subgraph(factory.fromString("-3-")) should contain((1, 4))
-    subgraph(factory.fromString("-3-4-")) should contain((1, 5))
+    subgraph(Path(1, Array(2), Array(1), Array(false))) should contain((1, 2))
+    subgraph(Path(1, Array(4, 7), Array(3, 3), Array(false, true))) should contain((1, 7))
+    subgraph(Path(1, Array(2, 3), Array(1, 2), Array(false, false))) should contain((1, 3))
+    subgraph(Path(2, Array(3), Array(2), Array(false))) should contain((2, 3))
+    subgraph(Path(1, Array(4), Array(3), Array(false))) should contain((1, 4))
+    subgraph(Path(1, Array(4, 5), Array(3, 4), Array(false, false))) should contain((1, 5))
   }
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {

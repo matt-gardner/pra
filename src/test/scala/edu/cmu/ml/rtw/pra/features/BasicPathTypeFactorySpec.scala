@@ -46,10 +46,7 @@ class BasicPathTypeFactorySpec extends FlatSpecLike with Matchers {
   "encode" should "encode the edge types in the path" in {
     // The path we create is 1 -_1-> 2 -2-> 3 -3-> 4.  So the BasicPathType we should get from
     // this is -1-2-3-.
-    val path = new Path(1, 5)
-    path.addHop(2, 1, true)
-    path.addHop(3, 2, false)
-    path.addHop(4, 3, false)
+    val path = new Path(1, Array(2, 3, 4), Array(1, 2, 3), Array(true, false, false))
 
     val pathTypes = factory.encode(path)
     pathTypes.length should be(1)

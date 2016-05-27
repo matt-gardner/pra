@@ -50,8 +50,8 @@ public abstract class BaseEdgeSequencePathTypeFactory implements PathTypeFactory
 
   @Override
   public PathType[] encode(Path path) {
-    boolean[] reverse = path.getReverse();
-    int[] edges = path.getEdges();
+    boolean[] reverse = path.reverses();
+    int[] edges = path.edges();
     PathType[] encoded = new PathType[1];
     encoded[0] = newInstance(edges, reverse);
     return encoded;

@@ -305,5 +305,5 @@ class NodeSubgraphFeatureGenerator(
   }
 
   def createPathFinder() =
-    NodePathFinder.create(params \ "path finder", relation, relationMetadata, outputter)
+    NodePathFinder.create(params \ "path finder", outputter)
 }

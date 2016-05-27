@@ -21,11 +21,8 @@ import com.mattg.util.Vector
 
 import scala.collection.JavaConverters._
 
-// TODO(matt): move RandomWalkPathFinder to scala, and change these definitions to use scala
-// objects.  Or just leave RandomWalkPathFinder in java, and incur a hit when converting between
-// datatypes (do the conversion in the GraphChiPathFinder class below).  If it turns out that we
-// move away from the RandomWalkPathFinder, then we can take the second option.  Otherwise, the
-// first.
+// TODO(matt): Split this into two interfaces: a legacy one that has getPathCounts and
+// getPathCountMap, and a current one that just has getLocalSubgraph.
 trait PathFinder[T <: Instance] {
   // Constructs a local subgraph for a single instance.  This is for SGD-style training, as opposed
   // to a batch computation.  Some PathFinders may not support this mode of operation (it's
@@ -40,7 +37,7 @@ trait PathFinder[T <: Instance] {
   // undefined if called before findPaths, and can either crash or give empty results.
   def getPathCounts(): JavaMap[PathType, Integer]
   def getPathCountMap(): JavaMap[T, JavaMap[PathType, Integer]]
-  def getLocalSubgraphs(): Map[T, Map[PathType, Set[(Int, Int)]]]
+  def getLocalSubgraphs(): Map[T, Subgraph]
   def finished()
 }
 
@@ -57,7 +54,7 @@ object NodePairPathFinder {
       case "RandomWalkPathFinder" =>
         new GraphChiPathFinder(params, relation, relationMetadata, outputter, fileUtil)
       case "BfsPathFinder" =>
-        new NodePairBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+        new NodePairBfsPathFinder(params, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodePairInstances")
     }
   }
@@ -66,15 +63,13 @@ object NodePairPathFinder {
 object NodePathFinder {
   def create(
     params: JValue,
-    relation: String,
-    relationMetadata: RelationMetadata,
     outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): PathFinder[NodeInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
       case "BfsPathFinder" =>
-        new NodeBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+        new NodeBfsPathFinder(params, outputter, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodeInstances")
     }
   }
@@ -154,8 +149,7 @@ class GraphChiPathFinder(
   }
 
   override def getLocalSubgraphs() = {
-    finder.getLocalSubgraphs().asScala.mapValues(_.asScala.mapValues(_.asScala.map(pair =>
-      (pair.getLeft().toInt, pair.getRight().toInt)).toSet).toMap).toMap
+    throw new NotImplementedError("GraphChi can't keep track of Paths, only PathTypes...")
   }
 
   def createPathTypeFactory(params: JValue, graph: GraphOnDisk): PathTypeFactory = {

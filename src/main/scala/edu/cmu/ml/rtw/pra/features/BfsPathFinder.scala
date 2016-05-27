@@ -26,14 +26,12 @@ import scala.collection.parallel.ParMap
 
 abstract class BfsPathFinder[T <: Instance](
   params: JValue,
-  relation: String,
-  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 )  extends PathFinder[T] {
   implicit val formats = DefaultFormats
 
-  val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory", "log level")
+  val allowedKeys = Seq("type", "number of steps", "max fan out", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.
@@ -44,7 +42,6 @@ abstract class BfsPathFinder[T <: Instance](
   // that node.
   val maxFanOut = JsonHelper.extractWithDefault(params, "max fan out", 100)
 
-  val factoryParams = params \ "path type factory"
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   var results: Map[T, Subgraph] = null
@@ -67,21 +64,7 @@ abstract class BfsPathFinder[T <: Instance](
   }
 
   override def getPathCountMap(): JavaMap[T, JavaMap[PathType, Integer]] = {
-    results.map(subgraphInstance => {
-      val instance = subgraphInstance._1
-      val subgraph = subgraphInstance._2
-      val converted = subgraph.flatMap(entry => {
-        val pathType = entry._1
-        val nodePairSet = entry._2
-        val keptNodePairs = nodePairSet.filter(pair => nodePairMatchesInstance(pair, instance))
-        if (keptNodePairs.size > 0) {
-          Seq(pathType -> Integer.valueOf(keptNodePairs.size))
-        } else {
-          Seq()
-        }
-      }).asJava
-      (instance -> converted)
-    }).asJava
+    throw new NotImplementedError
   }
 
   def nodePairMatchesInstance(pair: (Int, Int), instance: T): Boolean
@@ -102,35 +85,29 @@ abstract class BfsPathFinder[T <: Instance](
     instances.par.map(instance => (instance -> getSubgraphForInstance(instance))).seq.toMap
   }
 
-  // The return value here is a map of (end node -> path types).  The resultsByPathType is
-  // basically what we're after here; we keep around the (end node -> path types) map so that we
-  // can do a join on it to reconstruct larger paths, which then get added to resultsByPathType.
+  // The return value here is a map of (end node -> path types).  The resultsByPath is basically
+  // what we're after here; we keep around the (end node -> path types) map so that we can do a
+  // join on it to reconstruct larger paths, which then get added to resultsByPath.
   //
   // I simplified this from a method that used a bunch of maps and flat maps instead of a queue to
   // do this search.  I was hoping this would give a nice speed up, but some timing results seem
   // like it's about the same.  At least this way I think the code is easier to understand.
   def bfsFromNode(
     graph: Graph,
-    factory: PathTypeFactory,
     source: Int,
     target: Int,
-    unallowedRelations: Set[Int],
-    resultsByPathType: mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+    resultsByPath: mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
   ) = {
-    // The object in this queue is (what node I'm at, what path type got me there, steps left).  If
-    // you really want to detect cycles (and I'm not sure it's worth it), instead of the PathType
-    // you should keep a Seq[(Int, Int, Boolean)] with edge types, nodes, and reverse.  You can
-    // check the nodes at each step to see if you're at a cycle, then construct a path type from
-    // the edge types and reverse when it's needed.
-    val queue = new mutable.Queue[(Int, PathType, Int)]
-    val resultsByNode = new mutable.HashMap[Int, mutable.HashSet[PathType]].withDefaultValue(
-      new mutable.HashSet[PathType]())
-    queue += Tuple3(source, factory.emptyPathType, numSteps)
+    // TODO(matt): Now that we're using Paths instead of PathTypes, we can check for cycles.
+    val queue = new mutable.Queue[(Int, Path, Int)]
+    val resultsByNode = new mutable.HashMap[Int, mutable.HashSet[Path]].withDefaultValue(
+      new mutable.HashSet[Path]())
+    queue += Tuple3(source, new Path(source), numSteps)
     while (!queue.isEmpty) {
-      val (node, pathType, stepsLeft) = queue.dequeue
-      if (pathType != factory.emptyPathType) {
-        resultsByNode.getOrElseUpdate(node, new mutable.HashSet[PathType]).add(pathType)
-        resultsByPathType.getOrElseUpdate(pathType, new mutable.HashSet[(Int, Int)]).add((source, node))
+      val (node, path, stepsLeft) = queue.dequeue
+      if (!path.isEmpty) {
+        resultsByNode.getOrElseUpdate(node, new mutable.HashSet[Path]).add(path)
+        resultsByPath.getOrElseUpdate(path, new mutable.HashSet[(Int, Int)]).add((source, node))
       }
       if (stepsLeft > 0) {
         val n = graph.getNode(node)
@@ -141,17 +118,13 @@ abstract class BfsPathFinder[T <: Instance](
           if (inEdges.size + outEdges.size <= maxFanOut) {
             for (i <- 0 until inEdges.size) {
               val nextNode = inEdges.get(i)
-              if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
-                val nextPathType = factory.addToPathType(pathType, relation, nextNode, true)
-                queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
-              }
+              val nextPath = path.addHop(nextNode, relation, true)
+              queue += Tuple3(nextNode, nextPath, stepsLeft - 1)
             }
             for (i <- 0 until outEdges.size) {
               val nextNode = outEdges.get(i)
-              if (!shouldSkip(source, target, node, nextNode, relation, unallowedRelations)) {
-                val nextPathType = factory.addToPathType(pathType, relation, nextNode, false)
-                queue += Tuple3(nextNode, nextPathType, stepsLeft - 1)
-              }
+              val nextPath = path.addHop(nextNode, relation, false)
+              queue += Tuple3(nextNode, nextPath, stepsLeft - 1)
             }
           }
         }
@@ -172,32 +145,18 @@ abstract class BfsPathFinder[T <: Instance](
     else
       false
   }
-
-  def createPathTypeFactory(params: JValue, graph: Graph) = {
-    params match {
-      case JNothing => new BasicPathTypeFactory(graph)
-      case JString("BasicPathTypeFactory") => new BasicPathTypeFactory(graph)
-      // TODO(matt): allow for configuring this parameter in the spec.
-      case JString("LexicalizedPathTypeFactory") => new LexicalizedPathTypeFactory(JNothing, graph)
-      case other => throw new IllegalStateException("Unrecognized path type factory specification")
-    }
-  }
 }
 
 class NodePairBfsPathFinder(
   params: JValue,
-  relation: String,
-  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodePairInstance](params, relation, relationMetadata, outputter, fileUtil) {
+) extends BfsPathFinder[NodePairInstance](params, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodePairInstance) = {
     val graph = instance.graph
-    val factory = createPathTypeFactory(factoryParams, graph)
-    val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val source = instance.source
     val target = instance.target
-    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
+    val result = new mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
 
     // Note that we're doing two BFS searches for each instance - one from the source, and one from
     // the target.  But that's extra work!, you might say, because if there are duplicate sources
@@ -212,15 +171,15 @@ class NodePairBfsPathFinder(
     // away from bulk processing towards processing individual instances, anyway, for memory
     // reasons.  This setting would require keeping these subgraphs around in memory, and they are
     // very large...
-    val sourceSubgraph = bfsFromNode(graph, factory, source, target, unallowedEdges, result)
-    val targetSubgraph = bfsFromNode(graph, factory, target, source, unallowedEdges, result)
+    val sourceSubgraph = bfsFromNode(graph, source, target, result)
+    val targetSubgraph = bfsFromNode(graph, target, source, result)
     val sourceKeys = sourceSubgraph.keys.toSet
     val targetKeys = targetSubgraph.keys.toSet
     val keysToUse = if (sourceKeys.size > targetKeys.size) targetKeys else sourceKeys
     for (intermediateNode <- keysToUse) {
       for (sourcePath <- sourceSubgraph(intermediateNode);
            targetPath <- targetSubgraph(intermediateNode)) {
-         val combinedPath = factory.concatenatePathTypes(sourcePath, targetPath)
+         val combinedPath = sourcePath.addPath(targetPath.reversePath)
          result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
        }
     }
@@ -234,20 +193,16 @@ class NodePairBfsPathFinder(
 
 class NodeBfsPathFinder(
   params: JValue,
-  relation: String,
-  relationMetadata: RelationMetadata,
   outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodeInstance](params, relation, relationMetadata, outputter, fileUtil) {
+) extends BfsPathFinder[NodeInstance](params, outputter, fileUtil) {
   def getSubgraphForInstance(instance: NodeInstance) = {
     val graph = instance.graph
-    val factory = createPathTypeFactory(factoryParams, graph)
-    val unallowedEdges = relationMetadata.getUnallowedEdges(relation, graph).toSet
     val node = instance.node
     // There's no target to watch out for if we only have a NodeInstance.
     val fakeTarget = -1
-    val result = new mutable.HashMap[PathType, mutable.HashSet[(Int, Int)]]
-    val subgraph = bfsFromNode(graph, factory, node, fakeTarget, unallowedEdges, result)
+    val result = new mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
+    val subgraph = bfsFromNode(graph, node, fakeTarget, result)
     result.mapValues(_.toSet).toMap
   }
 

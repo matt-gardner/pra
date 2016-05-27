@@ -64,7 +64,6 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private final List<NodePairInstance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
-  private final Object printLock = new Object();
 
   private double resetProbability = 0.35;
 
@@ -163,8 +162,8 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     return companion.getPathCountMap(instances);
   }
 
-  public Map<NodePairInstance, Map<PathType, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
-    return companion.getLocalSubgraphs(instances);
+  public Map<NodePairInstance, Map<Path, Set<Pair<Integer, Integer>>>> getLocalSubgraphs() {
+    throw new UnsupportedOperationException("Can't keep around Paths in the GraphChiCode, sadly...");
   }
 
   public void shutDown() {
@@ -249,12 +248,12 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
     }
 
     Path path = walkPaths[walkId];
-    if (path != null && path.getHops() >= MAX_HOPS - 1) {
+    if (path != null && path.nodes().length >= MAX_HOPS - 1) {
       resetWalk(walk, walkId, drunkardContext);
       return;
     }
     if (path == null) {
-      path = new Path(sourceIds[staticSourceIdx(walk)], MAX_HOPS);
+      path = new Path(sourceIds[staticSourceIdx(walk)]);
       walkPaths[walkId] = path;
     }
     boolean reverse;
@@ -275,11 +274,12 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
       resetWalk(walk, walkId, drunkardContext);
       return;
     }
-    path.addHop(nextVertex, edgeType, reverse);
+    Path newPath = path.addHop(nextVertex, edgeType, reverse);
     walk = Manager.incrementHopNum(walk);
     int hopNum = Manager.hopNum(walk);
-    encodedWalkPaths[walkId][hopNum] = encodePath(path);
+    encodedWalkPaths[walkId][hopNum] = encodePath(newPath);
     drunkardContext.forwardWalkTo(walk, nextVertex, true);
+    walkPaths[walkId] = newPath;
   }
 
   private void resetWalk(long walk, int walkId, LongDrunkardContext drunkardContext) {

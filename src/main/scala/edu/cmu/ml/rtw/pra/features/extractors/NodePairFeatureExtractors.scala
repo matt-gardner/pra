@@ -93,19 +93,7 @@ class PraFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1
-        val feature = if (includeNodes) {
-          pathType match {
-            case p: LexicalizedPathType => { p.encodeAsHumanReadableString(graph) }
-            case _ => throw new IllegalStateException(
-              "must have lexicalized path types to include nodes")
-          }
-        } else {
-          pathType match {
-            case p: LexicalizedPathType => { p.encodeAsHumanReadableStringWithoutNodes(graph) }
-            case p => { p.encodeAsHumanReadableString(graph) }
-          }
-        }
+        val feature = entry._1.encodeAsHumanReadableString(graph, includeNodes)
         Seq(feature)
       } else {
         Seq[String]()
@@ -123,7 +111,7 @@ class PraFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
 }
 
 class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(params) {
-  val filter = PathTypeFilter.create(params \ "filter")
+  val filter = PathFilter.create(params \ "filter")
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
@@ -388,13 +376,7 @@ class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtr
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1
-        val numSteps = pathType match {
-          case p: BaseEdgeSequencePathType => { p.edgeTypes.length }
-          case p: LexicalizedPathType => { p.edgeTypes.length }
-          case _ => throw new IllegalStateException("what kind of path type are you using?")
-        }
-        if (numSteps == 1) {
+        if (entry._1.numSteps == 1) {
           Seq(featureName)
         } else {
           Seq[String]()
@@ -428,12 +410,7 @@ class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatur
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1
-        val edges = pathType match {
-          case p: BaseEdgeSequencePathType => { p.edgeTypes }
-          case p: LexicalizedPathType => { p.edgeTypes }
-          case _ => throw new IllegalStateException("what kind of path type are you using?")
-        }
+        val edges = entry._1.edges
         if (edges.length == 2) {
           val firstEdgeName = graph.getEdgeName(edges(0))
           val secondEdgeName = graph.getEdgeName(edges(1))

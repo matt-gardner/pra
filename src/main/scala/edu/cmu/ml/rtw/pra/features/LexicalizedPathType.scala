@@ -217,7 +217,7 @@ class LexicalizedPathTypeFactory(params: JValue, graph: Graph) extends PathTypeF
   }
 
   override def encode(path: Path) = {
-    Array(new LexicalizedPathType(path.getEdges, path.getNodes, path.getReverse, params))
+    Array(new LexicalizedPathType(path.edges, path.nodes, path.reverses, params))
   }
 
   override def addToPathType(pathType: PathType, relation: Int, node: Int, reverse: Boolean) = {

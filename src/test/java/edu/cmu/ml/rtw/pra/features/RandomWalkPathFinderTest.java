@@ -1,10 +1,7 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import junit.framework.TestCase;
 
@@ -51,7 +48,7 @@ public class RandomWalkPathFinderTest extends TestCase {
     for (int i = 0; i < factory.pathTypes().length; i++) {
       expectedPathTypes[i] = pathDict.getIndex(factory.pathTypes()[i]);
     }
-    Path path = new Path(1, 10);
+    Path path = new Path(1);
     assertTrue(Arrays.equals(expectedPathTypes, finder.encodePath(path)));
   }
 
@@ -117,10 +114,15 @@ public class RandomWalkPathFinderTest extends TestCase {
     assertEquals(null, finder.getWalkPath(walkId));
 
     // Make sure we reset when there are too many hops in this walk.
-    Path path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
+    int[] nodes = new int[10];
+    int[] edges = new int[10];
+    boolean[] reverse = new boolean[10];
     for (int i = 0; i < 10; i++) {
-      path.addHop(1, 1, false);
+      nodes[i] = 1;
+      edges[i] = 1;
+      reverse[i] = false;
     }
+    Path path = new Path(1, nodes, edges, reverse);
     newWalk = RandomWalkPathFinder.Manager.encode(walkId, 0, sourceId, trackBit, off);
     context.setExpectationsForReset(newWalk, true);
     finder.setWalkPath(path, walkId);
@@ -134,22 +136,18 @@ public class RandomWalkPathFinderTest extends TestCase {
     newWalk = RandomWalkPathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
     context.setExpectations(false, newWalk, 3, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
-    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
-    path.addHop(3, 2, true);
+    path = new Path(1, new int[]{3}, new int[]{2}, new boolean[]{true});
     assertEquals(path, finder.getWalkPath(walkId));
 
     // And one with some history in the path, just for kicks.
-    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
-    path.addHop(10, 10, true);
+    path = new Path(1, new int[]{10}, new int[]{10}, new boolean[]{true});
     finder.setWalkPath(path, walkId);
     random.setNextDouble(.9);
     random.setNextInt(2);
     newWalk = RandomWalkPathFinder.Manager.encode(walkId, hopNum+1, sourceId, trackBit, off);
     context.setExpectations(false, newWalk, 5, true);
     finder.processSingleWalkAtVertex(walk, vertex, context, random);
-    path = new Path(1, RandomWalkPathFinder.MAX_HOPS);
-    path.addHop(10, 10, true);
-    path.addHop(5, 2, false);
+    path = new Path(1, new int[]{10, 5}, new int[]{10, 2}, new boolean[]{true, false});
     assertEquals(path, finder.getWalkPath(walkId));
 
     // And a reset due to an unallowed edge.
