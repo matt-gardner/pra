@@ -37,28 +37,19 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil)
   }
 
-  def getSubgraph(instance: NodePairInstance) = {
-    val pathType1 = Path(1, Array(2), Array(1), Array(false))
-    val pathType2 = Path(1, Array(2), Array(2), Array(false))
-    val nodePairs1 = Set((instance.source, 1))
-    val nodePairs2 = Set((instance.target, 2))
-    Map(instance -> Map(pathType1 -> nodePairs1, pathType2 -> nodePairs2))
-  }
-
   val instance = new NodePairInstance(1, 2, true, graph)
   val dataset = new Dataset[NodePairInstance](Seq(instance))
 
   "createMatrixFromData" should "call constructMatrixRow on all instances" in {
-    val subgraph = getSubgraph(instance)
     val row = new MatrixRow(instance, Array[Int](), Array[Double]())
     val generator =
       new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil) {
-        override def constructMatrixRow(_instance: NodePairInstance) = {
+        override def constructMatrixRow(_instance: NodePairInstance, relation: String) = {
           if (_instance != instance) throw new RuntimeException()
           Some(row)
         }
       }
-    val featureMatrix = generator.createTrainingMatrix(dataset)
+    val featureMatrix = generator.createTrainingMatrix(dataset, relation)
     featureMatrix.getRows().size should be(1)
     featureMatrix.getRow(0) should be(row)
   }
@@ -72,20 +63,33 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     generator.getFeatureNames() should be(Array("bias", "feature1", "feature2", "feature3"))
   }
 
-  "getLocalSubgraphs" should "find correct subgraphs on a simple graph" in {
-    // Because this is is a randomized process, we just test for things that should show up pretty
-    // much all of the time.  If this test fails occasionally, it might not necessarily mean that
-    // something is broken.
-
-    // And we're only checking for one training instance, because that's all there is in the
-    // dataset.
-    val subgraph = generator.getLocalSubgraphs(dataset)(instance)
+  "getLocalSubgraph" should "find correct a subgraph on a simple graph" in {
+    val subgraph = generator.getLocalSubgraph(instance)
     subgraph(Path(1, Array(2), Array(1), Array(false))) should contain((1, 2))
     subgraph(Path(1, Array(4, 7), Array(3, 3), Array(false, true))) should contain((1, 7))
     subgraph(Path(1, Array(2, 3), Array(1, 2), Array(false, false))) should contain((1, 3))
     subgraph(Path(2, Array(3), Array(2), Array(false))) should contain((2, 3))
     subgraph(Path(1, Array(4), Array(3), Array(false))) should contain((1, 4))
     subgraph(Path(1, Array(4, 5), Array(3, 4), Array(false, false))) should contain((1, 5))
+  }
+
+  "filterSubgraph" should "filter unallowed paths from the subgraph" in {
+    val subgraph = Map(
+      Path(1, Array(3), Array(1), Array(false)) -> Set((1, 3)),
+      Path(1, Array(3), Array(1), Array(true)) -> Set((1, 3)),
+      Path(1, Array(2, 3), Array(4, 1), Array(false, false)) -> Set((1, 3)),
+      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false)) -> Set((1, 3))
+    )
+    val instance13 = new NodePairInstance(1, 3, true, graph)
+    generator.filterSubgraph(instance13, subgraph, "rel1") should be(Map(
+      Path(1, Array(2, 3), Array(4, 1), Array(false, false)) -> Set((1, 3))
+    ))
+    val instance23 = new NodePairInstance(2, 3, true, graph)
+    generator.filterSubgraph(instance23, subgraph, "rel1") should be(Map(
+      Path(1, Array(3), Array(1), Array(false)) -> Set((1, 3)),
+      Path(1, Array(3), Array(1), Array(true)) -> Set((1, 3)),
+      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false)) -> Set((1, 3))
+    ))
   }
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {
@@ -99,10 +103,11 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
           })
         }
       }
-    val subgraph = getSubgraph(instance)
-    val featureMatrix = generator.extractFeatures(subgraph)
-    featureMatrix.size should be(1)
-    val matrixRow = featureMatrix.getRow(0)
+    val subgraph = Map(
+      Path(1, Array(2), Array(1), Array(false)) -> Set((instance.source, 1)),
+      Path(1, Array(2), Array(2), Array(false)) -> Set((instance.target, 2))
+    )
+    val matrixRow = generator.extractFeatures(instance, subgraph).get
     val expectedMatrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))
     matrixRow.instance should be(expectedMatrixRow.instance)
     matrixRow.columns should be(expectedMatrixRow.columns)

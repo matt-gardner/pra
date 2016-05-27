@@ -14,16 +14,37 @@ case class Path(
     this(startNode, Array(), Array(), Array())
   }
 
+  // Apparently array equality doesn't work like I thought it did, so we have to override the
+  // hasCode and equals methods for this case class.
+  override def equals(that: Any) = {
+    that match {
+      case that: Path => {
+        that.canEqual(this) && this.hashCode == that.hashCode
+      }
+    }
+  }
+
+  override def hashCode() = {
+    41 * (
+      41 * (
+        41 * (
+          41 + startNode
+        ) + java.util.Arrays.hashCode(nodes)
+      ) + java.util.Arrays.hashCode(edges)
+    ) + java.util.Arrays.hashCode(reverses)
+  }
+
   val numSteps = nodes.length
   val isEmpty = numSteps == 0
 
   def alreadyVisited(node: Int) = node == startNode || nodes.exists(_ == node)
 
+  // This ignores the edge direction, and returns true if the edge was followed at all.
   def containsEdge(source: Int, target: Int, edge: Int): Boolean = {
     if (isEmpty) return false
-    if (edgeMatches(startNode, nodes(0), edges(0), reverses(0), source, target, edge)) return true
+    if (edgeMatches(startNode, nodes(0), edges(0), source, target, edge)) return true
     for (i <- (0 until nodes.length - 1)) {
-      if (edgeMatches(nodes(i), nodes(i+1), edges(i+1), reverses(i+1), source, target, edge)) return true
+      if (edgeMatches(nodes(i), nodes(i+1), edges(i+1), source, target, edge)) return true
     }
     return false
   }
@@ -32,13 +53,12 @@ case class Path(
     querySource: Int,
     queryTarget: Int,
     queryEdge: Int,
-    queryReverse: Boolean,
     source: Int,
     target: Int,
     edge: Int
   ): Boolean = {
-    (querySource == source && queryTarget == target && queryEdge == edge && queryReverse == false) ||
-    (querySource == target && queryTarget == source && queryEdge == edge && queryReverse == true)
+    (querySource == source && queryTarget == target && queryEdge == edge) ||
+    (querySource == target && queryTarget == source && queryEdge == edge)
   }
 
   def addHop(node: Int, edge: Int, reverse: Boolean): Path = {
@@ -48,6 +68,9 @@ case class Path(
     System.arraycopy(nodes, 0, newNodes, 0, nodes.length);
     System.arraycopy(edges, 0, newEdges, 0, edges.length);
     System.arraycopy(reverses, 0, newReverses, 0, reverses.length);
+    newNodes(nodes.length) = node
+    newEdges(edges.length) = edge
+    newReverses(reverses.length) = reverse
     Path(startNode, newNodes, newEdges, newReverses)
   }
 
@@ -64,7 +87,7 @@ case class Path(
         newNodes(i) = startNode
       }
       newEdges(i) = edges(edges.length - 1 - i)
-      newReverses(i) = reverses(reverses.length - 1 - i)
+      newReverses(i) = !reverses(reverses.length - 1 - i)
     }
     Path(newStartNode, newNodes, newEdges, newReverses)
   }
@@ -144,7 +167,7 @@ case class Path(
         }
       }
       builder.append("->")
-      if (i < nodes.size) {
+      if (i < nodes.length - 1) {
         val nodeStr = graph.map(_.getNodeName(nodes(i))).getOrElse(nodes(i).toString)
         removeColon match {
           case "no" => builder.append(nodeStr)
@@ -167,5 +190,8 @@ case class Path(
     builder.toString()
   }
 
-  override def toString() = encodeAsString()
+  override def toString(): String = {
+    if (isEmpty) return startNode.toString
+    startNode + lexicalizedStringDescription(None, Map()) + nodes.last
+  }
 }

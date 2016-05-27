@@ -58,20 +58,8 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("-rel1-")
   }
 
-  it should "crash when trying to include nodes without a lexicalized path type" in {
-    val paths = Seq(getPath(Seq(1)), getPath(Seq(2)))
-    val nodePairs = Seq(Set((1, 2), (1, 3)), Set((1, 3)))
-    val params: JValue = ("include nodes" -> true)
-    val extractor = new PraFeatureExtractor(params)
-    TestUtil.expectError(classOf[IllegalStateException], "must have lexicalized path types", new Function() {
-      override def call() {
-        val features = extractor.extractFeatures(instance, getSubgraph(paths, nodePairs))
-      }
-    })
-  }
-
-  it should "include nodes in the path type when using lexicalized path types" in {
-    val paths = Seq(Path(0, Array(1, 0), Array(1, 2), Array(false, false)))
+  it should "include nodes in the path type when requested" in {
+    val paths = Seq(Path(1, Array(1, 2), Array(1, 2), Array(false, false)))
     val nodePairs = Seq(Set((1, 2)))
     val params: JValue = ("include nodes" -> true)
     val extractor = new PraFeatureExtractor(params)
@@ -80,7 +68,7 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     features should contain("-rel1->node1-rel2->")
   }
 
-  it should "except when include nodes is set to false" in {
+  it should "and not when include nodes is set to false" in {
     val paths = Seq(Path(0, Array(1, 0), Array(1, 2), Array(false, false)))
     val nodePairs = Seq(Set((1, 2)))
     val params: JValue = ("include nodes" -> false)

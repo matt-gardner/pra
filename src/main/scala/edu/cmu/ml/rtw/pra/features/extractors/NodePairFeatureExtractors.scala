@@ -216,9 +216,8 @@ class PathBigramsFeatureExtractor extends NodePairFeatureExtractor {
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
         List(entry._1.encodeAsHumanReadableString(graph))
-        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
-        val edgeTypes = pathType.getEdgeTypes()
-        val reverses = pathType.getReverse()
+        val edgeTypes = entry._1.edges
+        val reverses = entry._1.reverses
         val edgeTypeStrings = "@START@" +: edgeTypes.zip(reverses).map(edge => {
           val edgeString = graph.getEdgeName(edge._1)
           if (edge._2) "_" + edgeString else edgeString
@@ -264,9 +263,8 @@ class VectorSimilarityFeatureExtractor(
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
-        val edgeTypes = pathType.getEdgeTypes()
-        val reverses = pathType.getReverse()
+        val edgeTypes = entry._1.edges
+        val reverses = entry._1.reverses
         val similarities =
           for (i <- (0 until edgeTypes.length);
                relStr = graph.getEdgeName(edgeTypes(i));
@@ -305,9 +303,8 @@ class AnyRelFeatureExtractor extends NodePairFeatureExtractor{
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
-        val edgeTypes = pathType.getEdgeTypes()
-        val reverses = pathType.getReverse()
+        val edgeTypes = entry._1.edges
+        val reverses = entry._1.reverses
         (0 until edgeTypes.length).map(i => {
           val oldEdgeType = edgeTypes(i)
           edgeTypes(i) = anyRel
@@ -346,10 +343,9 @@ class AnyRelAliasOnlyFeatureExtractor extends NodePairFeatureExtractor{
     val sourceTarget = (instance.source, instance.target)
     subgraph.flatMap(entry => {
       if (entry._2.contains(sourceTarget)) {
-        val pathType = entry._1.asInstanceOf[BaseEdgeSequencePathType]
-        val edgeTypes = pathType.getEdgeTypes()
+        val edgeTypes = entry._1.edges
         if (edgeTypes(0) == alias && edgeTypes(edgeTypes.length - 1) == alias) {
-          val reverses = pathType.getReverse()
+          val reverses = entry._1.reverses
           (1 until edgeTypes.length - 1).map(i => {
             val oldEdgeType = edgeTypes(i)
             edgeTypes(i) = anyRel

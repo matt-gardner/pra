@@ -32,6 +32,7 @@ import gnu.trove.{TIntArrayList => TList}
 
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
+  relationMetadata: RelationMetadata,
   outputter: Outputter,
   val featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
@@ -50,20 +51,20 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
   def createPathFinder(): PathFinder[T]
 
-  override def constructMatrixRow(instance: T) =
-    extractFeatures(instance, getLocalSubgraph(instance))
+  override def constructMatrixRow(instance: T, relation: String) =
+    extractFeatures(instance, filterSubgraph(instance, getLocalSubgraph(instance), relation))
 
-  override def createTrainingMatrix(data: Dataset[T]): FeatureMatrix =
-    createMatrixFromData(data)
+  override def createTrainingMatrix(data: Dataset[T], relation: String): FeatureMatrix =
+    createMatrixFromData(data, relation)
 
   override def removeZeroWeightFeatures(weights: Seq[Double]): Seq[Double] = weights
 
-  override def createTestMatrix(data: Dataset[T]): FeatureMatrix =
-    createMatrixFromData(data)
+  override def createTestMatrix(data: Dataset[T], relation: String): FeatureMatrix =
+    createMatrixFromData(data, relation)
 
-  def createMatrixFromData(data: Dataset[T]) = {
+  def createMatrixFromData(data: Dataset[T], relation: String) = {
     outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
-    val rows = data.instances.par.map(constructMatrixRow).flatten.seq
+    val rows = data.instances.par.map(constructMatrixRow(_, relation)).flatten.seq
     new FeatureMatrix(rows.asJava)
   }
 
@@ -94,21 +95,23 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
   def createExtractors(params: JValue): Seq[FeatureExtractor[T]]
 
-  def getLocalSubgraphs(data: Dataset[T]): Map[T, Subgraph] = {
-    outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
-      logLevel)
-
-    pathFinder.findPaths(data)
-
-    pathFinder.getLocalSubgraphs
-  }
-
   def getLocalSubgraph(instance: T): Subgraph = {
     if (instance.isInGraph()) {
       pathFinder.getLocalSubgraph(instance)
     } else {
       emptySubgraph
     }
+  }
+
+  def getSourceAndTargetForFiltering(instance: T): (Int, Int)
+
+  def filterSubgraph(instance: T, subgraph: Subgraph, relation: String): Subgraph = {
+    val unallowedEdges = relationMetadata.getUnallowedEdges(relation, instance.graph)
+    if (unallowedEdges.size == 0) return subgraph
+    val (source, target) = getSourceAndTargetForFiltering(instance)
+    subgraph.filterNot(path => {
+      unallowedEdges.exists(relationIndex => path._1.containsEdge(source, target, relationIndex))
+    })
   }
 
   def extractFeatures(instance: T, subgraph: Subgraph): Option[MatrixRow] = {
@@ -122,16 +125,6 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
   def extractFeaturesAsStrings(instance: T, subgraph: Subgraph): Seq[String] = {
     featureExtractors.flatMap(_.extractFeatures(instance, subgraph))
-  }
-
-  def extractFeatures(subgraphs: Map[T, Subgraph]): FeatureMatrix = {
-    val matrix_rows = subgraphs.par.flatMap(entry => {
-      extractFeatures(entry._1, entry._2) match {
-        case Some(row) => Seq(row)
-        case None => Seq()
-      }
-    }).seq.toList
-    new FeatureMatrix(matrix_rows.asJava)
   }
 
   def featureToIndex(feature: String): Int = {
@@ -164,7 +157,9 @@ class NodePairSubgraphFeatureGenerator(
   outputter: Outputter,
   featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodePairInstance](params, outputter, featureDict, fileUtil) {
+) extends SubgraphFeatureGenerator[NodePairInstance](params, relationMetadata, outputter, featureDict, fileUtil) {
+
+  def getSourceAndTargetForFiltering(instance: NodePairInstance) = (instance.source, instance.target)
 
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
@@ -296,7 +291,12 @@ class NodeSubgraphFeatureGenerator(
   outputter: Outputter,
   featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodeInstance](params, outputter, featureDict, fileUtil) {
+) extends SubgraphFeatureGenerator[NodeInstance](params, relationMetadata, outputter, featureDict, fileUtil) {
+
+  def getSourceAndTargetForFiltering(instance: NodeInstance) = {
+    outputter.warn("FILTERING NOT REALLY IMPLEMENTED FOR NODE INSTANCES!")
+    (instance.node, -1)
+  }
 
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",

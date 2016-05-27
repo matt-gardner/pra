@@ -48,15 +48,14 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   val instance = new NodePairInstance(5, 3, true, graph)
   val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
 
-  def makeFinder(params: JValue = JNothing, relation: String = relation) =
-    new NodePairBfsPathFinder(params, outputter, fileUtil)
+  def makeFinder(params: JValue = JNothing) = new NodePairBfsPathFinder(params, outputter, fileUtil)
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val finder = makeFinder()
     finder.findPaths(data)
     val results53 = finder.results(instance)
 
-    // 6 Source paths
+    // 7 Source paths
     results53(Path(5, Array(1), Array(3), Array(false))).size should be(1)
     results53(Path(5, Array(1), Array(3), Array(false))) should contain((5, 1))
     results53(Path(5, Array(1, 2), Array(3, 1), Array(false, false))).size should be(1)
@@ -72,7 +71,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))).size should be(1)
     results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))) should contain((5, 5))
 
-    // 6 Target paths
+    // 7 Target paths
     results53(Path(3, Array(1), Array(1), Array(true))).size should be(1)
     results53(Path(3, Array(1), Array(1), Array(true))) should contain((3, 1))
     results53(Path(3, Array(1, 2), Array(1, 1), Array(true, false))).size should be(1)
@@ -88,7 +87,7 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))).size should be(1)
     results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))) should contain((3, 5))
 
-    // 7 Combined paths - some of these contain loops.  If loop detection is ever added, these
+    // 8 Combined paths - some of these contain loops.  If loop detection is ever added, these
     // tests should be revisited.
     results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))).size should be(1)
     results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))) should contain((5, 3))
@@ -107,18 +106,8 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 1, 1), Array(false, true, true, false))).size should be(1)
     results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 1, 1), Array(false, true, true, false))) should contain((5, 3))
 
-    // 6 + 6 + 7 = 19 total paths
-    results53.size should be(19)
-  }
-
-  it should "exclude edges when specified" in {
-    val instance = new NodePairInstance(1, 3, true, graph)
-    val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
-    val finder = makeFinder(JNothing, "rel1")
-    finder.findPaths(data)
-    val results13 = finder.results(instance)
-    val badPath = Path(1, Array(3), Array(1), Array(true))
-    results13(badPath) should not contain((1, 3))
+    // 7 + 7 + 8 = 22 total paths
+    results53.size should be(22)
   }
 
   it should "observe the max fan out" in {

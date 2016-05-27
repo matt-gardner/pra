@@ -95,7 +95,7 @@ class TrainAndTest[T <: Instance](
     )
 
     val trainingData = split.getTrainingData(relation, graph)
-    val trainingMatrix = generator.createTrainingMatrix(trainingData)
+    val trainingMatrix = generator.createTrainingMatrix(trainingData, relation)
     outputter.outputFeatureMatrix(true, trainingMatrix, generator.getFeatureNames())
 
     // Then we train a model.
@@ -105,7 +105,7 @@ class TrainAndTest[T <: Instance](
 
     // Then we test the model.
     val testingData = split.getTestingData(relation, graph)
-    val testMatrix = generator.createTestMatrix(testingData)
+    val testMatrix = generator.createTestMatrix(testingData, relation)
     outputter.outputFeatureMatrix(false, testMatrix, generator.getFeatureNames())
     val scores = model.classifyInstances(testMatrix)
     outputter.outputScores(scores, trainingData)
@@ -167,7 +167,7 @@ class HackyHanieOperation(
         allowedSources  // yes, these two are flipped on purpose. See comments in PprComputer.
       )
 
-      val originalSvoMatrixRow = generator.constructMatrixRow(npi)
+      val originalSvoMatrixRow = generator.constructMatrixRow(npi, relation)
       val originalSvoScore = originalSvoMatrixRow match {
         case None => 0.0
         case Some(matrixRow) => model.classifyMatrixRow(matrixRow)
@@ -178,7 +178,7 @@ class HackyHanieOperation(
       val targets = pprValues.getOrElse(npi.source, Map()).toSeq.sortBy(-_._2).take(10).map(_._1)
       val svInstances = targets.map(t => new NodePairInstance(npi.source, t, true, npi.graph))
       val svScores = svInstances.par.map(instance => {
-        val matrixRow = generator.constructMatrixRow(instance)
+        val matrixRow = generator.constructMatrixRow(instance, relation)
         val score = matrixRow match {
           case None => 0.0
           case Some(matrixRow) => model.classifyMatrixRow(matrixRow)
@@ -191,7 +191,7 @@ class HackyHanieOperation(
       val sources = pprValues.getOrElse(npi.target, Map()).toSeq.sortBy(-_._2).take(10).map(_._1)
       val voInstances = sources.par.map(s => new NodePairInstance(s, npi.target, true, npi.graph))
       val voScores = voInstances.map(instance => {
-        val matrixRow = generator.constructMatrixRow(instance)
+        val matrixRow = generator.constructMatrixRow(instance, relation)
         val score = matrixRow match {
           case None => 0.0
           case Some(matrixRow) => model.classifyMatrixRow(matrixRow)
@@ -230,12 +230,12 @@ class CreateMatrices[T <: Instance](
 
     if (dataToUse == "training" || dataToUse == "both") {
       val trainingData = split.getTrainingData(relation, graph)
-      val trainingMatrix = generator.createTrainingMatrix(trainingData)
+      val trainingMatrix = generator.createTrainingMatrix(trainingData, relation)
       outputter.outputFeatureMatrix(true, trainingMatrix, generator.getFeatureNames())
     }
     if (dataToUse == "testing" || dataToUse == "both") {
       val testingData = split.getTestingData(relation, graph)
-      val testingMatrix = generator.createTestMatrix(testingData)
+      val testingMatrix = generator.createTestMatrix(testingData, relation)
       outputter.outputFeatureMatrix(false, testingMatrix, generator.getFeatureNames())
     }
   }
@@ -280,7 +280,7 @@ class SgdTrainAndTest[T <: Instance](
         val matrixRow = if (featureVectors.contains(instance)) {
           featureVectors(instance)
         } else {
-          val row = generator.constructMatrixRow(instance)
+          val row = generator.constructMatrixRow(instance, relation)
           if (cacheFeatureVectors) featureVectors(instance) = row
           row
         }
@@ -312,7 +312,7 @@ class SgdTrainAndTest[T <: Instance](
     // Now we test the model.
     val testingData = split.getTestingData(relation, graph)
     val scores = testingData.instances.par.map(instance => {
-      val matrixRow = generator.constructMatrixRow(instance)
+      val matrixRow = generator.constructMatrixRow(instance, relation)
       if (cacheFeatureVectors) featureVectors(instance) = matrixRow
       matrixRow match {
         case Some(row) => (instance, model.classifyInstance(row))

@@ -51,7 +51,7 @@ class LogisticRegressionModelSpec extends FlatSpecLike with Matchers {
         })
       }
     }
-    val row = generator.constructMatrixRow(new NodePairInstance(1, 1, true, graph))
+    val row = generator.constructMatrixRow(new NodePairInstance(1, 1, true, graph), "relation")
     model.classifyMatrixRow(row.get) should be(1.0 +- 0.001)
   }
 }

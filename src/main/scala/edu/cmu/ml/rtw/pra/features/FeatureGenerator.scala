@@ -27,13 +27,13 @@ trait FeatureGenerator[T <: Instance] {
    * online prediction.  Note that this could be _really_ inefficient for some kinds of feature
    * generators, and so far is only implemented for SFE.
    */
-  def constructMatrixRow(instance: T): Option[MatrixRow]
+  def constructMatrixRow(instance: T, relation: String): Option[MatrixRow]
 
   /**
    * Takes the data, probably does some random walks (or maybe some matrix multiplications, or a
    * few other possibilities), and returns a FeatureMatrix.
    */
-  def createTrainingMatrix(data: Dataset[T]): FeatureMatrix
+  def createTrainingMatrix(data: Dataset[T], relation: String): FeatureMatrix
 
   /**
    * For efficiency in creating the test matrix, we might drop some features if they have zero
@@ -51,7 +51,7 @@ trait FeatureGenerator[T <: Instance] {
    * should save that state internally, and use it to do this computation.  Not all implementations
    * need internal state to do this, but some do.
    */
-  def createTestMatrix(data: Dataset[T]): FeatureMatrix
+  def createTestMatrix(data: Dataset[T], relation: String): FeatureMatrix
 
   /**
    * Returns a string representation of the features in the feature matrix.  This need only be

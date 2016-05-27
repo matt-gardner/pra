@@ -31,13 +31,13 @@ class PraFeatureGenerator(
 
   var pathTypes: Seq[PathType] = null
 
-  override def constructMatrixRow(instance: NodePairInstance): Option[MatrixRow] = {
+  override def constructMatrixRow(instance: NodePairInstance, relaiton: String): Option[MatrixRow] = {
     // The reason this would be complicated is because we can't do this without having first
     // selected path features.
     throw new RuntimeException("This method is not yet implemented!  And it would be complicated...")
   }
 
-  override def createTrainingMatrix(data: Dataset[NodePairInstance]): FeatureMatrix = {
+  override def createTrainingMatrix(data: Dataset[NodePairInstance], relaiton: String): FeatureMatrix = {
     pathTypes = selectPathFeatures(data)
     computeFeatureValues(pathTypes, data, true)
   }
@@ -48,7 +48,7 @@ class PraFeatureGenerator(
     finalModel.map(_._2)
   }
 
-  override def createTestMatrix(data: Dataset[NodePairInstance]): FeatureMatrix = {
+  override def createTestMatrix(data: Dataset[NodePairInstance], relaiton: String): FeatureMatrix = {
     computeFeatureValues(pathTypes, data, false)
   }
 
