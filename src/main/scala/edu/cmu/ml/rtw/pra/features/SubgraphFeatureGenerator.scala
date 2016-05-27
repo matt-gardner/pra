@@ -47,7 +47,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   val logLevel = JsonHelper.extractWithDefault(params, "log level", 3)
 
   lazy val pathFinder = createPathFinder()
-  val emptySubgraph: Subgraph = Map()
+  val emptySubgraph: Subgraph = Set()
 
   def createPathFinder(): PathFinder[T]
 
@@ -110,7 +110,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     if (unallowedEdges.size == 0) return subgraph
     val (source, target) = getSourceAndTargetForFiltering(instance)
     subgraph.filterNot(path => {
-      unallowedEdges.exists(relationIndex => path._1.containsEdge(source, target, relationIndex))
+      unallowedEdges.exists(relationIndex => path.containsEdge(source, target, relationIndex))
     })
   }
 

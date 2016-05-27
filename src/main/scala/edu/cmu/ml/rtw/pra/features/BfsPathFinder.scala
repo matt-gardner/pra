@@ -96,7 +96,7 @@ abstract class BfsPathFinder[T <: Instance](
     graph: Graph,
     source: Int,
     target: Int,
-    resultsByPath: mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
+    pathResults: mutable.HashSet[Path]
   ) = {
     // TODO(matt): Now that we're using Paths instead of PathTypes, we can check for cycles.
     val queue = new mutable.Queue[(Int, Path, Int)]
@@ -107,7 +107,7 @@ abstract class BfsPathFinder[T <: Instance](
       val (node, path, stepsLeft) = queue.dequeue
       if (!path.isEmpty) {
         resultsByNode.getOrElseUpdate(node, new mutable.HashSet[Path]).add(path)
-        resultsByPath.getOrElseUpdate(path, new mutable.HashSet[(Int, Int)]).add((source, node))
+        pathResults.add(path)
       }
       if (stepsLeft > 0) {
         val n = graph.getNode(node)
@@ -156,7 +156,7 @@ class NodePairBfsPathFinder(
     val graph = instance.graph
     val source = instance.source
     val target = instance.target
-    val result = new mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
+    val result = new mutable.HashSet[Path]
 
     // Note that we're doing two BFS searches for each instance - one from the source, and one from
     // the target.  But that's extra work!, you might say, because if there are duplicate sources
@@ -180,10 +180,10 @@ class NodePairBfsPathFinder(
       for (sourcePath <- sourceSubgraph(intermediateNode);
            targetPath <- targetSubgraph(intermediateNode)) {
          val combinedPath = sourcePath.addPath(targetPath.reversePath)
-         result.getOrElseUpdate(combinedPath, new mutable.HashSet[(Int, Int)]).add((source, target))
+         result.add(combinedPath)
        }
     }
-    result.mapValues(_.toSet).toMap
+    result.toSet
   }
 
   override def nodePairMatchesInstance(pair: (Int, Int), instance: NodePairInstance): Boolean = {
@@ -201,9 +201,9 @@ class NodeBfsPathFinder(
     val node = instance.node
     // There's no target to watch out for if we only have a NodeInstance.
     val fakeTarget = -1
-    val result = new mutable.HashMap[Path, mutable.HashSet[(Int, Int)]]
+    val result = new mutable.HashSet[Path]
     val subgraph = bfsFromNode(graph, node, fakeTarget, result)
-    result.mapValues(_.toSet).toMap
+    result.toSet
   }
 
   override def nodePairMatchesInstance(pair: (Int, Int), instance: NodeInstance): Boolean = {

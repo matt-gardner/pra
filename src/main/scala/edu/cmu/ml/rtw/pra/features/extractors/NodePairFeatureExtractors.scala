@@ -90,11 +90,9 @@ class PraFeatureExtractor(params: JValue) extends NodePairFeatureExtractor {
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        val feature = entry._1.encodeAsHumanReadableString(graph, includeNodes)
-        Seq(feature)
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        Seq(path.encodeAsHumanReadableString(graph, includeNodes))
       } else {
         Seq[String]()
       }
@@ -115,10 +113,9 @@ class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(
 
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget) && filter.shouldKeepPath(entry._1, graph)) {
-        Seq(entry._1.encodeAsHumanReadableString(graph))
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target) && filter.shouldKeepPath(path, graph)) {
+        Seq(path.encodeAsHumanReadableString(graph))
       } else {
         Seq[String]()
       }
@@ -129,25 +126,24 @@ class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(
 class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        val endNode = graph.getNodeName(end)
-        if (start == instance.source) {
-          "SOURCE:" + path + ":" + endNode
-        } else if (start == instance.target) {
-          "TARGET:" + path + ":" + endNode
-        } else {
-          outputter.fatal(s"Source: ${instance.source}")
-          outputter.fatal(s"Target: ${instance.target}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be either the source or the target")
-        }
-      })
+    subgraph.map(path => {
+      val start = path.startNode
+      val end = path.endNode
+      val pathStr = path.encodeAsHumanReadableString(graph)
+      val endNode = graph.getNodeName(end)
+      if (start == instance.source) {
+        "SOURCE:" + pathStr + ":" + endNode
+      } else if (start == instance.target) {
+        "TARGET:" + pathStr + ":" + endNode
+      } else {
+        outputter.fatal(s"Source: ${instance.source}")
+        outputter.fatal(s"Target: ${instance.target}")
+        outputter.fatal(s"Left node: ${start}")
+        outputter.fatal(s"Right node: ${end}")
+        outputter.fatal(s"path: ${path}")
+        throw new IllegalStateException("Something is wrong with the subgraph - " +
+          "the first node should always be either the source or the target")
+      }
     }).toSeq
   }
 }
@@ -155,25 +151,24 @@ class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodeP
 class OneSidedPathOnlyFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        val endNode = graph.getNodeName(end)
-        if (start == instance.source) {
-          "SOURCE:" + path
-        } else if (start == instance.target) {
-          "TARGET:" + path
-        } else {
-          outputter.fatal(s"Source: ${instance.source}")
-          outputter.fatal(s"Target: ${instance.target}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be either the source or the target")
-        }
-      })
+    subgraph.map(path => {
+      val start = path.startNode
+      val end = path.endNode
+      val pathStr = path.encodeAsHumanReadableString(graph)
+      val endNode = graph.getNodeName(end)
+      if (start == instance.source) {
+        "SOURCE:" + pathStr
+      } else if (start == instance.target) {
+        "TARGET:" + pathStr
+      } else {
+        outputter.fatal(s"Source: ${instance.source}")
+        outputter.fatal(s"Target: ${instance.target}")
+        outputter.fatal(s"Left node: ${start}")
+        outputter.fatal(s"Right node: ${end}")
+        outputter.fatal(s"path: ${path}")
+        throw new IllegalStateException("Something is wrong with the subgraph - " +
+          "the first node should always be either the source or the target")
+      }
     }).toSeq
   }
 }
@@ -181,12 +176,15 @@ class OneSidedPathOnlyFeatureExtractor(outputter: Outputter) extends NodePairFea
 class CategoricalComparisonFeatureExtractor extends NodePairFeatureExtractor{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      val path = entry._1.encodeAsHumanReadableString(graph)
-      val (src, targ) = entry._2.partition(nodePair => nodePair._1 == instance.source)
+    subgraph.groupBy(_.encodeAsHumanReadableString(graph)).flatMap(entry => {
+      val pathStr = entry._1
+      val nodePairs = entry._2.map(path => {
+        (path.startNode, path.endNode)
+      })
+      val (src, targ) = nodePairs.partition(nodePair => nodePair._1 == instance.source)
       val pairs = for (int1 <- src; int2 <- targ)
         yield (graph.getNodeName(int1._2), graph.getNodeName(int2._2));
-      for{pair <- pairs}  yield "CATCOMP:" + path + ":" + pair._1 + ":" + pair._2
+      for{pair <- pairs}  yield "CATCOMP:" + pathStr + ":" + pair._1 + ":" + pair._2
     }).toSeq
   }
 }
@@ -194,15 +192,17 @@ class CategoricalComparisonFeatureExtractor extends NodePairFeatureExtractor{
 class NumericalComparisonFeatureExtractor extends NodePairFeatureExtractor{
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      val path = entry._1.encodeAsHumanReadableString(graph)
-      val (src, targ) = entry._2.partition(nodePair => nodePair._1 == instance.source)
+    subgraph.groupBy(_.encodeAsHumanReadableString(graph)).flatMap(entry => {
+      val pathStr = entry._1
+      val nodePairs = entry._2.map(path => {
+        (path.startNode, path.endNode)
+      })
+      val (src, targ) = nodePairs.partition(nodePair => nodePair._1 == instance.source)
       val strings = for {int1 <- src; int2 <- targ}
         yield (graph.getNodeName(int1._2), graph.getNodeName(int2._2))
       val valid_strings = strings.filter(str => isDoubleNumber(str._1) && isDoubleNumber(str._2))
       for(str <- valid_strings )
-        yield s"NUMCOMP:${path}:" + "%.2f".format(log10(abs(str._1.toDouble - str._2.toDouble))).toDouble
-
+        yield s"NUMCOMP:${pathStr}:" + "%.2f".format(log10(abs(str._1.toDouble - str._2.toDouble))).toDouble
     }).toSeq
   }
 
@@ -212,12 +212,10 @@ class NumericalComparisonFeatureExtractor extends NodePairFeatureExtractor{
 class PathBigramsFeatureExtractor extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        List(entry._1.encodeAsHumanReadableString(graph))
-        val edgeTypes = entry._1.edges
-        val reverses = entry._1.reverses
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        val edgeTypes = path.edges
+        val reverses = path.reverses
         val edgeTypeStrings = "@START@" +: edgeTypes.zip(reverses).map(edge => {
           val edgeString = graph.getEdgeName(edge._1)
           if (edge._2) "_" + edgeString else edgeString
@@ -261,10 +259,10 @@ class VectorSimilarityFeatureExtractor(
       }
     }
     val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        val edgeTypes = entry._1.edges
-        val reverses = entry._1.reverses
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        val edgeTypes = path.edges
+        val reverses = path.reverses
         val similarities =
           for (i <- (0 until edgeTypes.length);
                relStr = graph.getEdgeName(edgeTypes(i));
@@ -301,10 +299,10 @@ class AnyRelFeatureExtractor extends NodePairFeatureExtractor{
       }
     }
     val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        val edgeTypes = entry._1.edges
-        val reverses = entry._1.reverses
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        val edgeTypes = path.edges
+        val reverses = path.reverses
         (0 until edgeTypes.length).map(i => {
           val oldEdgeType = edgeTypes(i)
           edgeTypes(i) = anyRel
@@ -341,11 +339,11 @@ class AnyRelAliasOnlyFeatureExtractor extends NodePairFeatureExtractor{
     // TODO(matt): this is brittle, because the alias relation might have a different name...
     val alias = graph.getEdgeIndex("@ALIAS@")
     val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        val edgeTypes = entry._1.edges
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        val edgeTypes = path.edges
         if (edgeTypes(0) == alias && edgeTypes(edgeTypes.length - 1) == alias) {
-          val reverses = entry._1.reverses
+          val reverses = path.reverses
           (1 until edgeTypes.length - 1).map(i => {
             val oldEdgeType = edgeTypes(i)
             edgeTypes(i) = anyRel
@@ -370,9 +368,9 @@ class ConnectedAtOneFeatureExtractor(params: JValue) extends NodePairFeatureExtr
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        if (entry._1.numSteps == 1) {
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        if (path.numSteps == 1) {
           Seq(featureName)
         } else {
           Seq[String]()
@@ -404,9 +402,9 @@ class ConnectedByMediatorFeatureExtractor(params: JValue) extends NodePairFeatur
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     val sourceTarget = (instance.source, instance.target)
-    subgraph.flatMap(entry => {
-      if (entry._2.contains(sourceTarget)) {
-        val edges = entry._1.edges
+    subgraph.flatMap(path => {
+      if (path.matchesSourceTarget(instance.source, instance.target)) {
+        val edges = path.edges
         if (edges.length == 2) {
           val firstEdgeName = graph.getEdgeName(edges(0))
           val secondEdgeName = graph.getEdgeName(edges(1))

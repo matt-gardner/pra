@@ -55,59 +55,35 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     finder.findPaths(data)
     val results53 = finder.results(instance)
 
-    // 7 Source paths
-    results53(Path(5, Array(1), Array(3), Array(false))).size should be(1)
-    results53(Path(5, Array(1), Array(3), Array(false))) should contain((5, 1))
-    results53(Path(5, Array(1, 2), Array(3, 1), Array(false, false))).size should be(1)
-    results53(Path(5, Array(1, 2), Array(3, 1), Array(false, false))) should contain((5, 2))
-    results53(Path(5, Array(1, 3), Array(3, 1), Array(false, false))).size should be(1)
-    results53(Path(5, Array(1, 3), Array(3, 1), Array(false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 4), Array(3, 2), Array(false, false))).size should be(1)
-    results53(Path(5, Array(1, 4), Array(3, 2), Array(false, false))) should contain((5, 4))
-    results53(Path(5, Array(1, 2), Array(3, 4), Array(false, true))).size should be(1)
-    results53(Path(5, Array(1, 2), Array(3, 4), Array(false, true))) should contain((5, 2))
-    results53(Path(5, Array(1, 6), Array(3, 1), Array(false, true))).size should be(1)
-    results53(Path(5, Array(1, 6), Array(3, 1), Array(false, true))) should contain((5, 6))
-    results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))).size should be(1)
-    results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))) should contain((5, 5))
-
-    // 7 Target paths
-    results53(Path(3, Array(1), Array(1), Array(true))).size should be(1)
-    results53(Path(3, Array(1), Array(1), Array(true))) should contain((3, 1))
-    results53(Path(3, Array(1, 2), Array(1, 1), Array(true, false))).size should be(1)
-    results53(Path(3, Array(1, 2), Array(1, 1), Array(true, false))) should contain((3, 2))
-    results53(Path(3, Array(1, 3), Array(1, 1), Array(true, false))).size should be(1)
-    results53(Path(3, Array(1, 3), Array(1, 1), Array(true, false))) should contain((3, 3))
-    results53(Path(3, Array(1, 4), Array(1, 2), Array(true, false))).size should be(1)
-    results53(Path(3, Array(1, 4), Array(1, 2), Array(true, false))) should contain((3, 4))
-    results53(Path(3, Array(1, 2), Array(1, 4), Array(true, true))).size should be(1)
-    results53(Path(3, Array(1, 2), Array(1, 4), Array(true, true))) should contain((3, 2))
-    results53(Path(3, Array(1, 6), Array(1, 1), Array(true, true))).size should be(1)
-    results53(Path(3, Array(1, 6), Array(1, 1), Array(true, true))) should contain((3, 6))
-    results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))).size should be(1)
-    results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))) should contain((3, 5))
-
-    // 8 Combined paths - some of these contain loops.  If loop detection is ever added, these
-    // tests should be revisited.
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))).size should be(1)
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 3, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))).size should be(1)
-    results53(Path(5, Array(1, 3, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 6, 1, 3), Array(3, 1, 1, 1), Array(false, true, false, false))).size should be(1)
-    results53(Path(5, Array(1, 6, 1, 3), Array(3, 1, 1, 1), Array(false, true, false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 4, 1), Array(false, false, false, false))).size should be(1)
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 1, 4, 1), Array(false, false, false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false))).size should be(1)
-    results53(Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false))).size should be(1)
-    results53(Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false))).size should be(1)
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 1, 1), Array(false, true, true, false))).size should be(1)
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 1, 1), Array(false, true, true, false))) should contain((5, 3))
-
-    // 7 + 7 + 8 = 22 total paths
-    results53.size should be(22)
+    results53 should be(Set(
+      // 7 Source paths
+      Path(5, Array(1), Array(3), Array(false)),
+      Path(5, Array(1), Array(3), Array(false)),
+      Path(5, Array(1, 2), Array(3, 1), Array(false, false)),
+      Path(5, Array(1, 3), Array(3, 1), Array(false, false)),
+      Path(5, Array(1, 4), Array(3, 2), Array(false, false)),
+      Path(5, Array(1, 2), Array(3, 4), Array(false, true)),
+      Path(5, Array(1, 6), Array(3, 1), Array(false, true)),
+      Path(5, Array(1, 5), Array(3, 3), Array(false, true)),
+      // 7 Target paths
+      Path(3, Array(1), Array(1), Array(true)),
+      Path(3, Array(1, 2), Array(1, 1), Array(true, false)),
+      Path(3, Array(1, 3), Array(1, 1), Array(true, false)),
+      Path(3, Array(1, 4), Array(1, 2), Array(true, false)),
+      Path(3, Array(1, 2), Array(1, 4), Array(true, true)),
+      Path(3, Array(1, 6), Array(1, 1), Array(true, true)),
+      Path(3, Array(1, 5), Array(1, 3), Array(true, true)),
+      // 8 Combined paths - some of these contain loops.  If loop detection is ever added, these
+      // tests should be revisited.
+      Path(5, Array(1, 2, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false)),
+      Path(5, Array(1, 3, 1, 3), Array(3, 1, 1, 1), Array(false, false, true, false)),
+      Path(5, Array(1, 6, 1, 3), Array(3, 1, 1, 1), Array(false, true, false, false)),
+      Path(5, Array(1, 2, 1, 3), Array(3, 1, 4, 1), Array(false, false, false, false)),
+      Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false)),
+      Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false)),
+      Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false)),
+      Path(5, Array(1, 2, 1, 3), Array(3, 4, 1, 1), Array(false, true, true, false))
+    ))
   }
 
   it should "observe the max fan out" in {
@@ -120,38 +96,22 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
     val results53 = finder.results(instance)
 
     // 4 Source paths
-    results53(Path(5, Array(1), Array(3), Array(false))).size should be(1)
-    results53(Path(5, Array(1), Array(3), Array(false))) should contain((5, 1))
-    results53(Path(5, Array(1, 4), Array(3, 2), Array(false, false))).size should be(1)
-    results53(Path(5, Array(1, 4), Array(3, 2), Array(false, false))) should contain((5, 4))
-    results53(Path(5, Array(1, 2), Array(3, 4), Array(false, true))).size should be(1)
-    results53(Path(5, Array(1, 2), Array(3, 4), Array(false, true))) should contain((5, 2))
-    results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))).size should be(1)
-    results53(Path(5, Array(1, 5), Array(3, 3), Array(false, true))) should contain((5, 5))
-
-    // 4 Target paths
-    results53(Path(3, Array(1), Array(1), Array(true))).size should be(1)
-    results53(Path(3, Array(1), Array(1), Array(true))) should contain((3, 1))
-    results53(Path(3, Array(1, 4), Array(1, 2), Array(true, false))).size should be(1)
-    results53(Path(3, Array(1, 4), Array(1, 2), Array(true, false))) should contain((3, 4))
-    results53(Path(3, Array(1, 2), Array(1, 4), Array(true, true))).size should be(1)
-    results53(Path(3, Array(1, 2), Array(1, 4), Array(true, true))) should contain((3, 2))
-    results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))).size should be(1)
-    results53(Path(3, Array(1, 5), Array(1, 3), Array(true, true))) should contain((3, 5))
-
-    // 4 Combined paths - some of these contain loops.  If loop detection is ever added, these
-    // tests should be revisited.
-    results53(Path(5, Array(1, 3), Array(3, 1), Array(false, false))).size should be(1)
-    results53(Path(5, Array(1, 3), Array(3, 1), Array(false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false))).size should be(1)
-    results53(Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false))).size should be(1)
-    results53(Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false))) should contain((5, 3))
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false))).size should be(1)
-    results53(Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false))) should contain((5, 3))
-
-
-    // 4 + 4 + 4 = 12 total paths
-    results53.size should be(12)
+    results53 should be(Set(
+      Path(5, Array(1), Array(3), Array(false)),
+      Path(5, Array(1, 4), Array(3, 2), Array(false, false)),
+      Path(5, Array(1, 2), Array(3, 4), Array(false, true)),
+      Path(5, Array(1, 5), Array(3, 3), Array(false, true)),
+      // 4 Target paths
+      Path(3, Array(1), Array(1), Array(true)),
+      Path(3, Array(1, 4), Array(1, 2), Array(true, false)),
+      Path(3, Array(1, 2), Array(1, 4), Array(true, true)),
+      Path(3, Array(1, 5), Array(1, 3), Array(true, true)),
+      // 4 Combined paths - some of these contain loops.  If loop detection is ever added, these
+      // tests should be revisited.
+      Path(5, Array(1, 3), Array(3, 1), Array(false, false)),
+      Path(5, Array(1, 4, 1, 3), Array(3, 2, 2, 1), Array(false, false, true, false)),
+      Path(5, Array(1, 5, 1, 3), Array(3, 3, 3, 1), Array(false, true, false, false)),
+      Path(5, Array(1, 2, 1, 3), Array(3, 4, 4, 1), Array(false, true, false, false))
+    ))
   }
 }

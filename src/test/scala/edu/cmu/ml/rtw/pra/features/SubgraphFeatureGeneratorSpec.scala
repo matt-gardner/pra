@@ -64,31 +64,33 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "getLocalSubgraph" should "find correct a subgraph on a simple graph" in {
+    // We already have a good test of this in BfsPathFinderSpec, so I'm just going to sanity check
+    // a few things in here, instead of enumerating the whole subgraph.
     val subgraph = generator.getLocalSubgraph(instance)
-    subgraph(Path(1, Array(2), Array(1), Array(false))) should contain((1, 2))
-    subgraph(Path(1, Array(4, 7), Array(3, 3), Array(false, true))) should contain((1, 7))
-    subgraph(Path(1, Array(2, 3), Array(1, 2), Array(false, false))) should contain((1, 3))
-    subgraph(Path(2, Array(3), Array(2), Array(false))) should contain((2, 3))
-    subgraph(Path(1, Array(4), Array(3), Array(false))) should contain((1, 4))
-    subgraph(Path(1, Array(4, 5), Array(3, 4), Array(false, false))) should contain((1, 5))
+    subgraph should contain(Path(1, Array(2), Array(1), Array(false)))
+    subgraph should contain(Path(1, Array(4, 7), Array(3, 3), Array(false, true)))
+    subgraph should contain(Path(1, Array(2, 3), Array(1, 2), Array(false, false)))
+    subgraph should contain(Path(2, Array(3), Array(2), Array(false)))
+    subgraph should contain(Path(1, Array(4), Array(3), Array(false)))
+    subgraph should contain(Path(1, Array(4, 5), Array(3, 4), Array(false, false)))
   }
 
   "filterSubgraph" should "filter unallowed paths from the subgraph" in {
-    val subgraph = Map(
-      Path(1, Array(3), Array(1), Array(false)) -> Set((1, 3)),
-      Path(1, Array(3), Array(1), Array(true)) -> Set((1, 3)),
-      Path(1, Array(2, 3), Array(4, 1), Array(false, false)) -> Set((1, 3)),
-      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false)) -> Set((1, 3))
+    val subgraph = Set(
+      Path(1, Array(3), Array(1), Array(false)),
+      Path(1, Array(3), Array(1), Array(true)),
+      Path(1, Array(2, 3), Array(4, 1), Array(false, false)),
+      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false))
     )
     val instance13 = new NodePairInstance(1, 3, true, graph)
-    generator.filterSubgraph(instance13, subgraph, "rel1") should be(Map(
-      Path(1, Array(2, 3), Array(4, 1), Array(false, false)) -> Set((1, 3))
+    generator.filterSubgraph(instance13, subgraph, "rel1") should be(Set(
+      Path(1, Array(2, 3), Array(4, 1), Array(false, false))
     ))
     val instance23 = new NodePairInstance(2, 3, true, graph)
-    generator.filterSubgraph(instance23, subgraph, "rel1") should be(Map(
-      Path(1, Array(3), Array(1), Array(false)) -> Set((1, 3)),
-      Path(1, Array(3), Array(1), Array(true)) -> Set((1, 3)),
-      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false)) -> Set((1, 3))
+    generator.filterSubgraph(instance23, subgraph, "rel1") should be(Set(
+      Path(1, Array(3), Array(1), Array(false)),
+      Path(1, Array(3), Array(1), Array(true)),
+      Path(1, Array(3, 1, 3), Array(2, 1, 2), Array(false, true, false))
     ))
   }
 
@@ -103,9 +105,9 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
           })
         }
       }
-    val subgraph = Map(
-      Path(1, Array(2), Array(1), Array(false)) -> Set((instance.source, 1)),
-      Path(1, Array(2), Array(2), Array(false)) -> Set((instance.target, 2))
+    val subgraph = Set(
+      Path(1, Array(2), Array(1), Array(false)),
+      Path(1, Array(2), Array(2), Array(false))
     )
     val matrixRow = generator.extractFeatures(instance, subgraph).get
     val expectedMatrixRow = new MatrixRow(instance, Array(0, 1, 2), Array(1.0, 1.0, 1.0))

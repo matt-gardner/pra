@@ -34,22 +34,21 @@ object NodeFeatureExtractor {
 class PathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodeFeatureExtractor {
   override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        val endNode = graph.getNodeName(end)
-        if (start == instance.node) {
-          path + ":" + endNode
-        } else {
-          outputter.fatal(s"node: ${instance.node}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be the instance node")
-        }
-      })
+    subgraph.map(path => {
+      val start = path.startNode
+      val end = path.endNode
+      val pathStr = path.encodeAsHumanReadableString(graph)
+      val endNode = graph.getNodeName(end)
+      if (start == instance.node) {
+        pathStr + ":" + endNode
+      } else {
+        outputter.fatal(s"node: ${instance.node}")
+        outputter.fatal(s"Left node: ${start}")
+        outputter.fatal(s"Right node: ${end}")
+        outputter.fatal(s"path: ${path}")
+        throw new IllegalStateException("Something is wrong with the subgraph - " +
+          "the first node should always be the instance node")
+      }
     }).toSeq
   }
 }
@@ -57,21 +56,20 @@ class PathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodeFeatureEx
 class PathOnlyFeatureExtractor(outputter: Outputter) extends NodeFeatureExtractor {
   override def extractFeatures(instance: NodeInstance, subgraph: Subgraph) = {
     val graph = instance.graph
-    subgraph.flatMap(entry => {
-      entry._2.map(nodePair => {
-        val (start, end) = nodePair
-        val path = entry._1.encodeAsHumanReadableString(graph)
-        if (start == instance.node) {
-          path
-        } else {
-          outputter.fatal(s"node: ${instance.node}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
-          throw new IllegalStateException("Something is wrong with the subgraph - " +
-            "the first node should always be the instance node")
-        }
-      })
+    subgraph.map(path => {
+      val start = path.startNode
+      val end = path.endNode
+      val pathStr = path.encodeAsHumanReadableString(graph)
+      if (start == instance.node) {
+        pathStr
+      } else {
+        outputter.fatal(s"node: ${instance.node}")
+        outputter.fatal(s"Left node: ${start}")
+        outputter.fatal(s"Right node: ${end}")
+        outputter.fatal(s"path: ${path}")
+        throw new IllegalStateException("Something is wrong with the subgraph - " +
+          "the first node should always be the instance node")
+      }
     }).toSeq
   }
 }

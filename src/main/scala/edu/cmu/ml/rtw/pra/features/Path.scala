@@ -37,7 +37,20 @@ case class Path(
   val numSteps = nodes.length
   val isEmpty = numSteps == 0
 
-  def alreadyVisited(node: Int) = node == startNode || nodes.exists(_ == node)
+  val endNode = if (isEmpty) -1 else nodes(nodes.length - 1)
+
+  def alreadyVisited(node: Int): Boolean = {
+    if (node == startNode) return true
+    for (i <- 0 until nodes.length) {
+      if (nodes(i) == node) return true
+    }
+    return false
+  }
+
+  def matchesSourceTarget(source: Int, target: Int): Boolean = {
+    if (isEmpty) return false
+    source == startNode && target == nodes(nodes.length - 1)
+  }
 
   // This ignores the edge direction, and returns true if the edge was followed at all.
   def containsEdge(source: Int, target: Int, edge: Int): Boolean = {
@@ -79,7 +92,7 @@ case class Path(
     val newNodes = new Array[Int](nodes.length)
     val newEdges = new Array[Int](edges.length)
     val newReverses = new Array[Boolean](reverses.length)
-    val newStartNode = nodes.last
+    val newStartNode = nodes(nodes.length - 1)
     for (i <- (0 until nodes.length)) {
       if (i < nodes.length - 1) {
         newNodes(i) = nodes(nodes.length - 2 - i)
@@ -97,7 +110,7 @@ case class Path(
       if (startNode == path.startNode) return path
       throw new IllegalStateException("To add a path, its start node must match my end node")
     }
-    if (nodes.last != path.startNode) {
+    if (nodes(nodes.length - 1) != path.startNode) {
       throw new IllegalStateException("To add a path, its start node must match my end node")
     }
     val newNodes = nodes ++ path.nodes
