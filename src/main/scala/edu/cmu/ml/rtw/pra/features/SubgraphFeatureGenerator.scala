@@ -69,6 +69,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 
   override def getFeatureNames(): Array[String] = {
     // Not really sure if par is useful here...  Maybe I should just take it out.
+    // TODO(matt): Shouldn't this just go in the Dictionary code?
     val features = (1 until featureDict.size).par.map(i => {
         val name = featureDict.getString(i)
         if (name == null) {

@@ -16,6 +16,7 @@ import edu.cmu.ml.rtw.pra.models.BatchModel
 import edu.cmu.ml.rtw.pra.models.LogisticRegressionModel
 import edu.cmu.ml.rtw.pra.models.OnlineModel
 
+import com.mattg.util.Dictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.MutableConcurrentDictionary
@@ -119,7 +120,7 @@ class HackyHanieOperation(
   outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[NodePairInstance] {
-  val paramKeys = Seq("type", "features", "learning")
+  val paramKeys = Seq("type", "features")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
   override def runRelation(relation: String) {
@@ -127,8 +128,15 @@ class HackyHanieOperation(
     // TODO(matt): VERY BAD!  But this should be fixable once I make these into Steps.
     val modelFile = s"/home/mattg/pra/results/animal/sfe/$relation/weights.tsv"
     val featureDictionary = new MutableConcurrentDictionary
-    val model = LogisticRegressionModel.loadFromFile(modelFile, featureDictionary, outputter, fileUtil)
+    val model = LogisticRegressionModel.loadFromFile[NodePairInstance](modelFile, featureDictionary, outputter, fileUtil)
+    runRelationWithModel(relation, model, featureDictionary)
+  }
 
+  def runRelationWithModel(
+    relation: String,
+    model: LogisticRegressionModel[NodePairInstance],
+    featureDictionary: MutableConcurrentDictionary
+  ) {
     val generator = FeatureGenerator.create(
       params \ "features",
       graph,

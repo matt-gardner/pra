@@ -42,7 +42,7 @@ class LogisticRegressionModel[T <: Instance](
 
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
-   * instances is positive or negative, train a logistic regression classifier.
+   * instance is positive or negative, train a logistic regression classifier.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
     outputter.info("Learning feature weights")

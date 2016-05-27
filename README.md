@@ -57,6 +57,8 @@ Version 3.4 (current snapshot):
 
 - Migrated the graph creation code to using the pipeline architecture from my util library.
 
+- Added a node pair feature extractor inspired by one of the node feature extractors.
+
 Version 3.3 (released on 3/22/2016):
 
 - Integrated this github repo with Travis CI and coveralls (as seen in the badges at the top of
