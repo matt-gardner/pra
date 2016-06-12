@@ -152,21 +152,31 @@ class HackyHanieOperation(
     val pprComputer = PprComputer.create(pprParams, graph.get, outputter, new scala.util.Random)
 
     val outputFile = outputter.baseDir + relation + "/scores.tsv"
-    // Then we test the model.
     val allowedSources = relationMetadata.getAllowedSources(relation, graph)
     val allowedTargets = relationMetadata.getAllowedTargets(relation, graph)
+
+    // We want to filter out training triples from the list of predictions.  We'll use this to do
+    // that.
+    val trainingData = split.getTrainingData(relation, graph).instances
+      .map(_.asInstanceOf[NodePairInstance]).map(i => (i.source, i.target))
+    val trainingSourceTargets = trainingData.groupBy(_._1).mapValues(_.map(_._2).toSet)
+    val trainingTargetSources = trainingData.groupBy(_._2).mapValues(_.map(_._1).toSet)
+
     val testingData = split.getTestingData(relation, graph)
 
-    // TODO(matt): it'd be much more efficient to group the instances and just calculate PPR once.
-    for (instance <- testingData.instances) {
-      val npi = instance.asInstanceOf[NodePairInstance]
-      val pprValues = pprComputer.computePersonalizedPageRank(
-        if (npi.source != -1) Set(npi.source) else Set(),
-        if (npi.target != -1) Set(npi.target) else Set(),
-        allowedTargets,
-        allowedSources  // yes, these two are flipped on purpose. See comments in PprComputer.
-      )
+    val sources = testingData.instances.map(_.asInstanceOf[NodePairInstance].source).toSet -- Set(-1)
+    val targets = testingData.instances.map(_.asInstanceOf[NodePairInstance].target).toSet -- Set(-1)
+    val pprValues = pprComputer.computePersonalizedPageRank(
+      sources,
+      targets,
+      allowedTargets,
+      allowedSources  // yes, these two are flipped on purpose. See comments in PprComputer.
+    )
 
+    val predictions = testingData.instances.flatMap(instance => {
+      val npi = instance.asInstanceOf[NodePairInstance]
+
+      /*
       val originalSvoMatrixRow = generator.constructMatrixRow(npi)
       val originalSvoScore = originalSvoMatrixRow match {
         case None => 0.0
@@ -174,8 +184,13 @@ class HackyHanieOperation(
       }
       val originalSvoLine = if (npi.isInGraph) s"${npi}\t${originalSvoScore}" else "instance not in graph..."
       fileUtil.writeLinesToFile(outputFile, Seq(originalSvoLine, ""), true)
+      */
 
-      val targets = pprValues.getOrElse(npi.source, Map()).toSeq.sortBy(-_._2).take(10).map(_._1)
+      val trainingTargets = trainingSourceTargets.getOrElse(npi.source, Set())
+      val potentialTargets = pprValues.getOrElse(npi.source, Map()).filterNot(pprValue => {
+        trainingTargets.contains(pprValue._1)
+      })
+      val targets = potentialTargets.toSeq.sortBy(-_._2).take(10).map(_._1)
       val svInstances = targets.map(t => new NodePairInstance(npi.source, t, true, npi.graph))
       val svScores = svInstances.par.map(instance => {
         val matrixRow = generator.constructMatrixRow(instance)
@@ -185,10 +200,12 @@ class HackyHanieOperation(
         }
         (score, instance)
       }).seq
-      val svScoreLines = svScores.sortBy(-_._1).map(x => s"${x._2}\t${x._1}") ++ Seq("")
-      fileUtil.writeLinesToFile(outputFile, svScoreLines, true)
 
-      val sources = pprValues.getOrElse(npi.target, Map()).toSeq.sortBy(-_._2).take(10).map(_._1)
+      val trainingSources = trainingTargetSources.getOrElse(npi.target, Set())
+      val potentialSources = pprValues.getOrElse(npi.target, Map()).filterNot(pprValue => {
+        trainingTargets.contains(pprValue._1)
+      })
+      val sources = potentialSources.toSeq.sortBy(-_._2).take(10).map(_._1)
       val voInstances = sources.par.map(s => new NodePairInstance(s, npi.target, true, npi.graph))
       val voScores = voInstances.map(instance => {
         val matrixRow = generator.constructMatrixRow(instance)
@@ -198,9 +215,18 @@ class HackyHanieOperation(
         }
         (score, instance)
       }).seq
-      val voScoreLines = voScores.sortBy(-_._1).map(x => s"${x._2}\t${x._1}") ++ Seq("")
-      fileUtil.writeLinesToFile(outputFile, voScoreLines, true)
-    }
+      svScores ++ voScores
+    })
+    // This funny business is because trying to put `predictions` directly into a set didin't work,
+    // because Instance objects are only equal by reference (and need to stay that way for other
+    // reasons).
+    val instanceScores = predictions.map(_.swap).map(i => ((i._1.source, i._1.target), (i._2, i._1))).toMap
+    val uniqueInstances = instanceScores.keys.toSet
+    val uniquePredictions = uniqueInstances.map(i => instanceScores(i))
+
+    // Finally, output a big list per relation.
+    val lines = uniquePredictions.toSeq.sortBy(-_._1).map(x => s"${x._2}\t${x._1}")
+    fileUtil.writeLinesToFile(outputFile, lines)
   }
 }
 

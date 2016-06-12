@@ -136,7 +136,13 @@ class RelationMetadata(
           case None => Some(Set[Int]())
           case Some(graph) => {
             val lines = fileUtil.readLinesFromFile(cat_file)
-            Some(lines.map(line => graph.getNodeIndex(line)).toSet)
+            Some(lines.flatMap(line => {
+              if (graph.hasNode(line)) {
+                Seq(graph.getNodeIndex(line))
+              } else {
+                Seq()
+              }
+            }).toSet)
           }
         }
         allowedNodes
