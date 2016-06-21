@@ -127,9 +127,11 @@ class HackyHanieOperation(
 
     // TODO(matt): VERY BAD!  But this should be fixable once I make these into Steps.
     val modelFile = s"/home/mattg/pra/results/animal/sfe/$relation/weights.tsv"
-    val featureDictionary = new MutableConcurrentDictionary
-    val model = LogisticRegressionModel.loadFromFile[NodePairInstance](modelFile, featureDictionary, outputter, fileUtil)
-    runRelationWithModel(relation, model, featureDictionary)
+    if (fileUtil.fileExists(modelFile)) {
+      val featureDictionary = new MutableConcurrentDictionary
+      val model = LogisticRegressionModel.loadFromFile[NodePairInstance](modelFile, featureDictionary, outputter, fileUtil)
+      runRelationWithModel(relation, model, featureDictionary)
+    }
   }
 
   def runRelationWithModel(

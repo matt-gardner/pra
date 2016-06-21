@@ -68,6 +68,8 @@ object ExperimentScorer {
     }
   }
 
+  // TODO(matt): make most of this code into an Evaluator Step, then have the main method here
+  // instantiate that Step and call runPipeline() on it.
   def scoreExperiments(
       pra_base: String,
       experiment_filters: Seq[String],
