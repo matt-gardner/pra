@@ -23,6 +23,8 @@ import com.mattg.util.Pair
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
@@ -34,9 +36,8 @@ import org.json4s.native.JsonMethods._
 class GraphCreator(
   baseGraphDir: String,
   params: JValue,
-  outputter: Outputter,
   fileUtil: FileUtil
-) extends Step(Some(params), fileUtil) {
+) extends Step(Some(params), fileUtil) with LazyLogging {
   implicit val formats = DefaultFormats
   override val name = "Graph Creator"
 
@@ -47,7 +48,7 @@ class GraphCreator(
 
   val relationSets = (params \ "relation sets").children.map(relationSet => {
     (relationSet \ "type") match {
-      case JNothing => new RelationSet(relationSet, outputter, fileUtil)
+      case JNothing => new RelationSet(relationSet, Outputter.justLogger, fileUtil)
       case JString("generated") => generateSyntheticRelationSet(relationSet \ "generation params")
       case other => throw new IllegalStateException("Bad relation set specification")
     }
@@ -93,9 +94,9 @@ class GraphCreator(
   }
 
   override def _runStep() {
-    outputter.info(s"Creating graph $name in $outdir")
+    logger.info(s"Creating graph $name in $outdir")
 
-    outputter.info("Loading aliases")
+    logger.info("Loading aliases")
     val aliases = relationSets.filter(_.isKb).par.map(relationSet => {
       (relationSet.aliasRelation, relationSet.getAliases)
     }).seq
@@ -107,7 +108,7 @@ class GraphCreator(
 
     // Adding edges is now finished, and the dictionaries aren't getting any more entries, so we
     // can output them.
-    outputter.info("Outputting dictionaries to disk")
+    logger.info("Outputting dictionaries to disk")
     val nodeDictFile = fileUtil.getFileWriter(nodeDictFilename)
     val edgeDictFile = fileUtil.getFileWriter(edgeDictFilename)
     nodeDict.writeToWriter(nodeDictFile)
@@ -152,7 +153,7 @@ class GraphCreator(
 
     var numEdges = 0
     for (relationSet <- relationSets) {
-      outputter.info("Adding edges to the graph from " + relationSet.relationFile)
+      logger.info("Adding edges to the graph from " + relationSet.relationFile)
       val prefix = prefixes(relationSet)
       numEdges += relationSet.writeRelationEdgesToGraphFile(
         plainTextFile,
@@ -224,9 +225,9 @@ class GraphCreator(
   }
 
   def createMatrices(filename: String, maxMatrixFileSize: Int) {
-    outputter.info("Creating matrices")
+    logger.info("Creating matrices")
     fileUtil.mkdirs(outdir + "matrices/")
-    outputter.info("Reading edge file")
+    logger.info("Reading edge file")
     var line: String = null
     val lines = fileUtil.readLinesFromFile(filename)
     val matrices = lines.par.map(line => {
@@ -236,13 +237,13 @@ class GraphCreator(
       triple_set.map(triple => (triple._1, triple._2)).seq.toSeq
     }).seq
     val numRelations = matrices.map(_._1).max
-    outputter.info("Outputting matrix files")
+    logger.info("Outputting matrix files")
     val edgesToWrite = new mutable.ArrayBuffer[Seq[(Int, Int)]]
     var startRelation = 1
     var edgesSoFar = 0
     for (i <- 1 to numRelations) {
       val matrix = matrices.getOrElse(i, Nil)
-      if (matrix.size == 0) outputter.warn("RELATION WITH NO INSTANCES: " + i)
+      if (matrix.size == 0) logger.warn("RELATION WITH NO INSTANCES: " + i)
       if (edgesSoFar > 0 && edgesSoFar + matrix.size > maxMatrixFileSize) {
         writeEdgesSoFar(startRelation, i - 1, edgesToWrite.toSeq)
         edgesToWrite.clear
@@ -255,7 +256,7 @@ class GraphCreator(
     if (edgesToWrite.size > 0) {
       writeEdgesSoFar(startRelation, numRelations, edgesToWrite)
     }
-    outputter.info("Done creating matrices")
+    logger.info("Done creating matrices")
   }
 
   def writeEdgesSoFar(_start_relation: Int, end_relation: Int, edges_to_write: Seq[Seq[(Int, Int)]]) {
@@ -304,24 +305,24 @@ class GraphCreator(
 
   def generateSyntheticRelationSet(params: JValue): RelationSet = {
     val baseDir = baseGraphDir.replace("graphs/", "")
-    val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, outputter, fileUtil)
+    val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, Outputter.justLogger, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
       val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).mkString("\n"))
       if (current_params.equals(JNothing)) {
-        outputter.warn(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
+        logger.warn(s"Odd...  couldn't read parameters from ${creator.param_file}, even though " +
           s"${creator.relation_set_dir} exists")
       }
       if (current_params != params) {
-        outputter.fatal(s"Parameters found in ${creator.param_file}: ${pretty(render(current_params))}")
-        outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
-        outputter.fatal(s"Difference: ${current_params.diff(params)}")
+        logger.error(s"Parameters found in ${creator.param_file}: ${pretty(render(current_params))}")
+        logger.error(s"Parameters specified in spec file: ${pretty(render(params))}")
+        logger.error(s"Difference: ${current_params.diff(params)}")
         throw new IllegalStateException("Synthetic data parameters don't match!")
       }
     } else {
       creator.createRelationSet()
     }
     val relSetParams = ("relation file" -> creator.data_file) ~ ("is kb" -> false)
-    new RelationSet(relSetParams, outputter, fileUtil)
+    new RelationSet(relSetParams, Outputter.justLogger, fileUtil)
   }
 }

@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.graphs
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import com.mattg.pipeline.Step
 import com.mattg.util.Dictionary
 import com.mattg.util.ImmutableDictionary
 import com.mattg.util.MutableConcurrentDictionary
@@ -116,6 +117,38 @@ object Graph {
         graph
       }
     }
+  }
+
+  /**
+   * Looks at the parameters and returns the required input graph file, and the Step that will
+   * create it, if any.  This piece of code integrates the Graph code with the pipeline
+   * architecture in com.mattg.pipeline.
+   *
+   * baseDir should be the directory where graphs are kept, not the base experiment directory.
+   */
+  def getStepInput(params: JValue, baseDir: String, fileUtil: FileUtil): Set[(String, Option[Step])] = {
+    // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
+    // just use the path as is.  Otherwise, we have some processing to do.
+    val graphOptions: Option[(String, Boolean)] = params match {
+      case JString(name) => Some((name, false))  // false means there were no params, just a name
+      case jval => {
+        jval \ "name" match {
+          case JString(name) => Some((name, true))  // there were other params specified
+          case other => None
+        }
+      }
+    }
+    graphOptions.map(options => {
+      val graphName = options._1
+      val paramsSpecified = options._2
+      val graphDir = s"${baseDir}${graphName}/"
+      if (paramsSpecified) {
+        val creator: Step = new GraphCreator(s"${baseDir}", params, Outputter.justLogger, fileUtil)
+        (graphDir, Some(creator))
+      } else {
+        (graphDir, None)
+      }
+    }).toSet
   }
 }
 

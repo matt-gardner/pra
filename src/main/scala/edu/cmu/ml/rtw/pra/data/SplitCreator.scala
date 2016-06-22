@@ -5,6 +5,7 @@ import java.io.FileWriter
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
+import com.mattg.pipeline.Step
 import com.mattg.util.Dictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
@@ -13,31 +14,39 @@ import com.mattg.util.Pair
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render}
 
-class SplitCreator(
+import com.typesafe.scalalogging.LazyLogging
+
+object SplitCreator {
+  def create(params: JValue, praBase: String, fileUtil: FileUtil): SplitCreator = {
+    val splitTypes = Seq("fixed split from relation metadata", "add negatives to split")
+    val splitType = JsonHelper.extractChoiceWithDefault(params, "type", splitTypes, "fixed split from relation metadata")
+    if (splitType == "fixed split from relation metadata") {
+      new SplitCreatorFromMetadata(params, praBase, fileUtil)
+    } else {
+      new SplitCreatorFromExistingSplit(params, praBase, fileUtil)
+    }
+  }
+}
+
+abstract class SplitCreator(
     params: JValue,
     praBase: String,
-    splitDir: String,
-    outputter: Outputter,
-    fileUtil: FileUtil = new FileUtil) {
+    fileUtil: FileUtil
+) extends Step(Some(params), fileUtil) with LazyLogging {
   implicit val formats = DefaultFormats
-  // TODO(matt): now that I've added another type, I should clean this up a bit...  And the graph
-  // parameter should go under negative instances.
-  val paramKeys = Seq("name", "type", "relation metadata", "graph", "percent training",
-    "negative instances", "from split", "relations", "generate negatives for")
-  JsonHelper.ensureNoExtras(params, "split", paramKeys)
+  override val name = "Split Creator"
 
-  val inProgressFile = SplitCreator.inProgressFile(splitDir)
-  val paramFile = SplitCreator.paramFile(splitDir)
-  val splitType = JsonHelper.extractWithDefault(params, "type", "fixed split from relation metadata")
+  val baseSplitDir = praBase + "splits/"
+  val splitName = (params \ "name").extract[String]
+  val splitDir = s"${baseSplitDir}${splitName}/"
+  override val inProgressFile = s"${splitDir}in_progress"
+  override val paramFile = s"${splitDir}params.json"
+
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
   val generateNegativesFor = {
-    val choice = JsonHelper.extractChoiceWithDefault(
-      params,
-      "generate negatives for",
-      Seq("training", "test", "both"),
-      "both"
-    )
+    val choices = Seq("training", "test", "both")
+    val choice = JsonHelper.extractChoiceWithDefault(params, "generate negatives for", choices, "both")
     if (choice == "both") {
       Set("training", "testing")
     } else {
@@ -46,31 +55,81 @@ class SplitCreator(
   }
   val negativeExampleSelector = createNegativeExampleSelector(params \ "negative instances")
 
-  def createSplit() {
-    splitType match {
-      case "fixed split from relation metadata" => {
-        createSplitFromMetadata()
+  def _runStep() {
+    fileUtil.mkdirOrDie(splitDir)
+    createSplit()
+  }
+  def createSplit()
+
+  def addNegativeExamples(
+      data: Dataset[NodePairInstance],
+      other_positive_instances: Seq[NodePairInstance],
+      relation: String,
+      domains: Map[String, String],
+      ranges: Map[String, String],
+      node_dict: Dictionary): Dataset[NodePairInstance] = {
+    val domain = if (domains == null) null else domains(relation)
+    val allowedSources = if (domain == null) None else {
+      val fixed = domain.replace("/", "_")
+      val domain_file = s"${relationMetadata}category_instances/${fixed}"
+      if (fileUtil.fileExists(domain_file)) {
+        // The true in this line says that we should drop nodes from the set if they don't show up
+        // in the dictionary.
+        Some(fileUtil.readIntegerSetFromFile(domain_file, Some(node_dict), true))
+      } else {
+        logger.warn(s"Didn't find a category file for type $domain (domain of relation $relation)")
+        None
       }
-      case "add negatives to split" => {
-        addNegativeToSplit()
-      }
-      case other => throw new IllegalStateException("Unrecognized split type!")
     }
+    val range = if (ranges == null) null else ranges(relation)
+    val allowedTargets = if (range == null) None else {
+      val fixed = range.replace("/", "_")
+      val range_file = s"${relationMetadata}category_instances/${fixed}"
+      if (fileUtil.fileExists(range_file)) {
+        // The true in this line says that we should drop nodes from the set if they don't show up
+        // in the dictionary.
+        Some(fileUtil.readIntegerSetFromFile(range_file, Some(node_dict), true))
+      } else {
+        logger.warn(s"Didn't find a category file for type $range (range of relation $relation)")
+        None
+      }
+    }
+    negativeExampleSelector.selectNegativeExamples(data, other_positive_instances, allowedSources, allowedTargets)
   }
 
-  def createSplitFromMetadata() {
-    outputter.info(s"Creating split at $splitDir")
+  def createNegativeExampleSelector(params: JValue): PprNegativeExampleSelector = {
+    params match {
+      case JNothing => null
+      case jval => {
+        val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
+        new PprNegativeExampleSelector(params, graph, Outputter.justLogger)
+      }
+    }
+  }
+}
+
+class SplitCreatorFromMetadata(
+  params: JValue,
+  praBase: String,
+  fileUtil: FileUtil
+) extends SplitCreator(params, praBase, fileUtil) {
+
+  val paramKeys = Seq("name", "type", "relation metadata", "graph", "negative instances",
+    "generate negatives for", "relations", "percent training")
+  JsonHelper.ensureNoExtras(params, name, paramKeys)
+
+  override def createSplit() {
+    logger.info(s"Creating split at $splitDir")
     val percentTraining = (params \ "percent training").extract[Double]
     val relations = (params \ "relations").extract[List[String]]
     if (relations.size == 0) throw new IllegalStateException("You forgot to specify which "
       + "relations to run!")
-    fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
     val params_out = fileUtil.getFileWriter(paramFile)
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+    val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
@@ -92,7 +151,7 @@ class SplitCreator(
       } else {
         addNegativeExamples(all_instances, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
       }
-      outputter.info("Splitting data")
+      logger.info("Splitting data")
       val (training, testing) = data.splitData(percentTraining)
       val rel_dir = s"${splitDir}${fixed}/"
       fileUtil.mkdirs(rel_dir)
@@ -101,23 +160,29 @@ class SplitCreator(
     }
     fileUtil.deleteFile(inProgressFile)
   }
+}
 
-  def addNegativeToSplit() {
-    outputter.info(s"Creating split at $splitDir")
-    fileUtil.mkdirOrDie(splitDir)
-    fileUtil.touchFile(inProgressFile)
-    val params_out = fileUtil.getFileWriter(paramFile)
-    params_out.write(pretty(render(params)))
-    params_out.close
+class SplitCreatorFromExistingSplit(
+  params: JValue,
+  praBase: String,
+  fileUtil: FileUtil
+) extends SplitCreator(params, praBase, fileUtil) {
 
-    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+  val paramKeys = Seq("name", "type", "relation metadata", "graph", "negative instances",
+    "generate negatives for", "from split")
+  JsonHelper.ensureNoExtras(params, name, paramKeys)
+
+  override def createSplit() {
+    logger.info(s"Creating split at $splitDir")
+
+    val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
     val domain_file = s"${relationMetadata}domains.tsv"
     val domains = if (fileUtil.fileExists(domain_file)) fileUtil.readMapFromTsvFile(domain_file) else null
 
-    val fromSplitDir = praBase + "splits/" + (params \ "from split").extract[String] + "/"
+    val fromSplitDir = baseSplitDir + (params \ "from split").extract[String] + "/"
     val relations = fileUtil.readLinesFromFile(fromSplitDir + "relations_to_run.tsv")
     val relations_to_run = fileUtil.getFileWriter(s"${splitDir}relations_to_run.tsv")
     for (relation <- relations) {
@@ -177,55 +242,4 @@ class SplitCreator(
     }
     fileUtil.deleteFile(inProgressFile)
   }
-
-  def addNegativeExamples(
-      data: Dataset[NodePairInstance],
-      other_positive_instances: Seq[NodePairInstance],
-      relation: String,
-      domains: Map[String, String],
-      ranges: Map[String, String],
-      node_dict: Dictionary): Dataset[NodePairInstance] = {
-    val domain = if (domains == null) null else domains(relation)
-    val allowedSources = if (domain == null) None else {
-      val fixed = domain.replace("/", "_")
-      val domain_file = s"${relationMetadata}category_instances/${fixed}"
-      if (fileUtil.fileExists(domain_file)) {
-        // The true in this line says that we should drop nodes from the set if they don't show up
-        // in the dictionary.
-        Some(fileUtil.readIntegerSetFromFile(domain_file, Some(node_dict), true))
-      } else {
-        outputter.warn(s"Didn't find a category file for type $domain (domain of relation $relation)")
-        None
-      }
-    }
-    val range = if (ranges == null) null else ranges(relation)
-    val allowedTargets = if (range == null) None else {
-      val fixed = range.replace("/", "_")
-      val range_file = s"${relationMetadata}category_instances/${fixed}"
-      if (fileUtil.fileExists(range_file)) {
-        // The true in this line says that we should drop nodes from the set if they don't show up
-        // in the dictionary.
-        Some(fileUtil.readIntegerSetFromFile(range_file, Some(node_dict), true))
-      } else {
-        outputter.warn(s"Didn't find a category file for type $range (range of relation $relation)")
-        None
-      }
-    }
-    negativeExampleSelector.selectNegativeExamples(data, other_positive_instances, allowedSources, allowedTargets)
-  }
-
-  def createNegativeExampleSelector(params: JValue): PprNegativeExampleSelector = {
-    params match {
-      case JNothing => null
-      case jval => {
-        val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
-        new PprNegativeExampleSelector(params, graph, outputter)
-      }
-    }
-  }
-}
-
-object SplitCreator {
-  def inProgressFile(splitDir: String) = s"${splitDir}in_progress"
-  def paramFile(splitDir: String) = s"${splitDir}params.json"
 }

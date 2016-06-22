@@ -19,6 +19,8 @@ import edu.cmu.ml.rtw.pra.operations.Operation
 
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
@@ -40,7 +42,7 @@ class Driver(
   methodName: String,
   params: JValue,
   fileUtil: FileUtil
-) extends Step(Some(params), fileUtil) {
+) extends Step(Some(params), fileUtil) with LazyLogging {
   implicit val formats = DefaultFormats
   override val name = "Driver"
 
@@ -49,7 +51,7 @@ class Driver(
   override val paramFile = outputter.baseDir + "params.json"
 
   // TODO(matt): this will eventually include the split, embeddings, and whatever else.
-  override val inputs = getGraphInput(params \ "graph")
+  override val inputs = Graph.getStepInput(params \ "graph", praBase + "graphs", fileUtil)
 
   // TODO(matt): define this correctly.
   override val outputs = Set[String]()
@@ -86,7 +88,7 @@ class Driver(
 
     for (relation <- split.relations()) {
       val relation_start = System.currentTimeMillis
-      outputter.info("\n\n\n\nRunning PRA for relation " + relation)
+      logger.info("\n\n\n\nRunning PRA for relation " + relation)
 
       outputter.setRelation(relation)
 
@@ -106,43 +108,7 @@ class Driver(
     seconds = seconds - minutes * 60
     outputter.logToFile("PRA appears to have finished all relations successfully\n")
     outputter.logToFile(s"Total time: $minutes minutes and $seconds seconds\n")
-    outputter.info(s"Total time: $minutes minutes and $seconds seconds")
-  }
-
-  def getGraphInput(graphParams: JValue): Set[(String, Option[Step])] = {
-    var graphName = ""
-    var paramsSpecified = false
-    // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
-    // just use the path as is.  Otherwise, we have some processing to do.
-    graphParams match {
-      case JNothing => {}
-      case JString(path) if (path.startsWith("/")) => {
-        if (!fileUtil.fileExists(path)) {
-          throw new IllegalStateException("Specified path to graph does not exist!")
-        }
-      }
-      case JString(name) => graphName = name
-      case jval => {
-        jval \ "name" match {
-          case JString(name) => {
-            graphName = name
-            paramsSpecified = true
-          }
-          case other => { }
-        }
-      }
-    }
-    if (graphName != "") {
-      val graphDir = s"${praBase}graphs/${graphName}/"
-      if (paramsSpecified) {
-        val creator = new GraphCreator(s"${praBase}graphs", graphParams, outputter, fileUtil)
-        Set((graphDir, Some(creator)))
-      } else {
-        Set((graphDir, None))
-      }
-    } else {
-      Set()
-    }
+    logger.info(s"Total time: $minutes minutes and $seconds seconds")
   }
 
   def createEmbeddingsIfNecessary(params: JValue, outputter: Outputter) {
@@ -153,13 +119,13 @@ class Driver(
     embeddings.filter(_ match {case JString(name) => false; case other => true })
       .par.map(embedding_params => {
         val name = (embedding_params \ "name").extract[String]
-        outputter.info(s"Checking for embeddings with name ${name}")
+        logger.info(s"Checking for embeddings with name ${name}")
         val embeddingsDir = s"${praBase}embeddings/$name/"
         val paramFile = embeddingsDir + "params.json"
         val graph = praBase + "graphs/" + (embedding_params \ "graph").extract[String] + "/"
         val decomposer = new PcaDecomposer(graph, embeddingsDir, outputter)
         if (!fileUtil.fileExists(embeddingsDir)) {
-          outputter.info(s"Creating embeddings with name ${name}")
+          logger.info(s"Creating embeddings with name ${name}")
           val dims = (embedding_params \ "dims").extract[Int]
           decomposer.createPcaRelationEmbeddings(dims)
           val out = fileUtil.getFileWriter(paramFile)
@@ -169,9 +135,9 @@ class Driver(
           fileUtil.blockOnFileDeletion(decomposer.in_progress_file)
           val current_params = parse(fileUtil.readLinesFromFile(paramFile).mkString("\n"))
           if (current_params != embedding_params) {
-            outputter.fatal(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
-            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
-            outputter.fatal(s"Difference: ${current_params.diff(embedding_params)}")
+            logger.error(s"Parameters found in ${paramFile}: ${pretty(render(current_params))}")
+            logger.error(s"Parameters specified in spec file: ${pretty(render(embedding_params))}")
+            logger.error(s"Difference: ${current_params.diff(embedding_params)}")
             throw new IllegalStateException("Embedding parameters don't match!")
           }
         }
@@ -194,9 +160,9 @@ class Driver(
           fileUtil.blockOnFileDeletion(creator.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(creator.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
-            outputter.fatal(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
-            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
+            logger.error(s"Parameters found in ${creator.paramFile}: ${pretty(render(current_params))}")
+            logger.error(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            logger.error(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Similarity matrix parameters don't match!")
           }
         }
@@ -231,9 +197,9 @@ class Driver(
           fileUtil.blockOnFileDeletion(densifier.inProgressFile)
           val current_params = parse(fileUtil.readLinesFromFile(densifier.paramFile).mkString("\n"))
           if (current_params != matrixParams) {
-            outputter.fatal(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
-            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
-            outputter.fatal(s"Difference: ${current_params.diff(matrixParams)}")
+            logger.error(s"Parameters found in ${densifier.paramFile}: ${pretty(render(current_params))}")
+            logger.error(s"Parameters specified in spec file: ${pretty(render(matrixParams))}")
+            logger.error(s"Difference: ${current_params.diff(matrixParams)}")
             throw new IllegalStateException("Denser matrix parameters don't match!")
           }
         }
@@ -264,19 +230,19 @@ class Driver(
       val in_progress_file = SplitCreator.inProgressFile(split_dir)
       val param_file = SplitCreator.paramFile(split_dir)
       if (fileUtil.fileExists(split_dir)) {
-        outputter.info(s"Split found in ${split_dir}")
+        logger.info(s"Split found in ${split_dir}")
         fileUtil.blockOnFileDeletion(in_progress_file)
         if (fileUtil.fileExists(param_file)) {
           val current_params = parse(fileUtil.readLinesFromFile(param_file).mkString("\n"))
           if (params_specified == true && current_params != params) {
-            outputter.fatal(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
-            outputter.fatal(s"Parameters specified in spec file: ${pretty(render(params))}")
-            outputter.fatal(s"Difference: ${current_params.diff(params)}")
+            logger.error(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
+            logger.error(s"Parameters specified in spec file: ${pretty(render(params))}")
+            logger.error(s"Difference: ${current_params.diff(params)}")
             throw new IllegalStateException("Split parameters don't match!")
           }
         }
       } else {
-        outputter.info(s"Split not found at ${split_dir}; creating it...")
+        logger.info(s"Split not found at ${split_dir}; creating it...")
         val creator = new SplitCreator(params, praBase, split_dir, outputter, fileUtil)
         creator.createSplit()
       }

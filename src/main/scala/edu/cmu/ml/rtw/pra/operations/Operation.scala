@@ -70,6 +70,17 @@ class NoOp[T <: Instance] extends Operation[T] {
   override def runRelation(relation: String) { }
 }
 
+class Trainer[T <: Instance](
+  params: JValue,
+  relation: String,
+  graph: Option[Graph],
+  split: Split[T],
+  relationMetadata: RelationMetadata,
+  outputter: Outputter,
+  fileUtil: FileUtil
+) extends Step(Some(params), fileUtil) with Operation[T] {
+}
+
 class TrainAndTest[T <: Instance](
   params: JValue,
   graph: Option[Graph],
