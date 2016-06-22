@@ -4,7 +4,6 @@ import org.scalatest._
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.FakeRandom
 
 import org.json4s._
@@ -12,12 +11,11 @@ import org.json4s.JsonDSL._
 
 class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   val params: JValue = ("ppr computer" -> ("type" -> "Fake"))
-  val outputter = Outputter.justLogger
-  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val graph = new GraphOnDisk("src/test/resources/")
   val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, graph)))
 
   "selectNegativeExamples" should "just return negatives sampled with the given data" in {
-    val selector = new PprNegativeExampleSelector(params, graph, outputter) {
+    val selector = new PprNegativeExampleSelector(params, graph) {
       override def sampleByPrr(
         data: Dataset[NodePairInstance],
         others: Seq[NodePairInstance],
@@ -42,7 +40,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   }
 
   "sampleByPrr" should "get enough negatives per positive" in {
-    val selector = new PprNegativeExampleSelector(params, graph, outputter) {
+    val selector = new PprNegativeExampleSelector(params, graph) {
       var index = -1
       var source = false
       override def weightedSample(list: Array[(Int, Int)], weight: Double, default: Int) = {
@@ -58,7 +56,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "give up when there aren't enough" in {
-    val selector = new PprNegativeExampleSelector(params, graph, outputter) {
+    val selector = new PprNegativeExampleSelector(params, graph) {
       override def weightedSample(list: Array[(Int, Int)], weight: Double, default: Int) = {
         1
       }
@@ -70,7 +68,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "exclude training data" in {
-    val selector = new PprNegativeExampleSelector(params, graph, outputter) {
+    val selector = new PprNegativeExampleSelector(params, graph) {
       var index = -1
       var source = false
       override def weightedSample(list: Array[(Int, Int)], weight: Double, default: Int) = {
@@ -87,7 +85,7 @@ class PprNegativeExampleSelectorSpec extends FlatSpecLike with Matchers {
 
   "weightedSample" should "give the right samples" in {
     val random = new FakeRandom
-    val selector = new PprNegativeExampleSelector(params, graph, outputter, random)
+    val selector = new PprNegativeExampleSelector(params, graph, random)
     val list = Seq((1, 1), (2, 1), (3, 1)).toArray
     random.setNextDouble(.1)
     selector.weightedSample(list, 3.0, -1) should be(1)

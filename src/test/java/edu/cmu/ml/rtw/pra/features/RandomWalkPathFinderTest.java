@@ -1,17 +1,13 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
-import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import com.mattg.util.FakeRandom;
 import com.mattg.util.FileUtil;
@@ -30,7 +26,7 @@ public class RandomWalkPathFinderTest extends TestCase {
   public void setUp() {
     edgesToExclude = Lists.newArrayList();
     addEdgeToExclude(1, 2, 1, edgesToExclude);
-    graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
+    graph = new GraphOnDisk("src/test/resources/", new FileUtil());
     instances = Lists.newArrayList();
     instances.add(new NodePairInstance(1, 2, true, graph));
     finder = new RandomWalkPathFinder(graph,

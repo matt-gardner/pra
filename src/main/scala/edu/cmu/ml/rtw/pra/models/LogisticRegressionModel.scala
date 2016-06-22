@@ -9,7 +9,6 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 
@@ -17,18 +16,17 @@ import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.MutableConcurrentDictionary
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 class LogisticRegressionModel[T <: Instance](
-  params: JValue,
-  outputter: Outputter
+  params: JValue
 ) extends BatchModel[T](
   JsonHelper.extractAsOption[Int](params, "max training examples"),
-  JsonHelper.extractWithDefault(params, "binarize features", false),
-  outputter,
-  JsonHelper.extractWithDefault(params, "log level", 3)
-) {
+  JsonHelper.extractWithDefault(params, "binarize features", false)
+) with LazyLogging {
   val allowedParams = Seq("type", "l1 weight", "l2 weight", "binarize features", "log level",
     "max training examples")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
@@ -44,11 +42,11 @@ class LogisticRegressionModel[T <: Instance](
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a logistic regression classifier.
    */
-  override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
-    outputter.info("Learning feature weights")
-    outputter.info("Prepping training data")
+  override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) {
+    logger.info("Learning feature weights")
+    logger.info("Prepping training data")
 
-    outputter.info("Creating alphabet")
+    logger.info("Creating alphabet")
     // Set up some mallet boiler plate so we can use Burr's ShellClassifier
     val pipe = new Noop()
     val data = new InstanceList(pipe)
@@ -56,20 +54,20 @@ class LogisticRegressionModel[T <: Instance](
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    outputter.info("Creating the MalletLogisticRegression object")
+    logger.info("Creating the MalletLogisticRegression object")
     val lr = new MalletLogisticRegression(alphabet)
     if (l2Weight != 0.0) {
-      outputter.info("Setting L2 weight to " + l2Weight)
+      logger.info("Setting L2 weight to " + l2Weight)
       lr.setL2wt(l2Weight)
     }
     if (l1Weight != 0.0) {
-      outputter.info("Setting L1 weight to " + l1Weight)
+      logger.info("Setting L1 weight to " + l1Weight)
       lr.setL1wt(l1Weight)
     }
 
     // Finally, we train.  All that prep and everything that follows is really just to get
     // ready for and pass on the output of this one line.
-    outputter.info("Training the classifier")
+    logger.info("Training the classifier")
     lr.train(data)
     val features = lr.getSparseFeatures()
     val params = lr.getSparseParams()
@@ -86,7 +84,6 @@ class LogisticRegressionModel[T <: Instance](
         j += 1
       }
     }
-    outputter.outputWeights(weights, featureNames)
     lrWeights = weights.toSeq
   }
 
@@ -99,13 +96,19 @@ class LogisticRegressionModel[T <: Instance](
         0.0
     }).sum
   }
+
+  override def saveState(filename: String, featureNames: Seq[String], fileUtil: FileUtil) {
+    val lines = lrWeights.zip(featureNames).sortBy(-_._1).map(weight => {
+      s"${weight._2}\t${weight._1}"
+    })
+    fileUtil.writeLinesToFile(filename, lines)
+  }
 }
 
 object LogisticRegressionModel {
   def loadFromFile[T <: Instance](
     filename: String,
     dictionary: MutableConcurrentDictionary,
-    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): LogisticRegressionModel[T] = {
     val featuresAndWeights = fileUtil.mapLinesFromFile(filename, (line) => {
@@ -118,7 +121,7 @@ object LogisticRegressionModel {
       weights(featureIndex) = weight
     }
 
-    val model = new LogisticRegressionModel[T](JNothing, outputter)
+    val model = new LogisticRegressionModel[T](JNothing)
     model.lrWeights = weights.toSeq
     model
   }

@@ -7,7 +7,6 @@ import edu.cmu.graphchi.walks.IntWalkManager
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FakeChiVertex
 import edu.cmu.ml.rtw.pra.features.FakeIntDrunkardContext
 import com.mattg.util.FakeRandom
@@ -16,8 +15,7 @@ import org.json4s._
 
 class GraphChiPprComputerSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val outputter = Outputter.justLogger
-  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val graph = new GraphOnDisk("src/test/resources/")
   val random = new FakeRandom()
   val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
   val sources = dataset.instances.map(_.source).toSet
@@ -92,15 +90,14 @@ class GraphChiPprComputerSpec extends FlatSpecLike with Matchers {
 
 class InMemoryPprComputerSpec extends FlatSpecLike with Matchers {
   val params: JValue = JNothing
-  val outputter = Outputter.justLogger
-  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val graph = new GraphOnDisk("src/test/resources/")
   val random = new FakeRandom()
   val dataset = new Dataset[NodePairInstance](Seq(new NodePairInstance(1, 2, true, null)))
   val sources = dataset.instances.map(_.source).toSet
   val targets = dataset.instances.map(_.target).toSet
 
   "computePersonalizedPageRank" should "actually work..." in {
-    val computer = new InMemoryPprComputer(params, graph, outputter)
+    val computer = new InMemoryPprComputer(params, graph)
     val pprValues = computer.computePersonalizedPageRank(sources, targets, Some(Set(4, 7, 10)), Some(Set(3, 5)))
     pprValues(1).size should be >= 2
     pprValues(1)(4) should be > pprValues(1)(7)

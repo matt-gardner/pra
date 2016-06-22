@@ -2,13 +2,14 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import scala.collection.mutable
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.pipeline.Step
 import com.mattg.util.Dictionary
 import com.mattg.util.ImmutableDictionary
 import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
+
+import com.typesafe.scalalogging.LazyLogging
 
 import org.json4s._
 
@@ -95,7 +96,13 @@ trait Graph {
 object Graph {
   implicit val formats = DefaultFormats
 
-  def create(params: JValue, graphBaseDir: String, outputter: Outputter, fileUtil: FileUtil): Option[Graph] = {
+  /**
+   * Creates a Graph object with the given params (or None, if there is no graph specified).  Note
+   * that this MUST be lightweight because of the way it is used in the pipeline architecture -
+   * only do object creation in this method, and in the constructors of all Graph objects.  Don't
+   * do any processing - make sure that all class members that are expensive to compute are lazy.
+   */
+  def create(params: JValue, graphBaseDir: String, fileUtil: FileUtil): Option[Graph] = {
     val graphType = JsonHelper.extractWithDefault(params, "type", "default")
     graphType match {
       case "remote" => {
@@ -112,7 +119,7 @@ object Graph {
         }
         val graph = graphDirectory match {
           case None => None
-          case Some(dir) => Some(new GraphOnDisk(dir, outputter, fileUtil))
+          case Some(dir) => Some(new GraphOnDisk(dir, fileUtil))
         }
         graph
       }
@@ -120,35 +127,32 @@ object Graph {
   }
 
   /**
-   * Looks at the parameters and returns the required input graph file, and the Step that will
+   * Looks at the parameters and returns the required input graph directory, and the Step that will
    * create it, if any.  This piece of code integrates the Graph code with the pipeline
    * architecture in com.mattg.pipeline.
    *
-   * baseDir should be the directory where graphs are kept, not the base experiment directory.
+   * The graph parameters could just be a string; in that case, we just use it as the graph
+   * directory and don't try to create anything.  If there are parameters for creating this graph,
+   * we return a Step object using those parameters, so the pipeline architecture can make sure the
+   * graph is constructed.
    */
-  def getStepInput(params: JValue, baseDir: String, fileUtil: FileUtil): Set[(String, Option[Step])] = {
-    // First, is this just a path, or do the params specify a graph name?  If it's a path, we'll
-    // just use the path as is.  Otherwise, we have some processing to do.
-    val graphOptions: Option[(String, Boolean)] = params match {
-      case JString(name) => Some((name, false))  // false means there were no params, just a name
+  def getStepInput(params: JValue, baseGraphDir: String, fileUtil: FileUtil): Option[(String, Option[Step])] = {
+    params match {
+      case JString(name) => {
+        val graphDir = if (name.startsWith("/")) name else baseGraphDir + name + "/"
+        Some((graphDir, None))
+      }
       case jval => {
         jval \ "name" match {
-          case JString(name) => Some((name, true))  // there were other params specified
+          case JString(name) => {
+            val graphDir = baseGraphDir + name + "/"
+            val creator: Step = new GraphCreator(baseGraphDir, params, fileUtil)
+            Some((name, Some(creator)))
+          }
           case other => None
         }
       }
     }
-    graphOptions.map(options => {
-      val graphName = options._1
-      val paramsSpecified = options._2
-      val graphDir = s"${baseDir}${graphName}/"
-      if (paramsSpecified) {
-        val creator: Step = new GraphCreator(s"${baseDir}", params, Outputter.justLogger, fileUtil)
-        (graphDir, Some(creator))
-      } else {
-        (graphDir, None)
-      }
-    }).toSet
   }
 }
 
@@ -170,9 +174,8 @@ case class Node(edges: TMap[(TList, TList)]) {
 // loaded into memory.
 class GraphOnDisk(
   val graphDir: String,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends Graph {
+) extends Graph with LazyLogging {
   val (graphFile, fileIsBinary) = {
     if (fileUtil.fileExists(graphDir + "edges.dat")) {
       (graphDir + "edges.dat", true)
@@ -185,11 +188,11 @@ class GraphOnDisk(
   lazy val numShards = fileUtil.readLinesFromFile(graphDir + "num_shards.tsv")(0).toInt
 
   lazy val nodeDict = {
-    outputter.info("Loading node dictionary")
+    logger.info("Loading node dictionary")
     ImmutableDictionary.readFromFile(graphDir + "node_dict.tsv", fileUtil)
   }
   lazy val edgeDict = {
-    outputter.info("Loading edge dictionary")
+    logger.info("Loading edge dictionary")
     ImmutableDictionary.readFromFile(graphDir + "edge_dict.tsv", fileUtil)
   }
 
@@ -205,9 +208,9 @@ class GraphOnDisk(
   override def getNumEdgeTypes() = edgeDict.size
 
   def loadGraph(): Array[Node] = {
-    outputter.info(s"Loading graph, with initial size ${nodeDict.size}")
-    val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
-    outputter.info(s"Iterating through file")
+    logger.info(s"Loading graph, with initial size ${nodeDict.size}")
+    val graphBuilder = new GraphBuilder(nodeDict.size, nodeDict, edgeDict)
+    logger.info(s"Iterating through file")
     var lineNum = 0
     def addEdge(line: String): Unit = {
       fileUtil.logEvery(1000000, lineNum)
@@ -234,14 +237,14 @@ class GraphOnDisk(
       lineNum += 1
     }
     fileUtil.processFile(graphFile, addEdge _)
-    outputter.info("Done reading graph file")
+    logger.info("Done reading graph file")
     graphBuilder.build
   }
 
   def loadGraphFromBinaryFile(): Array[Node] = {
-    outputter.info(s"Loading graph from binary file, with initial size ${nodeDict.size}")
-    val graphBuilder = new GraphBuilder(outputter, nodeDict.size, nodeDict, edgeDict)
-    outputter.info(s"Iterating through file")
+    logger.info(s"Loading graph from binary file, with initial size ${nodeDict.size}")
+    val graphBuilder = new GraphBuilder(nodeDict.size, nodeDict, edgeDict)
+    logger.info(s"Iterating through file")
     val in = fileUtil.getDataInputStream(graphFile)
     try {
       while (true) {
@@ -254,7 +257,7 @@ class GraphOnDisk(
       case e: java.io.EOFException => { }
     }
     in.close()
-    outputter.info("Done reading graph file")
+    logger.info("Done reading graph file")
     graphBuilder.build
   }
 }
@@ -287,11 +290,10 @@ class GraphInMemory(_entries: Array[Node], nodeDict: Dictionary, edgeDict: Dicti
 // GraphInMemory needs the dictionaries too.  So we just make them vals, so the caller can get the
 // dictionaries out if necessary.
 class GraphBuilder(
-  outputter: Outputter,
   initialSize: Int = -1,
   val nodeDict: Dictionary = new MutableConcurrentDictionary,
   val edgeDict: Dictionary = new MutableConcurrentDictionary
-) {
+) extends LazyLogging {
   type MutableGraphEntry = TMap[(TList, TList)]
   var entries = new Array[MutableGraphEntry](if (initialSize > 0) initialSize else 100)
   (0 until entries.length).par.foreach(i => { entries(i) = new MutableGraphEntry })
@@ -337,7 +339,7 @@ class GraphBuilder(
   }
 
   def build(): Array[Node] = {
-    outputter.info("Building the graph object")
+    logger.info("Building the graph object")
     // If no initial size was provided, we try to trim the size of the resultant array (this should
     // cut down the graph size by at most a factor of 2).  If we were given an initial graph size,
     // then the caller probably knew how big the graph was, and might query for nodes that we never
@@ -351,7 +353,7 @@ class GraphBuilder(
         finalized(i) = new Node(entries(i))
       }
     })
-    outputter.info("Graph object built")
+    logger.info("Graph object built")
     finalized
   }
 

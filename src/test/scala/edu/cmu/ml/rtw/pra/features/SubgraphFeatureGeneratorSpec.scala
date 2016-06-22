@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
 import edu.cmu.ml.rtw.pra.features.extractors.PraFeatureExtractor
@@ -23,19 +22,18 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   type Subgraph = Map[PathType, Set[(Int, Int)]]
 
   val params: JValue = ("include bias" -> true)
-  val outputter = Outputter.justLogger
-  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val graph = new GraphOnDisk("src/test/resources/")
   val fakeFileUtil = new FakeFileUtil
   val relation = "rel3"
   val metadata = RelationMetadata.empty
 
-  val generator = new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil)
+  val generator = new NodePairSubgraphFeatureGenerator(params, relation, metadata, fileUtil = fakeFileUtil)
   generator.featureDict.getIndex("feature1")
   generator.featureDict.getIndex("feature2")
   generator.featureDict.getIndex("feature3")
 
   def generatorWithParams(params: JValue) = {
-    new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil)
+    new NodePairSubgraphFeatureGenerator(params, relation, metadata, fileUtil = fakeFileUtil)
   }
 
   def getSubgraph(instance: NodePairInstance) = {
@@ -53,7 +51,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     val subgraph = getSubgraph(instance)
     val row = new MatrixRow(instance, Array[Int](), Array[Double]())
     val generator =
-      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil) {
+      new NodePairSubgraphFeatureGenerator(params, relation, metadata, fileUtil = fakeFileUtil) {
         override def constructMatrixRow(_instance: NodePairInstance) = {
           if (_instance != instance) throw new RuntimeException()
           Some(row)
@@ -92,7 +90,7 @@ class SubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   "extractFeatures" should "run the feature extractors and return a feature matrix" in {
     val generator =
-      new NodePairSubgraphFeatureGenerator(params, relation, metadata, outputter, fileUtil = fakeFileUtil) {
+      new NodePairSubgraphFeatureGenerator(params, relation, metadata, fileUtil = fakeFileUtil) {
         override def createExtractors(params: JValue) = {
           Seq(new FeatureExtractor[NodePairInstance]() {
             override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {

@@ -3,7 +3,8 @@ package edu.cmu.ml.rtw.pra.graphs
 import scala.collection.mutable
 import scala.util.Random
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
+import com.typesafe.scalalogging.LazyLogging
+
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 
@@ -23,9 +24,8 @@ import org.json4s.native.JsonMethods._
 class SyntheticDataCreator(
   base_dir: String,
   params: JValue,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) {
+) extends LazyLogging {
 
   // Extracting parameters first
   implicit val formats = DefaultFormats
@@ -86,7 +86,7 @@ class SyntheticDataCreator(
     fileUtil.mkdirs(split_dir)
     fileUtil.mkdirs(relation_set_dir)
     fileUtil.touchFile(in_progress_file)
-    outputter.info(s"Creating relation set in $relation_set_dir")
+    logger.info(s"Creating relation set in $relation_set_dir")
     val pra_relations = (1 to num_pra_relations).toList.par.map(generatePraRelations)
     val instances = (new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
       new mutable.ArrayBuffer[(Int, String, Int, Boolean)],
@@ -317,15 +317,15 @@ class SyntheticDataCreator(
 // TODO(matt): No I don't.  I just need GraphCreator to have a method that creates the
 // RelationSetCreator that I can override, that's all.
 trait ISyntheticDataCreatorFactory {
-  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter): SyntheticDataCreator = {
-    getSyntheticDataCreator(base_dir, params, outputter, new FileUtil)
+  def getSyntheticDataCreator(base_dir: String, params: JValue): SyntheticDataCreator = {
+    getSyntheticDataCreator(base_dir, params, new FileUtil)
   }
 
-  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter, fileUtil: FileUtil): SyntheticDataCreator
+  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil): SyntheticDataCreator
 }
 
 class SyntheticDataCreatorFactory extends ISyntheticDataCreatorFactory {
-  def getSyntheticDataCreator(base_dir: String, params: JValue, outputter: Outputter, fileUtil: FileUtil) = {
-    new SyntheticDataCreator(base_dir, params, outputter, fileUtil)
+  def getSyntheticDataCreator(base_dir: String, params: JValue, fileUtil: FileUtil) = {
+    new SyntheticDataCreator(base_dir, params, fileUtil)
   }
 }

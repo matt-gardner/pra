@@ -28,9 +28,6 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
   // ExperimentRunner.  Specifically, the default check to not re-run experiments will fail.
   val baseDir = JsonHelper.extractWithDefault(params, "outdir", s"${praBase}results/${methodName}/")
   val shouldOutputMatrices = JsonHelper.extractWithDefault(params, "output matrices", false)
-  val shouldOutputPaths = JsonHelper.extractWithDefault(params, "output paths", false)
-  val shouldOutputPathCounts = JsonHelper.extractWithDefault(params, "output path counts", false)
-  val shouldOutputPathCountMap = JsonHelper.extractWithDefault(params, "output path count map", false)
 
   lazy val nodeNames = (params \ "node names") match {
     case JNothing => null
@@ -50,26 +47,6 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
 
   def clean() {
     fileUtil.deleteFile(baseDir)
-  }
-
-  // TODO(matt): it might make sense to redirect outputAtLevel to a proper logging library.  At
-  // least this puts all of the logging statements in a single place.
-  private var logLevel = 3
-
-  def fatal(message: String) { outputAtLevel(message, 0) }
-  def error(message: String) { outputAtLevel(message, 1) }
-  def warn(message: String) { outputAtLevel(message, 2) }
-  def info(message: String) { outputAtLevel(message, 3) }
-  def debug(message: String) { outputAtLevel(message, 4) }
-
-  def setLogLevel(level: Int) {
-    logLevel = level
-  }
-
-  def outputAtLevel(message: String, level: Int) {
-    if (level <= logLevel) {
-      println(message)
-    }
   }
 
   def logToFile(message: String) {
@@ -192,91 +169,7 @@ class Outputter(params: JValue, praBase: String, methodName: String, fileUtil: F
     writer.close()
   }
 
-  def outputWeights(weights: Seq[Double], featureNames: Seq[String]) {
-    val filename = baseDir + relation + "/weights.tsv"
-    val lines = weights.zip(featureNames).sortBy(-_._1).map(weight => {
-      s"${weight._2}\t${weight._1}"
-    })
-    fileUtil.writeLinesToFile(filename, lines)
-  }
-
   def outputDataset[T <: Instance](filename: String, data: Dataset[T]) {
     fileUtil.writeLinesToFile(filename, data.instancesToStrings)
-  }
-
-  def outputPathCounts(pathCounts: Map[PathType, Int]) {
-    if (shouldOutputPathCounts) {
-      val lines = pathCounts.toList.sortBy(-_._2).map(entry => {
-        s"${entry._1}\t${entry._2}"
-      })
-      fileUtil.writeLinesToFile(baseDir + relation + "/path_counts.tsv", lines)
-    }
-  }
-
-  def outputPathCountMap(
-    pathCountMap: Map[NodePairInstance, Map[PathType, Int]],
-    data: Dataset[NodePairInstance]
-  ) {
-    if (shouldOutputPathCountMap) {
-      val writer = fileUtil.getFileWriter(baseDir + relation + "/path_count_map.tsv")
-      for (instance <- data.instances) {
-        writer.write(getNode(instance.source, instance.graph) + "\t"
-          + getNode(instance.target, instance.graph) + "\t")
-        if (instance.isPositive) {
-          writer.write("+\n")
-        } else {
-          writer.write("-\n")
-        }
-        val pathCounts = pathCountMap.getOrElse(instance, Map())
-        pathCounts.toList.sortBy(-_._2).foreach(entry => {
-          val pathTypeStr = getPathType(entry._1, instance.graph)
-          writer.write("\t" + pathTypeStr + "\t" + entry._2 + "\n")
-        })
-        writer.write("\n")
-      }
-      writer.close()
-    }
-  }
-
-  def outputPaths(pathTypes: Seq[PathType], graph: Graph) {
-    if (shouldOutputPaths) {
-      fileUtil.writeLinesToFile(baseDir + relation + "/paths.tsv", pathTypes.map(p => getPathType(p, graph)))
-    }
-  }
-
-  def outputFeatureMatrix(isTraining: Boolean, matrix: FeatureMatrix, featureNames: Seq[String]) {
-    if (shouldOutputMatrices) {
-      val trainingStr = if (isTraining) "training_matrix.tsv" else "test_matrix.tsv"
-      val filename = baseDir + relation + "/" + trainingStr
-      val writer = fileUtil.getFileWriter(filename)
-      for (row <- matrix.getRows().asScala) {
-        val key = row.instance match {
-          case npi: NodePairInstance => {
-            getNode(npi.source, npi.graph) + "," + getNode(npi.target, npi.graph)
-          }
-          case ni: NodeInstance => { getNode(ni.node, ni.graph) }
-        }
-        val positiveStr = if (row.instance.isPositive) "1" else "-1"
-        writer.write(key + "\t" + positiveStr + "\t")
-        for (i <- 0 until row.columns) {
-          val featureName = featureNames(row.featureTypes(i))
-          writer.write(featureName + "," + row.values(i))
-          if (i < row.columns - 1) {
-             writer.write(" -#- ")
-          }
-        }
-        writer.write("\n")
-      }
-      writer.close()
-    }
-  }
-}
-
-object Outputter {
-  val justLogger = new Outputter(JNothing, "/dev/null", "/dev/null") {
-    override def logToFile(message: String) {
-      println("NOT LOGGING TO FILE, THIS JUST LOGS TO STDOUT!")
-      println("Message was: " + message)
-    }
   }
 }

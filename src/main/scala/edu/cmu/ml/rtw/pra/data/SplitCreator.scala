@@ -3,6 +3,7 @@ package edu.cmu.ml.rtw.pra.data
 import java.io.FileWriter
 
 import edu.cmu.ml.rtw.pra.experiments.Outputter
+import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import edu.cmu.ml.rtw.pra.graphs.PprNegativeExampleSelector
 import com.mattg.pipeline.Step
@@ -42,8 +43,13 @@ abstract class SplitCreator(
   override val inProgressFile = s"${splitDir}in_progress"
   override val paramFile = s"${splitDir}params.json"
 
+  // We'll only set outputs here; subclasses will have to specify their inputs.
+  override val outputs = Set(splitDir)
+
   val relationMetadata = JsonHelper.getPathOrName(params, "relation metadata", praBase, "relation_metadata").get
+  val relationMetadataInput: (String, Option[Step]) = (relationMetadata, None)
   val graphDir = JsonHelper.getPathOrName(params, "graph", praBase, "graphs").get
+  val graphInput = Graph.getStepInput(params \ "graph", praBase + "graphs/", fileUtil)
   val generateNegativesFor = {
     val choices = Seq("training", "test", "both")
     val choice = JsonHelper.extractChoiceWithDefault(params, "generate negatives for", choices, "both")
@@ -101,8 +107,8 @@ abstract class SplitCreator(
     params match {
       case JNothing => null
       case jval => {
-        val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
-        new PprNegativeExampleSelector(params, graph, Outputter.justLogger)
+        val graph = new GraphOnDisk(graphDir, fileUtil)
+        new PprNegativeExampleSelector(params, graph)
       }
     }
   }
@@ -118,6 +124,8 @@ class SplitCreatorFromMetadata(
     "generate negatives for", "relations", "percent training")
   JsonHelper.ensureNoExtras(params, name, paramKeys)
 
+  override val inputs: Set[(String, Option[Step])] = Set(relationMetadataInput) ++ graphInput.toSet
+
   override def createSplit() {
     logger.info(s"Creating split at $splitDir")
     val percentTraining = (params \ "percent training").extract[Double]
@@ -129,7 +137,7 @@ class SplitCreatorFromMetadata(
     params_out.write(pretty(render(params)))
     params_out.close
 
-    val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
+    val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null
@@ -172,10 +180,14 @@ class SplitCreatorFromExistingSplit(
     "generate negatives for", "from split")
   JsonHelper.ensureNoExtras(params, name, paramKeys)
 
+  val splitInput = Split.getStepInput(params \ "from split", praBase, fileUtil)
+  override val inputs: Set[(String, Option[Step])] =
+    Set(relationMetadataInput, splitInput) ++ graphInput.toSet
+
   override def createSplit() {
     logger.info(s"Creating split at $splitDir")
 
-    val graph = new GraphOnDisk(graphDir, Outputter.justLogger, fileUtil)
+    val graph = new GraphOnDisk(graphDir, fileUtil)
 
     val range_file = s"${relationMetadata}ranges.tsv"
     val ranges = if (fileUtil.fileExists(range_file)) fileUtil.readMapFromTsvFile(range_file) else null

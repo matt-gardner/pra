@@ -8,14 +8,12 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import com.mattg.util.FakeFileUtil
 import com.mattg.util.Pair
 
 class BfsPathFinderSpec extends FlatSpecLike with Matchers {
-  val outputter = Outputter.justLogger
 
   val fileUtil = new FakeFileUtil
 
@@ -43,13 +41,13 @@ class BfsPathFinderSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictContents)
 
   val relation = "rel1"
-  val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val graph = new GraphOnDisk("/graph/", fileUtil)
   val factory = new BasicPathTypeFactory(graph)
   val instance = new NodePairInstance(5, 3, true, graph)
   val data = new Dataset[NodePairInstance](Seq(instance), fileUtil)
 
   def makeFinder(params: JValue = JNothing, relation: String = relation) =
-    new NodePairBfsPathFinder(params, relation, RelationMetadata.empty, outputter, fileUtil)
+    new NodePairBfsPathFinder(params, relation, RelationMetadata.empty, fileUtil)
 
   "findPaths" should "find correct subgraphs with simple parameters" in {
     val finder = makeFinder()

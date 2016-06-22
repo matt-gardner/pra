@@ -4,17 +4,17 @@ import java.io.PrintWriter
 
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import breeze.linalg._
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.FileUtil
 
 class PcaDecomposer(
   graph_dir: String,
-  result_dir: String,
-  outputter: Outputter
-) {
+  result_dir: String
+) extends LazyLogging {
 
   val fileUtil = new FileUtil
   val graph_file = graph_dir + "/graph_chi/edges.tsv"
@@ -30,7 +30,7 @@ class PcaDecomposer(
     fileUtil.touchFile(in_progress_file)
     val rows = new mutable.HashMap[(Int, Int), mutable.ArrayBuffer[(Int, Double)]]
 
-    outputter.info("Reading graph from file")
+    logger.info("Reading graph from file")
     for (line <- fileUtil.readLinesFromFile(graph_file)) {
       val fields = line.split("\t")
       val source = fields(0).toInt
@@ -41,7 +41,7 @@ class PcaDecomposer(
       rels += Tuple2(relation, value)
     }
 
-    outputter.info(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
+    logger.info(s"Building matrix with ${rows.size} rows and ${edge_dict.getNextIndex} columns")
     val builder = new CSCMatrix.Builder[Double](rows.size, edge_dict.getNextIndex)
     var i = 0
     for (row <- rows) {
@@ -54,12 +54,12 @@ class PcaDecomposer(
     }
     val matrix = builder.result
 
-    outputter.info(s"Performing SVD with $dims dimensions")
+    logger.info(s"Performing SVD with $dims dimensions")
     val svd.SVD(u, s, v) = svd(matrix, dims)
-    outputter.info(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
+    logger.info(s"Got matrix, v is size: ${v.rows}, ${v.cols}")
     val weights = breeze.numerics.sqrt(s)
 
-    outputter.info("Saving results")
+    logger.info("Saving results")
     val out = fileUtil.getFileWriter(result_dir + "embeddings.tsv")
     for (i <- 1 until edge_dict.getNextIndex) {
       val vector = v(::, i) :* weights

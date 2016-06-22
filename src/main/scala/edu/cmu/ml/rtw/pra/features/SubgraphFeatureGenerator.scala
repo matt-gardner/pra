@@ -4,7 +4,6 @@ import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.features.extractors.FeatureExtractor
 import edu.cmu.ml.rtw.pra.features.extractors.FeatureMatcher
@@ -20,6 +19,8 @@ import com.mattg.util.Vector
 
 import java.io.File
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
@@ -32,10 +33,9 @@ import gnu.trove.{TIntArrayList => TList}
 
 abstract class SubgraphFeatureGenerator[T <: Instance](
   params: JValue,
-  outputter: Outputter,
   val featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends FeatureGenerator[T] {
+) extends FeatureGenerator[T] with LazyLogging {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
     "include bias", "log level")
@@ -62,7 +62,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
     createMatrixFromData(data)
 
   def createMatrixFromData(data: Dataset[T]) = {
-    outputter.outputAtLevel(s"Creating feature matrix from ${data.instances.size} instances", logLevel)
+    logger.info(s"Creating feature matrix from ${data.instances.size} instances")
     val rows = data.instances.par.map(constructMatrixRow).flatten.seq
     new FeatureMatrix(rows.asJava)
   }
@@ -95,8 +95,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
   def createExtractors(params: JValue): Seq[FeatureExtractor[T]]
 
   def getLocalSubgraphs(data: Dataset[T]): Map[T, Subgraph] = {
-    outputter.outputAtLevel(s"Finding local subgraphs with ${data.instances.size} training instances",
-      logLevel)
+    logger.info(s"Finding local subgraphs with ${data.instances.size} training instances")
 
     pathFinder.findPaths(data)
 
@@ -161,19 +160,17 @@ class NodePairSubgraphFeatureGenerator(
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodePairInstance](params, outputter, featureDict, fileUtil) {
+) extends SubgraphFeatureGenerator[NodePairInstance](params, featureDict, fileUtil) {
 
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodePairInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PraFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodePairFeatureExtractor.create(params, outputter, fileUtil))
+    extractorNames.map(params => NodePairFeatureExtractor.create(params, fileUtil))
   }
 
-  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", relation,
-    relationMetadata, outputter, fileUtil)
+  def createPathFinder() = NodePairPathFinder.create(params \ "path finder", relation, relationMetadata, fileUtil)
 
   // This method finds nodes in the graph that are connected by the set of input features.  This is
   // essentially going backward from feature generation; instead of taking a subgraph between two
@@ -293,17 +290,16 @@ class NodeSubgraphFeatureGenerator(
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
   fileUtil: FileUtil = new FileUtil()
-) extends SubgraphFeatureGenerator[NodeInstance](params, outputter, featureDict, fileUtil) {
+) extends SubgraphFeatureGenerator[NodeInstance](params, featureDict, fileUtil) {
 
   def createExtractors(params: JValue): Seq[FeatureExtractor[NodeInstance]] = {
     val extractorNames: List[JValue] = JsonHelper.extractWithDefault(params, "feature extractors",
       List(JString("PathOnlyFeatureExtractor").asInstanceOf[JValue]))
-    extractorNames.map(params => NodeFeatureExtractor.create(params, outputter, fileUtil))
+    extractorNames.map(params => NodeFeatureExtractor.create(params, fileUtil))
   }
 
   def createPathFinder() =
-    NodePathFinder.create(params \ "path finder", relation, relationMetadata, outputter)
+    NodePathFinder.create(params \ "path finder", relation, relationMetadata)
 }

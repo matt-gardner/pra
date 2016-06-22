@@ -19,7 +19,7 @@ import org.scalatest._
 class OutputterSpec extends FlatSpecLike with Matchers {
   val nodeDict = new MutableConcurrentDictionary
   val edgeDict = new MutableConcurrentDictionary
-  val emptyOutputter = Outputter.justLogger
+  val emptyOutputter = new Outputter(JNothing, "/dev/null", "no method")
 
   val graph = {
     val fileUtil = new FakeFileUtil
@@ -43,7 +43,7 @@ class OutputterSpec extends FlatSpecLike with Matchers {
       "8\trel8\n"
     fileUtil.addFileToBeRead("/graph/node_dict.tsv", nodeDictFile)
     fileUtil.addFileToBeRead("/graph/edge_dict.tsv", edgeDictFile)
-    new GraphOnDisk("/graph/", emptyOutputter, fileUtil)
+    new GraphOnDisk("/graph/", fileUtil)
   }
   val factory = new BasicPathTypeFactory(graph)
 
@@ -66,38 +66,6 @@ class OutputterSpec extends FlatSpecLike with Matchers {
   "getPathType" should "return human readable string" in {
     val pathType = "-1-2-"
     emptyOutputter.getPathType(factory.fromString(pathType), graph) should be("-rel1-rel2-")
-  }
-
-  "outputWeights" should "sort weights and format them correctly" in {
-    val weights = Seq(.2, .9)
-    val featureNames = Seq("-1-", "-2-")
-    val weightFile = "/results/fake name/fake relation/weights.tsv"
-    val expectedWeightFileContents = "-2-\t0.9\n" + "-1-\t0.2\n"
-
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    fileUtil.addExpectedFileWritten(weightFile, expectedWeightFileContents)
-    val outputter = new Outputter(JNothing, "/", "fake name", fileUtil)
-    outputter.setRelation("fake relation")
-    outputter.outputWeights(weights, featureNames)
-    fileUtil.expectFilesWritten()
-  }
-
-  // TODO(matt): I need to add a test here that makes sure the output path counts use the right
-  // edge dictionary, because currently the found_path_counts.tsv file does not use the edge dict
-  // correctly.
-  "outputPathCounts" should "sort counts and format them correctly" in {
-    val pathCounts = Map((factory.fromString("-1-") -> 1), (factory.fromString("-2-") -> 2))
-    val pathCountFile = "/results/fake name/fake relation/path_counts.tsv"
-    val expectedPathCountFileContents = "-2-\t2\n-1-\t1\n"
-
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    fileUtil.addExpectedFileWritten(pathCountFile, expectedPathCountFileContents)
-    val outputter = new Outputter(("output path counts" -> true), "/", "fake name", fileUtil)
-    outputter.setRelation("fake relation")
-    outputter.outputPathCounts(pathCounts)
-    fileUtil.expectFilesWritten()
   }
 
   "outputScores" should "produce a correct scores file" in {
@@ -144,73 +112,6 @@ class OutputterSpec extends FlatSpecLike with Matchers {
     fileUtil.addExpectedFileWritten(trainingFile, expectedTrainingFileContents)
     val outputter = new Outputter(JNothing, "/", "fake name", fileUtil)
     outputter.outputDataset(trainingFile, trainingData)
-    fileUtil.expectFilesWritten()
-  }
-
-  "outputPathCountMap" should "format data correctly" in {
-    val instance1 = new NodePairInstance(1, 2, true, graph)
-    val instance2 = new NodePairInstance(3, 4, false, graph)
-    val data = new Dataset[NodePairInstance](Seq(instance1, instance2))
-
-    val pathCountMap = Map((instance1 -> Map((factory.fromString("-1-"), 22))))
-
-    val pathCountMapFile = "/results/fake name/fake relation/path_count_map.tsv"
-    val expectedPathCountMapFileContents =
-        "node1\tnode2\t+\n" +
-        "\t-rel1-\t22\n" +
-        "\n" +
-        "node3\tnode4\t-\n" +
-        "\n"
-
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    fileUtil.addExpectedFileWritten(pathCountMapFile, expectedPathCountMapFileContents)
-    val outputter = new Outputter(("output path count map" -> true), "/", "fake name", fileUtil)
-    outputter.setRelation("fake relation")
-    outputter.outputPathCountMap(pathCountMap, data)
-    fileUtil.expectFilesWritten()
-  }
-
-  "outputPaths" should "format data correctly" in {
-    val pathTypes = Seq(factory.fromString("-1-"))
-
-    val pathFile = "/results/fake name/fake relation/paths.tsv"
-    val expectedPathFileContents = "-rel1-\n"
-
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    fileUtil.addExpectedFileWritten(pathFile, expectedPathFileContents)
-    val outputter = new Outputter(("output paths" -> true), "/", "fake name", fileUtil)
-    outputter.setRelation("fake relation")
-    outputter.outputPaths(pathTypes, graph)
-    fileUtil.expectFilesWritten()
-  }
-
-  "outputFeatureMatrix" should "format the matrix correctly" in {
-    val instance = new NodePairInstance(1, 2, true, graph)
-    val rows = Seq(new MatrixRow(instance, Array(0, 1), Array(0.1, 0.2))).asJava
-    val featureNames = Seq("-1-", "-2-")
-
-    val matrixFile = "/results/fake name/fake relation/training_matrix.tsv"
-    val expectedMatrixFileContents = "node1,node2\t1\t-1-,0.1 -#- -2-,0.2\n"
-
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    fileUtil.addExpectedFileWritten(matrixFile, expectedMatrixFileContents)
-    val outputter = new Outputter(("output matrices" -> true), "/", "fake name", fileUtil)
-    outputter.setRelation("fake relation")
-    outputter.outputFeatureMatrix(true, new FeatureMatrix(rows), featureNames)
-    fileUtil.expectFilesWritten()
-  }
-
-  "output methods" should "output none of these by default" in {
-    val fileUtil = new FakeFileUtil
-    fileUtil.onlyAllowExpectedFiles()
-    val outputter = new Outputter(JNothing, "/", "fake name", fileUtil)
-    outputter.outputFeatureMatrix(true, null, null)
-    outputter.outputPathCounts(null)
-    outputter.outputPathCountMap(null, null)
-    outputter.outputPaths(null, null)
     fileUtil.expectFilesWritten()
   }
 }

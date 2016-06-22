@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.features.extractors
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.LexicalizedPathType
@@ -13,7 +12,6 @@ import org.json4s.JNothing
 import org.scalatest._
 
 class FeatureMatcherSpec extends FlatSpecLike with Matchers {
-  val outputter = Outputter.justLogger
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
@@ -25,7 +23,7 @@ class FeatureMatcherSpec extends FlatSpecLike with Matchers {
     "5\t@ALIAS@\n" +
     "6\t/business/brand/colors\n" +
     "7\t/business/brand/owner_s\n")
-  val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val graph = new GraphOnDisk("/graph/", fileUtil)
   val factory = new BasicPathTypeFactory(graph)
   val lexicalizedFactory = new LexicalizedPathTypeFactory(JNothing, graph)
 

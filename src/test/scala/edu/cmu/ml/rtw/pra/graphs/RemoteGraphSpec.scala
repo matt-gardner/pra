@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.FakeFileUtil
 
 import scala.collection.mutable
@@ -12,7 +11,6 @@ import gnu.trove.{TIntObjectHashMap => TMap}
 
 class RemoteGraphSpec extends FlatSpecLike with Matchers {
 
-  val outputter = Outputter.justLogger
   val graphFilename = "/graph/graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
       "1\t3\t1\n" +
@@ -25,7 +23,7 @@ class RemoteGraphSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(graphFilename, graphFileContents)
   fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n5\t5\n6\t6\n")
   fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\t1\n2\t2\n3\t3\n4\t4\n")
-  val graphOnDisk = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val graphOnDisk = new GraphOnDisk("/graph/", fileUtil)
 
   // TODO(matt): I don't think I've specified what should happen if you query for a node or edge
   // without checking that it's present.  Should I expect a null pointer exception, or do something

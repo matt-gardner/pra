@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.models
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.features.NodePairSubgraphFeatureGenerator
@@ -15,7 +14,6 @@ import org.scalatest._
 import org.json4s._
 
 class LogisticRegressionModelSpec extends FlatSpecLike with Matchers {
-  val outputter = Outputter.justLogger
   val metadata = RelationMetadata.empty
   val nodeDict = new MutableConcurrentDictionary
   val graph = new GraphInMemory(Array(), nodeDict, nodeDict)
@@ -28,7 +26,7 @@ class LogisticRegressionModelSpec extends FlatSpecLike with Matchers {
     val modelFile = "/modelFile.tsv"
     val modelFileContents = "feature 1\t0.0\nfeature 2\t-1.0\nfeature 3\t2.0"
     fileUtil.addFileToBeRead(modelFile, modelFileContents)
-    val model = LogisticRegressionModel.loadFromFile(modelFile, dictionary, outputter, fileUtil)
+    val model = LogisticRegressionModel.loadFromFile(modelFile, dictionary, fileUtil)
 
     dictionary.hasKey("feature 1") should be(false)
     model.lrWeights.size should be(3)  // index 0 is unused
@@ -39,7 +37,6 @@ class LogisticRegressionModelSpec extends FlatSpecLike with Matchers {
       JNothing,
       "relation",
       metadata,
-      outputter,
       dictionary,
       fileUtil
     ) {
@@ -53,5 +50,23 @@ class LogisticRegressionModelSpec extends FlatSpecLike with Matchers {
     }
     val row = generator.constructMatrixRow(new NodePairInstance(1, 1, true, graph))
     model.classifyMatrixRow(row.get) should be(1.0 +- 0.001)
+  }
+
+  "saveState" should "sort weights and format them correctly" in {
+    val fileUtil = new FakeFileUtil
+    val modelFile = "/modelFile.tsv"
+    val modelFileContents = "feature 1\t0.8\nfeature 2\t-1.0\nfeature 3\t2.0"
+    fileUtil.addFileToBeRead(modelFile, modelFileContents)
+    val dictionary = new MutableConcurrentDictionary
+    val model = LogisticRegressionModel.loadFromFile(modelFile, dictionary, fileUtil)
+
+    fileUtil.onlyAllowExpectedFiles()
+    val weightFile = "/results/fake name/fake relation/weights.tsv"
+    val expectedWeightFileContents = "feature 3\t2.0\n" + "feature 1\t0.8\n" + "null feature\t0.0\n" + "feature 2\t-1.0\n"
+    fileUtil.addExpectedFileWritten(weightFile, expectedWeightFileContents)
+
+    val featureNames = Seq("null feature", "feature 1", "feature 2", "feature 3")
+    model.saveState(weightFile, featureNames, fileUtil)
+    fileUtil.expectFilesWritten()
   }
 }

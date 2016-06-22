@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.FakeFileUtil
 import com.mattg.util.FileUtil
 
@@ -13,7 +12,6 @@ import gnu.trove.{TIntObjectHashMap => TMap}
 
 class GraphOnDiskSpec extends FlatSpecLike with Matchers {
 
-  val outputter = Outputter.justLogger
   val graphDir = "src/test/resources/fake_graph/"
   val graphFilename = graphDir + "graph_chi/edges.tsv"
   val graphFileContents = "1\t2\t1\n" +
@@ -92,7 +90,7 @@ class GraphOnDiskSpec extends FlatSpecLike with Matchers {
   }
 
   "loadGraph" should "correctly read in a graph" in {
-    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+    val graph = new GraphOnDisk(graphDir, fileUtil)
     testGraphIsCorrect(graph)
   }
 
@@ -100,13 +98,13 @@ class GraphOnDiskSpec extends FlatSpecLike with Matchers {
     // We're going to test both reading _and_ writing here, by starting with a graph as loaded
     // above, writing it to a binary file, then reading it, and testing whether the entries are
     // correct.
-    val graph = new GraphOnDisk(graphDir, outputter, fileUtil)
+    val graph = new GraphOnDisk(graphDir, fileUtil)
     val realFileUtil = new FileUtil
     realFileUtil.mkdirs(graphDir)
     realFileUtil.writeContentsToFile(nodeDictFile, nodeDictFileContents)
     realFileUtil.writeContentsToFile(edgeDictFile, edgeDictFileContents)
     graph.writeToBinaryFile(graphDir + "edges.dat", realFileUtil)
-    val graphFromBinaryFile = new GraphOnDisk(graphDir, outputter, realFileUtil)
+    val graphFromBinaryFile = new GraphOnDisk(graphDir, realFileUtil)
     testGraphIsCorrect(graphFromBinaryFile)
     realFileUtil.deleteDirectory(graphDir)
   }

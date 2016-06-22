@@ -11,14 +11,16 @@ import org.json4s.native.JsonMethods._
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.Split
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
+import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.Random
+
+import com.typesafe.scalalogging.LazyLogging
 
 /**
  * Handles learning and classification for models that do batch training.
@@ -30,15 +32,15 @@ import scala.util.Random
 
 abstract class BatchModel[T <: Instance](
   maxTrainingExamples: Option[Int],
-  binarizeFeatures: Boolean,
-  outputter: Outputter,
-  logLevel: Int
-) {
+  binarizeFeatures: Boolean
+) extends LazyLogging {
   /**
    * Given a feature matrix and a list of sources and targets that determines whether an
    * instance is positive or negative, train a model.
    */
   def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String])
+
+  def saveState(filename: String, featureNames: Seq[String], fileUtil: FileUtil)
 
   // TODO(matt): this interface could probably be cleaned up a bit.
   def convertFeatureMatrixToMallet(
@@ -52,7 +54,7 @@ abstract class BatchModel[T <: Instance](
       case None => featureMatrix.getRows().asScala
       case Some(max) => Random.shuffle(featureMatrix.getRows().asScala).take(max)
     }
-    outputter.info("Separating into positive, negative, unseen")
+    logger.info("Separating into positive, negative, unseen")
     val grouped = keptRows.groupBy(row => {
       if (row.instance.isPositive == true)
         "positive"
@@ -68,7 +70,7 @@ abstract class BatchModel[T <: Instance](
     val negativeMatrix = new FeatureMatrix(grouped.getOrElse("negative", Seq()).asJava)
     val unseenMatrix = new FeatureMatrix(grouped.getOrElse("unseen", Seq()).asJava)
 
-    outputter.info("Converting positive matrix to MALLET instances and adding to the dataset")
+    logger.info("Converting positive matrix to MALLET instances and adding to the dataset")
     // First convert the positive matrix to a scala object
     positiveMatrix.getRows().asScala
     // Then, in parallel, map the MatrixRow objects there to MALLET Instance objects
@@ -79,25 +81,25 @@ abstract class BatchModel[T <: Instance](
         data.addThruPipe(instance)
       })
 
-    outputter.info("Adding negative evidence")
+    logger.info("Adding negative evidence")
     val numPositiveFeatures = positiveMatrix.getRows().asScala.map(_.columns).sum
     var numNegativeFeatures = 0
     for (negativeExample <- negativeMatrix.getRows().asScala) {
       numNegativeFeatures += negativeExample.columns
       data.addThruPipe(matrixRowToInstance(negativeExample, alphabet))
     }
-    outputter.info("Number of positive features: " + numPositiveFeatures)
-    outputter.info("Number of negative features: " + numNegativeFeatures)
+    logger.info("Number of positive features: " + numPositiveFeatures)
+    logger.info("Number of negative features: " + numNegativeFeatures)
     if (numNegativeFeatures < numPositiveFeatures) {
-      outputter.info("Using unseen examples to make up the difference")
+      logger.info("Using unseen examples to make up the difference")
       val difference = numPositiveFeatures - numNegativeFeatures
       var numUnseenFeatures = 0.0
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         numUnseenFeatures += unseenExample.columns
       }
-      outputter.info("Number of unseen features: " + numUnseenFeatures)
+      logger.info("Number of unseen features: " + numUnseenFeatures)
       val unseenWeight = difference / numUnseenFeatures
-      outputter.info("Unseen weight: " + unseenWeight)
+      logger.info("Unseen weight: " + unseenWeight)
       for (unseenExample <- unseenMatrix.getRows().asScala) {
         val unseenInstance = matrixRowToInstance(unseenExample, alphabet)
         data.addThruPipe(unseenInstance)
@@ -116,7 +118,7 @@ abstract class BatchModel[T <: Instance](
    *     from the features in the feature matrix and the learned weights.
    */
   def classifyInstances(featureMatrix: FeatureMatrix): Seq[(T, Double)] = {
-    outputter.outputAtLevel("Classifying instances", logLevel)
+    logger.info("Classifying instances")
     featureMatrix.getRows().asScala.map(matrixRow => {
       val score = classifyMatrixRow(matrixRow)
       (matrixRow.instance.asInstanceOf[T], score)
@@ -135,11 +137,11 @@ abstract class BatchModel[T <: Instance](
 
 object BatchModel{
   // The Split object is necessary here to nail down a specific type.
-  def create[T <: Instance](params: JValue, split: Split[T], outputter: Outputter): BatchModel[T] = {
+  def create[T <: Instance](params: JValue, split: Split[T]): BatchModel[T] = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
-      case "logistic regression" => new LogisticRegressionModel[T](params, outputter)
-      case "svm" => new SVMModel[T](params, outputter)
+      case "logistic regression" => new LogisticRegressionModel[T](params)
+      case "svm" => new SVMModel[T](params)
       case other => throw new IllegalStateException("Unrecognized model type")
     }
   }

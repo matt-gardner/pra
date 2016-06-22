@@ -2,30 +2,24 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.rmi.RemoteException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import junit.framework.TestCase;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
-import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import com.mattg.util.FileUtil;
 import com.mattg.util.MutableConcurrentIndex;
-import com.mattg.util.Pair;
 
 public class RandomWalkPathFinderCompanionTest extends TestCase {
   private int sourceNode = 1;
   private int targetNode = 2;
-  private Pair<Integer, Integer> sourceTargetPair =
-      new Pair<Integer, Integer>(sourceNode, targetNode);
   private int intermediateNode = 3;
-  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
+  private GraphOnDisk graph = new GraphOnDisk("src/test/resources/", new FileUtil());
   private BasicPathTypeFactory factory = new BasicPathTypeFactory(graph);
   private PathType type1 = factory.fromString("-1-");
   private PathType type2 = factory.fromString("-2-");
@@ -42,7 +36,6 @@ public class RandomWalkPathFinderCompanionTest extends TestCase {
   private int type_3Index = pathDict.getIndex(type_3);
 
   private NodePairInstance instance = new NodePairInstance(sourceNode, targetNode, true, graph);
-  private List<NodePairInstance> instances = Lists.newArrayList();
 
   private void setDistributionsForTest(RandomWalkPathFinderCompanion companion) {
     // We'll have one source, one target, and one intermediate node in this test.

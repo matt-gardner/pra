@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.Dictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.LineFilter
@@ -14,9 +13,11 @@ import java.io.FileWriter
 
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import org.json4s._
 
-class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new FileUtil) {
+class RelationSet(params: JValue, fileUtil: FileUtil = new FileUtil) extends LazyLogging {
   implicit val formats = DefaultFormats
 
   // Fields dealing with the relations themselves.
@@ -99,7 +100,7 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
     nodeDict: Dictionary,
     edgeDict: Dictionary
   ): Int = {
-    outputter.info(s"Adding edges from relation file $relationFile")
+    logger.info(s"Adding edges from relation file $relationFile")
     val prefix = {
       if (prefixOverride != null) {
         prefixOverride
@@ -223,7 +224,7 @@ class RelationSet(params: JValue, outputter: Outputter, fileUtil: FileUtil = new
 
   def loadEmbeddings(): Map[String, List[String]] = {
     if (embeddingsFile != null) {
-      outputter.info("Reading embeddings from file " + embeddingsFile)
+      logger.info("Reading embeddings from file " + embeddingsFile)
       fileUtil.readMapListFromTsvFile(embeddingsFile).mapValues(_.toList)
     } else {
       null

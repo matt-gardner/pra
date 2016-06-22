@@ -10,7 +10,6 @@ import edu.cmu.graphchi.EmptyType
 import edu.cmu.graphchi.datablocks.IntConverter
 import edu.cmu.graphchi.preprocessing.EdgeProcessor
 import edu.cmu.graphchi.preprocessing.FastSharder
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 
 import com.mattg.pipeline.Step
 import com.mattg.util.Dictionary
@@ -48,7 +47,7 @@ class GraphCreator(
 
   val relationSets = (params \ "relation sets").children.map(relationSet => {
     (relationSet \ "type") match {
-      case JNothing => new RelationSet(relationSet, Outputter.justLogger, fileUtil)
+      case JNothing => new RelationSet(relationSet, fileUtil)
       case JString("generated") => generateSyntheticRelationSet(relationSet \ "generation params")
       case other => throw new IllegalStateException("Bad relation set specification")
     }
@@ -305,7 +304,7 @@ class GraphCreator(
 
   def generateSyntheticRelationSet(params: JValue): RelationSet = {
     val baseDir = baseGraphDir.replace("graphs/", "")
-    val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, Outputter.justLogger, fileUtil)
+    val creator = synthetic_data_creator_factory.getSyntheticDataCreator(baseDir, params, fileUtil)
     if (fileUtil.fileExists(creator.relation_set_dir)) {
       fileUtil.blockOnFileDeletion(creator.in_progress_file)
       val current_params = parse(fileUtil.readLinesFromFile(creator.param_file).mkString("\n"))
@@ -323,6 +322,6 @@ class GraphCreator(
       creator.createRelationSet()
     }
     val relSetParams = ("relation file" -> creator.data_file) ~ ("is kb" -> false)
-    new RelationSet(relSetParams, Outputter.justLogger, fileUtil)
+    new RelationSet(relSetParams, fileUtil)
   }
 }

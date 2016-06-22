@@ -46,11 +46,10 @@ class RelationMetadataSpec extends FlatSpecLike with Matchers {
   fileUtil.addFileToBeRead(embeddingsFile, embeddingsFileContents)
   fileUtil.addFileToBeRead(embeddingsFile2, embeddingsFileContents2)
 
-  val outputter = Outputter.justLogger
-  val split = Split.create(JString("fake"), "/base/dir/", outputter, fileUtil)
+  val split = Split.create(JString("fake"), "/base/dir/", fileUtil)
 
   def relationMetadataWithParams(params: JValue) = {
-    new RelationMetadata(params, "/", outputter, fileUtil)
+    new RelationMetadata(params, "/", fileUtil)
   }
 
   def expectCount[T](collection: Seq[T], element: T, count: Int) {

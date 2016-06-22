@@ -9,7 +9,6 @@ import org.json4s.native.JsonMethods._
 import scala.collection.mutable
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.LexicalizedPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.PathType
@@ -22,7 +21,6 @@ import com.mattg.util.TestUtil
 import com.mattg.util.TestUtil.Function
 
 class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
-  val outputter = Outputter.justLogger
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/graph/node_dict.tsv",
     "1\tnode1\n2\tnode2\n3\tnode3\n4\tnode4\n5\t100\n6\t50\n")
@@ -34,7 +32,7 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
     "5\t@ALIAS@\n" +
     "6\t/business/brand/colors\n" +
     "7\t/business/brand/owner_s\n")
-  val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val graph = new GraphOnDisk("/graph/", fileUtil)
   val basicFactory = new BasicPathTypeFactory(graph)
   val lexicalizedFactory = new LexicalizedPathTypeFactory(JNothing, graph)
 
@@ -108,7 +106,7 @@ class NodePairFeatureExtractorSpec extends FlatSpecLike with Matchers {
   "OneSidedPathAndEndNodeFeatureExtractor" should "map each path type entry to a one-sided feature" in {
     val pathTypes = Seq("-1-", "-2-")
     val nodePairs = Seq(Set((1, 2), (2, 3)), Set((1, 3)))
-    val extractor = new OneSidedPathAndEndNodeFeatureExtractor(outputter)
+    val extractor = new OneSidedPathAndEndNodeFeatureExtractor
     val features = extractor.extractFeatures(instance, getSubgraph(pathTypes, nodePairs))
     print(features)
     features.size should be(3)

@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import org.scalatest._
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.FakeFileWriter
 import com.mattg.util.FakeFileUtil
@@ -99,7 +98,6 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     ("alias file format" -> aliasFileFormat) ~
     ("keep original edges" -> keepOriginalEdges)
 
-  val outputter = Outputter.justLogger
   val fileUtil = new FakeFileUtil()
   fileUtil.addFileToBeRead(relationFile, relationFileContents)
   fileUtil.addFileToBeRead(kbRelationFile, kbRelationFileContents)
@@ -115,7 +113,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   "getAliases" should "read NELL formatted aliases" in {
     val params: JValue = ("alias file format" -> "nell") ~ ("alias file" -> aliasFile)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val aliases = relationSet.getAliases
     expectCount(aliases(np1), concept1, 1)
@@ -125,7 +123,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "read freebase formatted aliases" in {
     val params: JValue = ("alias file format" -> "freebase") ~ ("alias file" -> freebaseAliasFile)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val aliases = relationSet.getAliases()
     aliases.size should be(3)
@@ -139,7 +137,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     TestUtil.expectError(classOf[IllegalStateException], "Unrecognized alias file format", new Function() {
       override def call() {
         val params: JValue = ("alias file format" -> "unknown")
-        val relationSet = new RelationSet(defaultParams merge params, outputter)
+        val relationSet = new RelationSet(defaultParams merge params)
         val aliases = relationSet.getAliases()
       }
     })
@@ -147,7 +145,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   "getEmbeddedRelations" should "just return the relation with empty embeddings map" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params, outputter)
+    val relationSet = new RelationSet(defaultParams merge params)
 
     val result = relationSet.getEmbeddedRelations(relation1, Map())
     result.size should be(1)
@@ -156,7 +154,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "just return the relation with null embeddings map" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params, outputter)
+    val relationSet = new RelationSet(defaultParams merge params)
 
     val result = relationSet.getEmbeddedRelations(relation1, null)
     result.size should be(1)
@@ -165,7 +163,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "return embeddings with they are present" in {
     val params: JValue = ("is kb" -> false)
-    val relationSet = new RelationSet(defaultParams merge params, outputter)
+    val relationSet = new RelationSet(defaultParams merge params)
     val embeddings = Map(relation1 -> List(embedded1, embedded2))
 
     val result = relationSet.getEmbeddedRelations(relation1, embeddings)
@@ -176,7 +174,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "keep original edges when requested" in {
     val params: JValue = ("is kb" -> false) ~ ("keep original edges" -> true)
-    val relationSet = new RelationSet(defaultParams merge params, outputter)
+    val relationSet = new RelationSet(defaultParams merge params)
     val embeddings = Map(relation1 -> List(embedded1, embedded2))
     val result = relationSet.getEmbeddedRelations(relation1, embeddings)
     result.size should be(3)
@@ -191,7 +189,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     fileUtil.addFileToBeRead(relationFile, relationFileContents)
     fileUtil.addFileToBeRead(embeddingsFile, embeddingsFileContents)
     val params: JValue = ("is kb" -> false) ~ ("embeddings file" -> embeddingsFile)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -213,7 +211,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "replace edge labels when requested to" in {
     val params: JValue = ("is kb" -> false) ~ ("replace relations with" -> replaced)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -234,7 +232,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "write aliases only correctly" in {
     val params: JValue = ("is kb" -> false ) ~ ("aliases only" -> true)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -254,7 +252,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     val params: JValue = ("is kb" -> true) ~
       ("embeddings file" -> kbEmbeddingsFile) ~
       ("relation file" -> kbRelationFile)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -275,7 +273,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
     val params: JValue = ("is kb" -> true) ~
       ("relation file" -> kbRelationFile) ~
       ("relation prefix" -> prefix)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()
@@ -290,7 +288,7 @@ class RelationSetSpec extends FlatSpecLike with Matchers {
 
   it should "handle the absense of prefixes correctly" in {
     val params: JValue = ("is kb" -> true) ~ ("relation file" -> kbRelationFile)
-    val relationSet = new RelationSet(defaultParams merge params, outputter, fileUtil)
+    val relationSet = new RelationSet(defaultParams merge params, fileUtil)
 
     val seenNps = new mutable.HashSet[String]
     val writer = new FakeFileWriter()

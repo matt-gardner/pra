@@ -51,7 +51,9 @@ class Driver(
   override val paramFile = outputter.baseDir + "params.json"
 
   // TODO(matt): this will eventually include the split, embeddings, and whatever else.
-  override val inputs = Graph.getStepInput(params \ "graph", praBase + "graphs", fileUtil)
+  override val inputs: Set[(String, Option[Step])] =
+    Graph.getStepInput(params \ "graph", praBase + "graphs/", fileUtil).toSet ++
+    Set(Split.getStepInput(params \ "split", praBase, fileUtil))
 
   // TODO(matt): define this correctly.
   override val outputs = Set[String]()
@@ -72,13 +74,13 @@ class Driver(
     createSplitIfNecessary(params \ "split", outputter)
 
     val relationMetadata =
-      new RelationMetadata(params \ "relation metadata", praBase, outputter, fileUtil)
-    val split = Split.create(params \ "split", praBase, outputter, fileUtil)
+      new RelationMetadata(params \ "relation metadata", praBase, fileUtil)
+    val split = Split.create(params \ "split", praBase, fileUtil)
 
-    val graph = Graph.create(params \ "graph", praBase + "/graphs/", outputter, fileUtil)
+    val graph = Graph.create(params \ "graph", praBase + "/graphs/", fileUtil)
 
     val operation =
-      Operation.create(params \ "operation", graph, split, relationMetadata, outputter, fileUtil)
+      Operation.create(params \ "operation", praBase, graph, split, relationMetadata, outputter, fileUtil)
     operation match {
       case o: NoOp[_] => { outputter.clean(); return }
       case _ => { }
@@ -123,7 +125,7 @@ class Driver(
         val embeddingsDir = s"${praBase}embeddings/$name/"
         val paramFile = embeddingsDir + "params.json"
         val graph = praBase + "graphs/" + (embedding_params \ "graph").extract[String] + "/"
-        val decomposer = new PcaDecomposer(graph, embeddingsDir, outputter)
+        val decomposer = new PcaDecomposer(graph, embeddingsDir)
         if (!fileUtil.fileExists(embeddingsDir)) {
           logger.info(s"Creating embeddings with name ${name}")
           val dims = (embedding_params \ "dims").extract[Int]
@@ -153,7 +155,7 @@ class Driver(
       .par.map(matrixParams => {
         val embeddingsDir = getEmbeddingsDir(matrixParams \ "embeddings")
         val name = (matrixParams \ "name").extract[String]
-        val creator = new SimilarityMatrixCreator(embeddingsDir, name, outputter)
+        val creator = new SimilarityMatrixCreator(embeddingsDir, name)
         if (!fileUtil.fileExists(creator.matrixDir)) {
           creator.createSimilarityMatrix(matrixParams)
         } else {
@@ -190,7 +192,7 @@ class Driver(
         val graphName = (params \ "graph" \ "name").extract[String]
         val graphDir = s"${praBase}/graphs/${graphName}/"
         val name = (matrixParams \ "name").extract[String]
-        val densifier = new GraphDensifier(praBase, graphDir, name, outputter)
+        val densifier = new GraphDensifier(praBase, graphDir, name)
         if (!fileUtil.fileExists(densifier.matrixDir)) {
           densifier.densifyGraph(matrixParams)
         } else {
@@ -207,45 +209,5 @@ class Driver(
   }
 
   def createSplitIfNecessary(params: JValue, outputter: Outputter) {
-    var split_name = ""
-    var params_specified = false
-    // First, is this just a path, or do the params specify a split name?  If it's a path, we'll
-    // just use the path as is.  Otherwise, we have some processing to do.
-    params match {
-      case JString(path) if (path.startsWith("/")) => {
-        if (!fileUtil.fileExists(path)) {
-          throw new IllegalStateException("Specified path to split does not exist!")
-        }
-      }
-      case JString(name) => split_name = name
-      case jval => {
-        split_name = (jval \ "name").extract[String]
-        params_specified = true
-      }
-    }
-    if (split_name != "") {
-      // Here we need to see if the split has already been created, and (if so) whether the split
-      // as specified matches what's already been created.
-      val split_dir = s"${praBase}splits/${split_name}/"
-      val in_progress_file = SplitCreator.inProgressFile(split_dir)
-      val param_file = SplitCreator.paramFile(split_dir)
-      if (fileUtil.fileExists(split_dir)) {
-        logger.info(s"Split found in ${split_dir}")
-        fileUtil.blockOnFileDeletion(in_progress_file)
-        if (fileUtil.fileExists(param_file)) {
-          val current_params = parse(fileUtil.readLinesFromFile(param_file).mkString("\n"))
-          if (params_specified == true && current_params != params) {
-            logger.error(s"Parameters found in ${param_file}: ${pretty(render(current_params))}")
-            logger.error(s"Parameters specified in spec file: ${pretty(render(params))}")
-            logger.error(s"Difference: ${current_params.diff(params)}")
-            throw new IllegalStateException("Split parameters don't match!")
-          }
-        }
-      } else {
-        logger.info(s"Split not found at ${split_dir}; creating it...")
-        val creator = new SplitCreator(params, praBase, split_dir, outputter, fileUtil)
-        creator.createSplit()
-      }
-    }
   }
 }

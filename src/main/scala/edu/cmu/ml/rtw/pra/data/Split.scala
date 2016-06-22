@@ -1,9 +1,9 @@
 package edu.cmu.ml.rtw.pra.data
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphBuilder
 import edu.cmu.ml.rtw.pra.graphs.GraphInMemory
+import com.mattg.pipeline.Step
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 
@@ -12,7 +12,6 @@ import org.json4s._
 sealed abstract class Split[T <: Instance](
   params: JValue,
   baseDir: String,
-  outputter: Outputter,
   fileUtil: FileUtil
 ) {
   implicit val formats = DefaultFormats
@@ -54,7 +53,7 @@ sealed abstract class Split[T <: Instance](
   }
 
   def readGraphString(graphString: String): GraphInMemory = {
-    val graphBuilder = new GraphBuilder(outputter)
+    val graphBuilder = new GraphBuilder()
     val graphEdges = graphString.split(" ### ")
     for (edge <- graphEdges) {
       val fields = edge.split("\\^,\\^")
@@ -74,9 +73,8 @@ sealed abstract class Split[T <: Instance](
 class NodePairSplit(
   params: JValue,
   baseDir: String,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends Split[NodePairInstance](params, baseDir, outputter, fileUtil) {
+) extends Split[NodePairInstance](params, baseDir, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodePairInstance = {
     val fields = line.split("\t")
     val source = fields(0)
@@ -108,9 +106,8 @@ class NodePairSplit(
 class NodeSplit(
   params: JValue,
   baseDir: String,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends Split[NodeInstance](params, baseDir, outputter, fileUtil) {
+) extends Split[NodeInstance](params, baseDir, fileUtil) {
   override def lineToInstance(graph: Graph)(line: String): NodeInstance = {
     val fields = line.split("\t")
     val nodeName = fields(0)
@@ -136,16 +133,55 @@ class NodeSplit(
 }
 
 object Split {
+
+  /**
+   * Creates a Split object with the given params.  Note that this MUST be lightweight because of
+   * the way it is used in the pipeline architecture - only do object creation in this method, and
+   * in the constructors of all Split objects.  Don't do any processing - make sure that all class
+   * members that are expensive to compute are lazy.
+   */
   def create(
     params: JValue,
     baseDir: String,
-    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): Split[_ <: Instance] = {
     val instanceType = JsonHelper.extractWithDefault(params, "node or node pair", "node pair")
     instanceType match {
-      case "node pair" => new NodePairSplit(params, baseDir, outputter, fileUtil)
-      case "node" => new NodeSplit(params, baseDir, outputter, fileUtil)
+      case "node pair" => new NodePairSplit(params, baseDir, fileUtil)
+      case "node" => new NodeSplit(params, baseDir, fileUtil)
+    }
+  }
+
+
+  /**
+   * Looks at the parameters and returns the required input split directory, and the Step that will
+   * create it, if any.  This piece of code integrates the SplitCreator code with the pipeline
+   * architecture in com.mattg.pipeline.
+   *
+   * The split parameters could just be a string; in that case, we just use it as the split
+   * directory and don't try to create anything.  If there are parameters for creating this split,
+   * we return a Step object using those parameters, so the pipeline architecture can make sure the
+   * split is constructed.
+   *
+   * The baseDir here is the base experiment directory, _not_ the base split directory.  The split
+   * creation code needs to be able to find graphs from the base directory.
+   */
+  def getStepInput(params: JValue, baseDir: String, fileUtil: FileUtil): (String, Option[Step]) = {
+    params match {
+      case JString(name) => {
+        val splitDir = if (name.startsWith("/")) name else baseDir + "splits/" + name + "/"
+        (splitDir, None)
+      }
+      case jval => {
+        jval \ "name" match {
+          case JString(name) => {
+            val splitDir = baseDir + "splits/" + name + "/"
+            val creator: Step = SplitCreator.create(params, baseDir, fileUtil)
+            (name, Some(creator))
+          }
+          case other => throw new IllegalStateException("Malformed (or absent) split specification")
+        }
+      }
     }
   }
 }
@@ -156,7 +192,7 @@ object DatasetReader {
     graph: Option[Graph],
     fileUtil: FileUtil = new FileUtil
   ): Dataset[NodePairInstance] = {
-    val split = new NodePairSplit(JString("/fake/"), "/", Outputter.justLogger, fileUtil)
+    val split = new NodePairSplit(JString("/fake/"), "/", fileUtil)
     split.readDatasetFile(filename, graph)
   }
 
@@ -165,8 +201,7 @@ object DatasetReader {
     graph: Option[Graph],
     fileUtil: FileUtil = new FileUtil
   ): Dataset[NodeInstance] = {
-    val split = new NodeSplit(JString("/fake/"), "/", Outputter.justLogger, fileUtil)
+    val split = new NodeSplit(JString("/fake/"), "/", fileUtil)
     split.readDatasetFile(filename, graph)
   }
 }
-

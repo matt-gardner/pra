@@ -9,14 +9,15 @@ import com.mattg.util.JsonHelper
 
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import org.json4s._
 
 class RelationMetadata(
   params: JValue,
   praBase: String,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) {
+) extends LazyLogging {
   implicit val formats = DefaultFormats
 
   val baseDir: String = params match {
@@ -30,7 +31,7 @@ class RelationMetadata(
           jval \ "directory" match {
             case JString(dir) => dir
             case _ => {
-              outputter.warn("Couldn't find a base directory for relation metadata...")
+              logger.warn("Couldn't find a base directory for relation metadata...")
               null
             }
           }
@@ -48,15 +49,13 @@ class RelationMetadata(
   lazy val ranges = if (fileUtil.fileExists(rangeFile)) {
     Some(fileUtil.readMapFromTsvFile(rangeFile))
   } else {
-    outputter.logToFile("No range file found! I hope your accept policy is as you want it...\n")
-    outputter.warn(s"No range file found! (looked in $rangeFile)")
+    logger.warn(s"No range file found! (looked in $rangeFile)")
     None
   }
   lazy val domains = if (fileUtil.fileExists(domainFile)) {
     Some(fileUtil.readMapFromTsvFile(domainFile))
   } else {
-    outputter.logToFile("No domain file found! I hope your accept policy is as you want it...\n")
-    outputter.warn(s"No domain file found! (looked in $domainFile)")
+    logger.warn(s"No domain file found! (looked in $domainFile)")
     None
   }
   lazy val embeddings = if (useEmbeddings) fileUtil.readMapListFromTsvFile(embeddingsFile) else null
@@ -153,5 +152,14 @@ class RelationMetadata(
 }
 
 object RelationMetadata {
-  val empty = new RelationMetadata(JNothing, "/dev/null", Outputter.justLogger)
+  val empty = new RelationMetadata(JNothing, "/dev/null")
+
+  /**
+   * Creates a RelationMetadata object with the given params.  Note that this MUST be lightweight
+   * because of the way it is used in the pipeline architecture - only do object creation in this
+   * method, and in the constructors of all RelationMetadata objects.  Don't do any processing -
+   * make sure that all class members that are expensive to compute are lazy.
+   */
+  def create(params: JValue, baseDir: String, fileUtil: FileUtil) =
+    new RelationMetadata(params, baseDir, fileUtil)
 }

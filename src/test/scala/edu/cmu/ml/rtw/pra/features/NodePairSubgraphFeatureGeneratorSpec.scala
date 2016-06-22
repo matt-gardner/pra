@@ -1,7 +1,6 @@
 package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.features.extractors.ConnectedAtOneMatcher
 import edu.cmu.ml.rtw.pra.features.extractors.ConnectedByMediatorMatcher
@@ -21,7 +20,6 @@ import org.json4s._
 // currently the getRelatedEntities and findMatchingEntites methods.
 class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
-  val outputter = Outputter.justLogger
   val metadata = RelationMetadata.empty
 
   val fileUtil = new FakeFileUtil
@@ -40,7 +38,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
     "3\t6\t4\n" +
     "3\t7\t5\n"
   fileUtil.addFileToBeRead(graphFile, graphFileContents)
-  val graph = new GraphOnDisk("/graph/", outputter, fileUtil)
+  val graph = new GraphOnDisk("/graph/", fileUtil)
   val relation = "rel3"
 
   "getRelatedEntities" should "get matchers from the feature extractors, then union the results" in {
@@ -63,7 +61,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
         override def getFeatureMatcher(feature: String, isSource: Boolean, graph: Graph) = None
       }
     )
-    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter) {
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata) {
       override def createExtractors(params: JValue) = extractors
       override def findMatchingNodes(
         node: String,
@@ -84,7 +82,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   "findMatchingNodes" should "find the right nodes with a PraFeatureExtractor matcher" in {
-    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata)
     val matcher1 = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel1-rel2-", true, graph).get
     generator.findMatchingNodes("node1", matcher1, graph) should be(Set("node3", "node4"))
     generator.findMatchingNodes("node2", matcher1, graph) should be(Set())
@@ -105,7 +103,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   // I'm testing several matchers in these tests mostly as a sanity check.  I have unit tests for
   // the matchers themselves, so they should work here too, but these are just in case, really.
   it should "find the right nodes with a LexicalizedPathType" in {
-    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata)
     val unlexMatcher = new PraFeatureExtractor(JNothing).getFeatureMatcher("-rel2-_rel3-", true, graph).get
     generator.findMatchingNodes("node1", unlexMatcher, graph) should be(Set())
     generator.findMatchingNodes("node2", unlexMatcher, graph) should be(Set("node1", "100"))
@@ -117,7 +115,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "find the right nodes with a ConnectedAtOneMatcher" in {
-    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata)
     val matcher = ConnectedAtOneMatcher
     generator.findMatchingNodes("node1", matcher, graph) should be(Set("node2", "node3"))
     generator.findMatchingNodes("node2", matcher, graph) should be(Set("node1", "node3", "node4", "100"))
@@ -125,7 +123,7 @@ class NodePairSubgraphFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   }
 
   it should "find the right nodes with a ConnectedByMediatorMatcher" in {
-    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata, outputter)
+    val generator = new NodePairSubgraphFeatureGenerator(JNothing, relation, metadata)
     val matcher = new ConnectedByMediatorMatcher(Set(2, 3))
     generator.findMatchingNodes("node1", matcher, graph) should be(Set("node1", "node2"))
     generator.findMatchingNodes("node2", matcher, graph) should be(Set("node1", "node2", "node4", "100"))

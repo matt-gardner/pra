@@ -13,7 +13,6 @@ import scala.collection.JavaConverters._
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import com.mattg.util.Dictionary
@@ -23,7 +22,6 @@ import com.mattg.util.TestUtil
 import com.mattg.util.TestUtil.Function
 
 class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
-  val outputter = Outputter.justLogger
   val factory = new FakePathTypeFactory()
   val finderParams: JValue =
     ("walks per source" -> 123) ~
@@ -48,7 +46,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
   val relation = "rel1"
   val relationMetadata = RelationMetadata.empty
   val unallowedEdges = List(1, 3, 2)
-  val graph = new GraphOnDisk("src/test/resources/", outputter)
+  val graph = new GraphOnDisk("src/test/resources/")
 
   val node1 = "node1"
   val node2 = "node2"
@@ -66,7 +64,7 @@ class PraFeatureGeneratorSpec extends FlatSpecLike with Matchers {
 
   val fileUtil = new FakeFileUtil
   fileUtil.addFileToBeRead("/path/to/r/a_matrix.tsv", "node1\t1\t2\t3\n")
-  val generator = new PraFeatureGenerator(params, graph, relation, relationMetadata, outputter, fileUtil)
+  val generator = new PraFeatureGenerator(params, graph, relation, relationMetadata, fileUtil)
 
   // TODO(matt): this method should move to a PathFollower object, after PathFollower is moved from
   // java to scala.

@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.JsonHelper
 
 import edu.cmu.graphchi.ChiVertex
@@ -27,6 +26,8 @@ import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.util.Random
 
@@ -58,10 +59,10 @@ trait PprComputer {
 }
 
 object PprComputer {
-  def create(params: JValue, graph: Graph, outputter: Outputter, random: Random): PprComputer = {
+  def create(params: JValue, graph: Graph, random: Random): PprComputer = {
     val pprComputerType = JsonHelper.extractWithDefault(params, "type", "InMemoryPprComputer")
     pprComputerType match {
-      case "InMemoryPprComputer" => new InMemoryPprComputer(params, graph, outputter, random)
+      case "InMemoryPprComputer" => new InMemoryPprComputer(params, graph, random)
       case "GraphChiPprComputer" => new GraphChiPprComputer(
         params, graph.asInstanceOf[GraphOnDisk], random)
       case "Fake" => new PprComputer {
@@ -82,9 +83,8 @@ object PprComputer {
 class InMemoryPprComputer(
   params: JValue,
   graph: Graph,
-  outputter: Outputter,
   random: Random = new Random
-) extends PprComputer {
+) extends PprComputer with LazyLogging {
   implicit val formats = DefaultFormats
   val paramKeys = Seq("type", "reset probability", "walks per source", "num steps", "log level")
   JsonHelper.ensureNoExtras(params, "split -> negative instances -> ppr computer", paramKeys)
@@ -100,7 +100,7 @@ class InMemoryPprComputer(
     allowedSources: Option[Set[Int]],
     allowedTargets: Option[Set[Int]]
   ) = {
-    outputter.outputAtLevel(s"Computing PPR with ${sources.size} sources and ${targets.size} targets", logLevel)
+    logger.info(s"Computing PPR with ${sources.size} sources and ${targets.size} targets")
     (sources.par.map(source => (source, pprFromNode(source, allowedSources))) ++
       targets.par.map(target => (target, pprFromNode(target, allowedTargets)))).seq.toMap
   }

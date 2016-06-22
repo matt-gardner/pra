@@ -1,9 +1,10 @@
 package edu.cmu.ml.rtw.pra.models
 
 import edu.cmu.ml.rtw.pra.data.Instance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.MatrixRow
 import com.mattg.util.JsonHelper
+
+import com.typesafe.scalalogging.LazyLogging
 
 import org.json4s._
 
@@ -23,10 +24,7 @@ trait OnlineModel {
   def classifyInstance(instance: MatrixRow): Double
 }
 
-class SgdLogisticRegressionModel[T <: Instance](
-  params: JValue,
-  outputter: Outputter
-) extends OnlineModel {
+class SgdLogisticRegressionModel[T <: Instance](params: JValue) extends OnlineModel with LazyLogging {
   val paramKeys = Seq("type", "learning rate a", "learning rate b", "learning rate momentum",
     "l2 weight", "iterations")
   JsonHelper.ensureNoExtras(params, "SgdLogisticRegressionModel", paramKeys)
@@ -55,7 +53,7 @@ class SgdLogisticRegressionModel[T <: Instance](
 
   def nextIteration() {
     iteration += 1
-    outputter.info(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
+    logger.info(s"LCL at iteration ${iteration - 1}: ${logConditionalLikelihood}")
     logConditionalLikelihood = 0.0
   }
 
@@ -140,10 +138,10 @@ class SgdLogisticRegressionModel[T <: Instance](
 }
 
 object OnlineModel{
-  def create[T <: Instance](params: JValue, outputter: Outputter): OnlineModel = {
+  def create[T <: Instance](params: JValue): OnlineModel = {
     val modelType = JsonHelper.extractWithDefault(params, "type", "logistic regression")
     modelType match {
-      case "logistic regression" => new SgdLogisticRegressionModel(params, outputter)
+      case "logistic regression" => new SgdLogisticRegressionModel(params)
       case other => throw new IllegalStateException("Unrecognized model type")
     }
   }

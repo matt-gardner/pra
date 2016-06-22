@@ -10,7 +10,6 @@ import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -21,12 +20,14 @@ import com.mattg.util.Vector
 
 import scala.collection.JavaConverters._
 
+import com.typesafe.scalalogging.LazyLogging
+
 // TODO(matt): move RandomWalkPathFinder to scala, and change these definitions to use scala
 // objects.  Or just leave RandomWalkPathFinder in java, and incur a hit when converting between
 // datatypes (do the conversion in the GraphChiPathFinder class below).  If it turns out that we
 // move away from the RandomWalkPathFinder, then we can take the second option.  Otherwise, the
 // first.
-trait PathFinder[T <: Instance] {
+trait PathFinder[T <: Instance] extends LazyLogging {
   // Constructs a local subgraph for a single instance.  This is for SGD-style training, as opposed
   // to a batch computation.  Some PathFinders may not support this mode of operation (it's
   // incredibly inefficient with GraphChi, for instance).  This getLocalSubgraphs method does not
@@ -49,15 +50,14 @@ object NodePairPathFinder {
     params: JValue,
     relation: String,
     relationMetadata: RelationMetadata,
-    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): PathFinder[NodePairInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
       case "RandomWalkPathFinder" =>
-        new GraphChiPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+        new GraphChiPathFinder(params, relation, relationMetadata, fileUtil)
       case "BfsPathFinder" =>
-        new NodePairBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+        new NodePairBfsPathFinder(params, relation, relationMetadata, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodePairInstances")
     }
   }
@@ -68,13 +68,12 @@ object NodePathFinder {
     params: JValue,
     relation: String,
     relationMetadata: RelationMetadata,
-    outputter: Outputter,
     fileUtil: FileUtil = new FileUtil
   ): PathFinder[NodeInstance] = {
     val finderType = JsonHelper.extractWithDefault(params, "type", "BfsPathFinder")
     finderType match {
       case "BfsPathFinder" =>
-        new NodeBfsPathFinder(params, relation, relationMetadata, outputter, fileUtil)
+        new NodeBfsPathFinder(params, relation, relationMetadata, fileUtil)
       case other => throw new IllegalStateException("Unrecognized path finder for NodeInstances")
     }
   }
@@ -87,7 +86,6 @@ class GraphChiPathFinder(
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
 ) extends PathFinder[NodePairInstance] {
   implicit val formats = DefaultFormats
@@ -167,10 +165,10 @@ class GraphChiPathFinder(
   }
 
   def createVectorPathTypeFactory(params: JValue, graph: GraphOnDisk) = {
-    outputter.info("Initializing vector path type factory")
+    logger.info("Initializing vector path type factory")
     val spikiness = (params \ "spikiness").extract[Double]
     val resetWeight = (params \ "reset weight").extract[Double]
-    outputter.info(s"RESET WEIGHT SET TO $resetWeight")
+    logger.info(s"RESET WEIGHT SET TO $resetWeight")
     val embeddingsFiles = (params \ "embeddings") match {
       case JNothing => Nil
       case JString(path) if (path.startsWith("/")) => List(path)
@@ -191,7 +189,7 @@ class GraphChiPathFinder(
 
   def readEmbeddingsVectors(embeddingsFiles: Seq[String], graph: Graph) = {
     embeddingsFiles.flatMap(file => {
-      outputter.info(s"Embeddings file: $file")
+      logger.info(s"Embeddings file: $file")
       readVectorsFromFile(file, graph)
     }).toMap
   }

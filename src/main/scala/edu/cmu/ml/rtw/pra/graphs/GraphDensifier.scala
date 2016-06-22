@@ -1,7 +1,6 @@
 package edu.cmu.ml.rtw.pra.graphs
 
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.MutableConcurrentDictionary
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
@@ -10,6 +9,8 @@ import breeze.linalg._
 
 import scala.collection.mutable
 
+import com.typesafe.scalalogging.LazyLogging
+
 import org.json4s._
 import org.json4s.native.JsonMethods.{pretty,render,parse}
 
@@ -17,9 +18,8 @@ class GraphDensifier(
   praBase: String,
   graphDir: String,
   name: String,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) {
+) extends LazyLogging {
   implicit val formats = DefaultFormats
 
   val matrixDir = s"${graphDir}${name}/"
@@ -41,7 +41,7 @@ class GraphDensifier(
     param_out.close
 
     val similarity_matrix_file = getSimilarityMatrixFile(params)
-    outputter.info("Reading the similarity matrix")
+    logger.info("Reading the similarity matrix")
     val similarity_matrix = readSimilarityMatrix(similarity_matrix_file)
     val test_edges: Set[(Int, Int, Int)] = (params \ "split") match {
       case JString(name) => {
@@ -52,12 +52,12 @@ class GraphDensifier(
       case JNothing => Set()
       case other => throw new IllegalStateException("split not specified correctly")
     }
-    outputter.info(s"Found ${test_edges.size} test edges")
-    outputter.info("Reading the graph")
+    logger.info(s"Found ${test_edges.size} test edges")
+    logger.info("Reading the graph")
     val edge_vectors = readGraphEdges(graphDir + "/graph_chi/edges.tsv", test_edges)
-    outputter.info(s"Creating (${edge_vectors.size}) dense entity pair vectors")
+    logger.info(s"Creating (${edge_vectors.size}) dense entity pair vectors")
     val dense_edge_vectors = edge_vectors.par.map(x => (x._1, similarity_matrix * x._2))
-    outputter.info(s"Rekey-ing by relation")
+    logger.info(s"Rekey-ing by relation")
     val relation_matrices = dense_edge_vectors.flatMap(x => {
       val entries = new mutable.ArrayBuffer[(Int, Int, Int, Double)]
       var offset = 0
@@ -69,7 +69,7 @@ class GraphDensifier(
       }
       entries.toSeq
     }).groupBy(_._1).mapValues(x => x.map(y => (y._2, y._3, y._4)).seq.toSet).seq
-    outputter.info("Outputting relation matrices")
+    logger.info("Outputting relation matrices")
     val edges_to_write = new mutable.ArrayBuffer[Set[(Int, Int, Double)]]
     var start_relation = 1
     var edges_so_far = 0
@@ -87,7 +87,7 @@ class GraphDensifier(
     if (edges_to_write.size > 0) {
       writeEdgesSoFar(start_relation, edge_dict.getNextIndex, edges_to_write)
     }
-    outputter.info("Done creating matrices")
+    logger.info("Done creating matrices")
     fileUtil.deleteFile(inProgressFile)
   }
 
@@ -113,12 +113,12 @@ class GraphDensifier(
   }
 
   def getTestEdges(graph_dir: String, split_name: String, metadata: String): Set[(Int, Int, Int)] = {
-    outputter.fatal("THIS CODE IS BROKEN AND NEEDS TO BE UPDATED!")
+    logger.error("THIS CODE IS BROKEN AND NEEDS TO BE UPDATED!")
     throw new RuntimeException("Dead code...")
     /*
-    outputter.info(s"Metadata directory: $metadata")
+    logger.info(s"Metadata directory: $metadata")
     val inverses = createInverses(metadata, builder, fileUtil)
-    outputter.info(s"Inverses size: ${inverses.size}")
+    logger.info(s"Inverses size: ${inverses.size}")
     // TODO(matt): don't I have some common code for reading a split?  Oh yes, it's
     // Dataset.fromFile.  I should use that here.
     val split_dir = s"${praBase}splits/${split_name}/"
@@ -158,7 +158,7 @@ class GraphDensifier(
         seen_test_edges += 1
       }
     }
-    outputter.info(s"Saw $seen_test_edges test edges")
+    logger.info(s"Saw $seen_test_edges test edges")
     edges.map(x => (x._1, createSparseVector(x._2))).toMap
   }
 

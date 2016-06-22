@@ -1,6 +1,5 @@
 package edu.cmu.ml.rtw.pra.graphs
 
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.SpecFileReader
@@ -355,8 +354,7 @@ object RunRemoteGraphServer {
     }
 
     val praBase = "/dev/null"
-    val outputter = new Outputter(JNothing, praBase, "running graph")
-    val graph = Graph.create(JString(graphDir), praBase + "/graphs/", outputter, fileUtil).get.asInstanceOf[GraphOnDisk]
+    val graph = Graph.create(JString(graphDir), praBase + "/graphs/", fileUtil).get.asInstanceOf[GraphOnDisk]
     val start = scala.compat.Platform.currentTime
     println("Loading graph before starting the server")
     println(s"Graph has ${graph._entries.size} entries")

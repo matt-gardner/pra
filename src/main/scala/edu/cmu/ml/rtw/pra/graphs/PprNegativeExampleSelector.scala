@@ -9,23 +9,24 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
 import scala.util.Random
 
 class PprNegativeExampleSelector(
-    params: JValue,
-    val graph: Graph,
-    outputter: Outputter,
-    random: Random = new Random) {
+  params: JValue,
+  val graph: Graph,
+  random: Random = new Random
+) extends LazyLogging {
   implicit val formats = DefaultFormats
   val paramKeys = Seq("ppr computer", "negative to positive ratio", "max potential predictions")
   JsonHelper.ensureNoExtras(params, "split -> negative instances", paramKeys)
 
   val negativesPerPositive = JsonHelper.extractWithDefault(params, "negative to positive ratio", 3)
   val maxPotentialPredictions = JsonHelper.extractWithDefault(params, "max potential predictions", 1000)
-  val pprComputer = PprComputer.create(params \ "ppr computer", graph, outputter, random)
+  val pprComputer = PprComputer.create(params \ "ppr computer", graph, random)
 
   // This is how many times we should try sampling the right number of negatives for each positive
   // before giving up, in case a (source, target) pair is isolated from the graph, for instance.
@@ -42,16 +43,16 @@ class PprNegativeExampleSelector(
     allowedSources: Option[Set[Int]],
     allowedTargets: Option[Set[Int]]
   ): Dataset[NodePairInstance] = {
-    outputter.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances)")
+    logger.info(s"Selecting negative examples by PPR score (there are ${data.instances.size} positive instances)")
 
     val start = compat.Platform.currentTime
-    outputter.info("Computing PPR scores...")
+    logger.info("Computing PPR scores...")
     val sources = data.instances.map(_.source).toSet
     val targets = data.instances.map(_.target).toSet
     val pprValues = pprComputer.computePersonalizedPageRank(sources, targets, allowedSources, allowedTargets)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    outputter.info(s"  took ${seconds} seconds")
+    logger.info(s"  took ${seconds} seconds")
     val negativeExamples = sampleByPrr(data, otherPositiveInstances, pprValues)
 
     val negativeData = new Dataset[NodePairInstance](negativeExamples.map(x =>
@@ -71,23 +72,23 @@ class PprNegativeExampleSelector(
     range: Set[Int],
     knownPositives: Dataset[NodePairInstance]
   ): Dataset[NodePairInstance] = {
-    outputter.info("Finding potential predictions to add to the KB")
+    logger.info("Finding potential predictions to add to the KB")
     val sourcesToUse = random.shuffle(domain).take(maxPotentialPredictions)
     val data = new Dataset[NodePairInstance](sourcesToUse.map(entity =>
         new NodePairInstance(entity, -1, true, graph)).toSeq)
-    outputter.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
+    logger.info(s"There are ${data.instances.size} potential sources, and ${range.size} potential targets")
 
     val start = compat.Platform.currentTime
     // By using computePersonalizedPageRank this way, we will get a map from entities in the domain
     // to entities in the range, ranked by PPR score.  We'll filter the known positives out of this
     // and create a set of potential predictions.
-    outputter.info("Computing PPR scores for the sources...")
+    logger.info("Computing PPR scores for the sources...")
     val sources = data.instances.map(_.source).toSet
     val targets = data.instances.map(_.target).toSet
     val pprValues = pprComputer.computePersonalizedPageRank(sources, targets, Some(range), Some(Set[Int]()))
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    outputter.info(s"  took ${seconds} seconds")
+    logger.info(s"  took ${seconds} seconds")
     val potentialPredictions = pickPredictionsByPpr(pprValues, knownPositives)
 
     new Dataset[NodePairInstance](potentialPredictions.map(x =>
@@ -102,7 +103,7 @@ class PprNegativeExampleSelector(
     range: Set[Int],
     knownPositives: Dataset[NodePairInstance]
   ): Set[Int] = {
-    outputter.debug("Finding potential predictions to add to the KB (for a single source)")
+    logger.debug("Finding potential predictions to add to the KB (for a single source)")
     val data = new Dataset[NodePairInstance](Seq(new NodePairInstance(source, -1, true, graph)))
 
     val pprValues = pprComputer.computePersonalizedPageRank(Set(source), Set(), Some(range), Some(Set[Int]()))

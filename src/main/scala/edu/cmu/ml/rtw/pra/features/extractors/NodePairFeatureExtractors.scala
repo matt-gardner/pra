@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.features.extractors
 
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.BaseEdgeSequencePathType
 import edu.cmu.ml.rtw.pra.features.BasicPathTypeFactory
 import edu.cmu.ml.rtw.pra.features.LexicalizedPathType
@@ -12,13 +11,15 @@ import edu.cmu.ml.rtw.pra.graphs.Graph
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.util.control.Exception.allCatch
 import scala.math.log10
 import scala.math.abs
 
 import org.json4s._
 
-trait NodePairFeatureExtractor extends FeatureExtractor[NodePairInstance] {
+trait NodePairFeatureExtractor extends FeatureExtractor[NodePairInstance] with LazyLogging {
 
   /**
    * This method essentially goes backward from a FeatureExtractor.
@@ -50,14 +51,13 @@ trait NodePairFeatureExtractor extends FeatureExtractor[NodePairInstance] {
 object NodePairFeatureExtractor {
   def create(
     params: JValue,
-    outputter: Outputter,
     fileUtil: FileUtil
   ): NodePairFeatureExtractor = {
     params match {
       case JString("PraFeatureExtractor") => new PraFeatureExtractor(JNothing)
       case JString("PathBigramsFeatureExtractor") => new PathBigramsFeatureExtractor
-      case JString("OneSidedPathAndEndNodeFeatureExtractor") => new OneSidedPathAndEndNodeFeatureExtractor(outputter)
-      case JString("OneSidedPathOnlyFeatureExtractor") => new OneSidedPathOnlyFeatureExtractor(outputter)
+      case JString("OneSidedPathAndEndNodeFeatureExtractor") => new OneSidedPathAndEndNodeFeatureExtractor
+      case JString("OneSidedPathOnlyFeatureExtractor") => new OneSidedPathOnlyFeatureExtractor
       case JString("CategoricalComparisonFeatureExtractor") => new CategoricalComparisonFeatureExtractor
       case JString("NumericalComparisonFeatureExtractor") => new NumericalComparisonFeatureExtractor
       case JString("AnyRelFeatureExtractor") => new AnyRelFeatureExtractor
@@ -138,7 +138,7 @@ class PraFeatureExtractorWithFilter(params: JValue) extends PraFeatureExtractor(
   }
 }
 
-class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
+class OneSidedPathAndEndNodeFeatureExtractor extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -151,11 +151,11 @@ class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodeP
         } else if (start == instance.target) {
           "TARGET:" + path + ":" + endNode
         } else {
-          outputter.fatal(s"Source: ${instance.source}")
-          outputter.fatal(s"Target: ${instance.target}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
+          logger.error(s"Source: ${instance.source}")
+          logger.error(s"Target: ${instance.target}")
+          logger.error(s"Left node: ${start}")
+          logger.error(s"Right node: ${end}")
+          logger.error(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }
@@ -164,7 +164,7 @@ class OneSidedPathAndEndNodeFeatureExtractor(outputter: Outputter) extends NodeP
   }
 }
 
-class OneSidedPathOnlyFeatureExtractor(outputter: Outputter) extends NodePairFeatureExtractor {
+class OneSidedPathOnlyFeatureExtractor extends NodePairFeatureExtractor {
   override def extractFeatures(instance: NodePairInstance, subgraph: Subgraph) = {
     val graph = instance.graph
     subgraph.flatMap(entry => {
@@ -177,11 +177,11 @@ class OneSidedPathOnlyFeatureExtractor(outputter: Outputter) extends NodePairFea
         } else if (start == instance.target) {
           "TARGET:" + path
         } else {
-          outputter.fatal(s"Source: ${instance.source}")
-          outputter.fatal(s"Target: ${instance.target}")
-          outputter.fatal(s"Left node: ${start}")
-          outputter.fatal(s"Right node: ${end}")
-          outputter.fatal(s"path: ${path}")
+          logger.error(s"Source: ${instance.source}")
+          logger.error(s"Target: ${instance.target}")
+          logger.error(s"Left node: ${start}")
+          logger.error(s"Right node: ${end}")
+          logger.error(s"path: ${path}")
           throw new IllegalStateException("Something is wrong with the subgraph - " +
             "the first node should always be either the source or the target")
         }

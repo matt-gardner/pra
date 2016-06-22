@@ -7,7 +7,6 @@ import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
 import edu.cmu.ml.rtw.pra.data.NodeInstance
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -24,13 +23,14 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.parallel.ParMap
 
+import com.typesafe.scalalogging.LazyLogging
+
 abstract class BfsPathFinder[T <: Instance](
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-)  extends PathFinder[T] {
+)  extends PathFinder[T] with LazyLogging {
   implicit val formats = DefaultFormats
 
   val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory", "log level")
@@ -54,12 +54,12 @@ abstract class BfsPathFinder[T <: Instance](
   }
 
   override def findPaths(data: Dataset[T]) {
-    outputter.outputAtLevel("Running BFS...  ", logLevel)
+    logger.info("Running BFS...  ")
     val start = compat.Platform.currentTime
     results = runBfs(data)
     val end = compat.Platform.currentTime
     val seconds = (end - start) / 1000.0
-    outputter.outputAtLevel(s"Took ${seconds} seconds", logLevel)
+    logger.info(s"Took ${seconds} seconds")
   }
 
   override def getPathCounts(): JavaMap[PathType, Integer] = {
@@ -188,9 +188,8 @@ class NodePairBfsPathFinder(
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodePairInstance](params, relation, relationMetadata, outputter, fileUtil) {
+) extends BfsPathFinder[NodePairInstance](params, relation, relationMetadata, fileUtil) {
   def getSubgraphForInstance(instance: NodePairInstance) = {
     val graph = instance.graph
     val factory = createPathTypeFactory(factoryParams, graph)
@@ -236,9 +235,8 @@ class NodeBfsPathFinder(
   params: JValue,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil
-) extends BfsPathFinder[NodeInstance](params, relation, relationMetadata, outputter, fileUtil) {
+) extends BfsPathFinder[NodeInstance](params, relation, relationMetadata, fileUtil) {
   def getSubgraphForInstance(instance: NodeInstance) = {
     val graph = instance.graph
     val factory = createPathTypeFactory(factoryParams, graph)

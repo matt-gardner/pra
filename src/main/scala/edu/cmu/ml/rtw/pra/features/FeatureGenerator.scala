@@ -7,7 +7,6 @@ import edu.cmu.ml.rtw.pra.data.NodePairInstance
 import edu.cmu.ml.rtw.pra.data.NodePairSplit
 import edu.cmu.ml.rtw.pra.data.NodeSplit
 import edu.cmu.ml.rtw.pra.data.Split
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.Graph
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -15,6 +14,8 @@ import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.MutableConcurrentDictionary
+
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConverters._
 
@@ -63,7 +64,7 @@ trait FeatureGenerator[T <: Instance] {
 
 }
 
-object FeatureGenerator {
+object FeatureGenerator extends LazyLogging {
   // We need to take the split as input here because it's what contains the type information.  I
   // need a concrete object to match type on.
   def create[T <: Instance](
@@ -72,12 +73,11 @@ object FeatureGenerator {
     split: Split[T],
     relation: String,
     relationMetadata: RelationMetadata,
-    outputter: Outputter,
     featureDict: MutableConcurrentDictionary = new MutableConcurrentDictionary,
     fileUtil: FileUtil = new FileUtil
   ): FeatureGenerator[T] = {
     val featureType = JsonHelper.extractWithDefault(params, "type", "subgraphs")
-    outputter.info("feature type being used is " + featureType)
+    logger.info("feature type being used is " + featureType)
     featureType match {
       case "pra" => {
         split match {
@@ -87,7 +87,6 @@ object FeatureGenerator {
               graph.get.asInstanceOf[GraphOnDisk],
               relation,
               relationMetadata,
-              outputter,
               fileUtil
             )
           case s: NodeSplit => { throw new IllegalStateException("Can't use PRA features with just nodes") }
@@ -96,9 +95,9 @@ object FeatureGenerator {
       case "subgraphs" => {
         split match {
           case s: NodePairSplit =>
-            new NodePairSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, featureDict, fileUtil)
+            new NodePairSubgraphFeatureGenerator(params, relation, relationMetadata, featureDict, fileUtil)
           case s: NodeSplit =>
-            new NodeSubgraphFeatureGenerator(params, relation, relationMetadata, outputter, featureDict, fileUtil)
+            new NodeSubgraphFeatureGenerator(params, relation, relationMetadata, featureDict, fileUtil)
         }
       }
       case other => throw new IllegalStateException("Illegal feature type!")

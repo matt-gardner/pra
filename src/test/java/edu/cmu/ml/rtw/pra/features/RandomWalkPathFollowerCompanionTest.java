@@ -2,19 +2,16 @@ package edu.cmu.ml.rtw.pra.features;
 
 import java.rmi.RemoteException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import junit.framework.TestCase;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.walks.distributions.DiscreteDistribution;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
-import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import com.mattg.util.FakeFileUtil;
 import com.mattg.util.TestUtil;
@@ -30,7 +27,7 @@ public class RandomWalkPathFollowerCompanionTest extends TestCase {
     fileUtil = new FakeFileUtil();
     fileUtil.addFileToBeRead("/graph/node_dict.tsv", "1\tnode1\n");
     fileUtil.addFileToBeRead("/graph/edge_dict.tsv", "1\trel1\n");
-    graph = new GraphOnDisk("/graph/", Outputter.justLogger(), fileUtil);
+    graph = new GraphOnDisk("/graph/", fileUtil);
   }
 
   public void testAcceptableRow() throws RemoteException {

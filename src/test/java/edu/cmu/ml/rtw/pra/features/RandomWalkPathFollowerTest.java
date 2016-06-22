@@ -1,9 +1,7 @@
 package edu.cmu.ml.rtw.pra.features;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import junit.framework.TestCase;
 
@@ -13,14 +11,11 @@ import com.google.common.collect.Sets;
 
 import edu.cmu.graphchi.walks.LongWalkArray;
 import edu.cmu.ml.rtw.pra.data.NodePairInstance;
-import edu.cmu.ml.rtw.pra.experiments.Outputter;
 import edu.cmu.ml.rtw.pra.features.FakePathType;
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk;
 import com.mattg.util.FakeRandom;
 import com.mattg.util.FileUtil;
-import com.mattg.util.MapUtil;
 import com.mattg.util.Pair;
-import com.mattg.util.TestUtil;
 
 public class RandomWalkPathFollowerTest extends TestCase {
     private List<Pair<Pair<Integer, Integer>, Integer>> edgesToExclude = Lists.newArrayList();
@@ -44,7 +39,7 @@ public class RandomWalkPathFollowerTest extends TestCase {
         chiVertex.addOutEdge(1, 1);
         chiVertex.addOutEdge(2, 1);
         vertex = new Vertex(chiVertex);
-        graph = new GraphOnDisk("src/test/resources/", Outputter.justLogger(), new FileUtil());
+        graph = new GraphOnDisk("src/test/resources/", new FileUtil());
         instances.add(new NodePairInstance(1, 2, true, graph));
         follower = new RandomWalkPathFollower(graph,
                                               instances,
@@ -95,9 +90,6 @@ public class RandomWalkPathFollowerTest extends TestCase {
     }
 
     public void testProcessSingleWalk() {
-        Map<Integer, List<Integer>> inEdgeMap = Maps.newHashMap();
-        Map<Integer, List<Integer>> outEdgeMap = Maps.newHashMap();
-
         int pathType = 0;
         int hopNum = 0;
         int sourceId = 0;

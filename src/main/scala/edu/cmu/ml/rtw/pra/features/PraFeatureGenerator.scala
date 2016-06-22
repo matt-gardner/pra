@@ -2,7 +2,6 @@ package edu.cmu.ml.rtw.pra.features
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.NodePairInstance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
 import com.mattg.util.FileUtil
@@ -11,6 +10,8 @@ import com.mattg.util.Pair
 import com.mattg.util.Vector
 
 import java.io.File
+
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConverters._
 
@@ -22,9 +23,8 @@ class PraFeatureGenerator(
   graph: GraphOnDisk,
   relation: String,
   relationMetadata: RelationMetadata,
-  outputter: Outputter,
   fileUtil: FileUtil = new FileUtil()
-) extends FeatureGenerator[NodePairInstance] {
+) extends FeatureGenerator[NodePairInstance] with LazyLogging {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "path selector", "path follower")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
@@ -75,22 +75,22 @@ class PraFeatureGenerator(
    *     {@link PathType} objects.
    */
   def selectPathFeatures(data: Dataset[NodePairInstance]): Seq[PathType] = {
-    outputter.info("Selecting path features with " + data.instances.size + " training instances")
+    logger.info("Selecting path features with " + data.instances.size + " training instances")
 
-    val finder = NodePairPathFinder.create(params \ "path finder", relation, relationMetadata, outputter)
+    val finder = NodePairPathFinder.create(params \ "path finder", relation, relationMetadata)
     finder.findPaths(data)
 
     // Next we get the resultant path counts.
     val pathCounts = finder.getPathCounts().asScala.toMap.mapValues(_.toInt)
     finder.finished()
-    outputter.outputPathCounts(pathCounts)
+    //outputPathCounts(pathCounts)
 
     // And finally, we select and output path types.
     val pathTypeSelector = createPathTypeSelector(params \ "path selector", finder)
     val numPaths = JsonHelper.extractWithDefault(params \ "path selector", "number of paths to keep", 1000)
     val javaPathCounts = pathCounts.mapValues(x => Integer.valueOf(x)).asJava
     val pathTypes = pathTypeSelector.selectPathTypes(javaPathCounts, numPaths).asScala
-    outputter.outputPaths(pathTypes, graph)
+    //outputPaths(pathTypes, graph)
     pathTypes
   }
 
@@ -119,7 +119,7 @@ class PraFeatureGenerator(
     data: Dataset[NodePairInstance],
     isTraining: Boolean
   ) = {
-    outputter.info("Computing feature values")
+    logger.info("Computing feature values")
     val follower = createPathFollower(params \ "path follower", pathTypes, data, isTraining)
     follower.execute()
     if (follower.usesGraphChi()) {
@@ -205,4 +205,54 @@ class PraFeatureGenerator(
       }
     }
   }
+
+  /*
+   * TODO(matt): if anyone ever cares about this again, these output methods should go into the
+   * higher-level Step operations as outputs.
+   *
+   *
+  val shouldOutputPaths = JsonHelper.extractWithDefault(params, "output paths", false)
+  val shouldOutputPathCounts = JsonHelper.extractWithDefault(params, "output path counts", false)
+  val shouldOutputPathCountMap = JsonHelper.extractWithDefault(params, "output path count map", false)
+
+  def outputPathCounts(pathCounts: Map[PathType, Int]) {
+    if (shouldOutputPathCounts) {
+      val lines = pathCounts.toList.sortBy(-_._2).map(entry => {
+        s"${entry._1}\t${entry._2}"
+      })
+      fileUtil.writeLinesToFile(baseDir + relation + "/path_counts.tsv", lines)
+    }
+  }
+
+  def outputPathCountMap(
+    pathCountMap: Map[NodePairInstance, Map[PathType, Int]],
+    data: Dataset[NodePairInstance]
+  ) {
+    if (shouldOutputPathCountMap) {
+      val writer = fileUtil.getFileWriter(baseDir + relation + "/path_count_map.tsv")
+      for (instance <- data.instances) {
+        writer.write(getNode(instance.source, instance.graph) + "\t"
+          + getNode(instance.target, instance.graph) + "\t")
+        if (instance.isPositive) {
+          writer.write("+\n")
+        } else {
+          writer.write("-\n")
+        }
+        val pathCounts = pathCountMap.getOrElse(instance, Map())
+        pathCounts.toList.sortBy(-_._2).foreach(entry => {
+          val pathTypeStr = getPathType(entry._1, instance.graph)
+          writer.write("\t" + pathTypeStr + "\t" + entry._2 + "\n")
+        })
+        writer.write("\n")
+      }
+      writer.close()
+    }
+  }
+
+  def outputPaths(pathTypes: Seq[PathType], graph: Graph) {
+    if (shouldOutputPaths) {
+      fileUtil.writeLinesToFile(baseDir + relation + "/paths.tsv", pathTypes.map(p => getPathType(p, graph)))
+    }
+  }
+  */
 }

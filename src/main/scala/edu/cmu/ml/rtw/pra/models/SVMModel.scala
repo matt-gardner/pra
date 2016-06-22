@@ -12,13 +12,15 @@ import org.json4s.native.JsonMethods._
 
 import edu.cmu.ml.rtw.pra.data.Dataset
 import edu.cmu.ml.rtw.pra.data.Instance
-import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.features.FeatureMatrix
 import edu.cmu.ml.rtw.pra.features.MatrixRow
+import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+
+import com.typesafe.scalalogging.LazyLogging
 
 import ca.uwo.csd.ai.nlp.common.SparseVector
 import ca.uwo.csd.ai.nlp.kernel.CustomKernel
@@ -32,14 +34,11 @@ import ca.uwo.csd.ai.nlp.libsvm.svm_node
 import ca.uwo.csd.ai.nlp.libsvm.svm_parameter
 
 class SVMModel[T <: Instance](
-  params: JValue,
-  outputter: Outputter
+  params: JValue
 ) extends BatchModel[T](
   JsonHelper.extractAsOption[Int](params, "max training examples"),
-  JsonHelper.extractWithDefault(params, "binarize features", false),
-  outputter,
-  JsonHelper.extractWithDefault(params, "log level", 3)
-) {
+  JsonHelper.extractWithDefault(params, "binarize features", false)
+) with LazyLogging {
   implicit val formats = DefaultFormats
   val allowedParams = Seq("type", "binarize features", "kernel", "log level", "max training examples")
   JsonHelper.ensureNoExtras(params, "operation -> learning", allowedParams)
@@ -76,10 +75,10 @@ class SVMModel[T <: Instance](
    * instances is positive or negative, train an SVM.
    */
   override def train(featureMatrix: FeatureMatrix, dataset: Dataset[T], featureNames: Seq[String]) = {
-    outputter.info("Learning feature weights")
-    outputter.info("Prepping training data")
+    logger.info("Learning feature weights")
+    logger.info("Prepping training data")
 
-    outputter.info("Creating alphabet")
+    logger.info("Creating alphabet")
     val pipes = new mutable.ArrayBuffer[Pipe]
     pipes.+=(new Noop())
     pipes.+=(new Target2Label())
@@ -89,7 +88,7 @@ class SVMModel[T <: Instance](
 
     convertFeatureMatrixToMallet(featureMatrix, dataset, featureNames, data, alphabet)
 
-    outputter.info("Creating the MalletLibSVM object")
+    logger.info("Creating the MalletLibSVM object")
     val svmTrainer = new SVMClassifierTrainer(kernel)
 
     // Finally, we train.  All that prep and everything that follows is really just to get
@@ -103,5 +102,9 @@ class SVMModel[T <: Instance](
    */
   override def classifyMatrixRow(row: MatrixRow) = {
     svmClassifier.scoreInstance(matrixRowToInstance(row, alphabet))
+  }
+
+  override def saveState(filename: String, featureNames: Seq[String], fileUtil: FileUtil) {
+    logger.error("Saving state for SVMModel not implemented!")
   }
 }
