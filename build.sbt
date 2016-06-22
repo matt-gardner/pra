@@ -25,6 +25,8 @@ libraryDependencies ++= Seq(
   // Scala utility libraries
   "org.json4s" %% "json4s-native" % "3.2.11",
   "edu.cmu.ml.rtw" %% "matt-util" % "2.2",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+  "ch.qos.logback" %  "logback-classic" % "1.1.7",  // backend for scala-logging
   // Matrix stuff, both for java and scala
   "net.sf.trove4j" % "trove4j" % "2.0.2",
   "org.scalanlp" %% "breeze" % "0.10",
