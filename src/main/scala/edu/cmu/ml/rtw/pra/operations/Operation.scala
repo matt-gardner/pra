@@ -182,10 +182,10 @@ class TopTenByPprScorer(
 ) extends Step(Some(params), fileUtil) with LazyLogging {
   implicit val formats = DefaultFormats
   override val name = "Top Ten By PPR Scorer"
-  val validParams = Seq("training", "split", "graph", "relation metadata", "relation", "ppr computer")
+  val validParams = Seq("trainer", "split", "graph", "relation metadata", "relation", "ppr computer")
   JsonHelper.ensureNoExtras(params, name, validParams)
 
-  val trainer = new BatchTrainer(params \ "training", baseDir, experimentDir, fileUtil)
+  val trainer = new BatchTrainer(params \ "trainer", baseDir, experimentDir, fileUtil)
   val trainerInput = (trainer.weightFile, Some(trainer))
 
   // All of these options are necessary inputs to the trainer.  However, we're going to allow some

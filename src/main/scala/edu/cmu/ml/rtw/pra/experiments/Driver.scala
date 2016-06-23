@@ -46,11 +46,13 @@ class Driver(
   implicit val formats = DefaultFormats
   override val name = "Driver"
 
+  val validParams = Seq("graph", "split", "relation metadata", "operation", "output")
+  JsonHelper.ensureNoExtras(params, name, validParams)
+
   val outputter = new Outputter(params \ "output", praBase, methodName, fileUtil)
   override val inProgressFile = outputter.baseDir + "in_progress"
   override val paramFile = outputter.baseDir + "params.json"
 
-  // TODO(matt): this will eventually include the split, embeddings, and whatever else.
   override val inputs: Set[(String, Option[Step])] =
     Graph.getStepInput(params \ "graph", praBase + "graphs/", fileUtil).toSet ++
     Set(Split.getStepInput(params \ "split", praBase, fileUtil))
@@ -59,8 +61,6 @@ class Driver(
   override val outputs = Set[String]()
 
   override def _runStep() {
-    val baseKeys = Seq("graph", "split", "relation metadata", "operation", "output")
-    JsonHelper.ensureNoExtras(params, "base", baseKeys)
 
     // We create the these auxiliary input files first here, because we allow a "no op" operation,
     // which means just create all of the generated input files and then quit.  But we have to do
@@ -68,10 +68,10 @@ class Driver(
     // needing the same graph won't both try to create it, or think that it's done while it's still
     // being made.  We'll delete the output directory in the case of a no op.
     outputter.begin()
+    // TODO(matt): these should be moved to Step inputs.
     createEmbeddingsIfNecessary(params, outputter)
     createSimilarityMatricesIfNecessary(params, outputter)
     createDenserMatricesIfNecessary(params, outputter)
-    createSplitIfNecessary(params \ "split", outputter)
 
     val relationMetadata =
       new RelationMetadata(params \ "relation metadata", praBase, fileUtil)

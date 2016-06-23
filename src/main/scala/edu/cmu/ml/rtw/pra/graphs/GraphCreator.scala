@@ -41,7 +41,7 @@ class GraphCreator(
   override val name = "Graph Creator"
 
   val graphName = (params \ "name").extract[String]
-  val outdir = s"$baseGraphDir/$graphName/"
+  val outdir = s"${baseGraphDir}${graphName}/"
   override val inProgressFile = outdir + "in_progress"
   override val paramFile = outdir + "params.json"
 

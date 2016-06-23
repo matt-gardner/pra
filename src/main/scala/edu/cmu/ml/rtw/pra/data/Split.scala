@@ -177,7 +177,7 @@ object Split {
           case JString(name) => {
             val splitDir = baseDir + "splits/" + name + "/"
             val creator: Step = SplitCreator.create(params, baseDir, fileUtil)
-            (name, Some(creator))
+            (splitDir, Some(creator))
           }
           case other => throw new IllegalStateException("Malformed (or absent) split specification")
         }

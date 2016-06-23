@@ -147,7 +147,7 @@ object Graph {
           case JString(name) => {
             val graphDir = baseGraphDir + name + "/"
             val creator: Step = new GraphCreator(baseGraphDir, params, fileUtil)
-            Some((name, Some(creator)))
+            Some((graphDir, Some(creator)))
           }
           case other => None
         }
