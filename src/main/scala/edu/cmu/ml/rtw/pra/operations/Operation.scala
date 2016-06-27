@@ -251,6 +251,7 @@ class TopTenByPprScorer(
       split,
       relation,
       relationMetadata,
+      featureDictionary,
       fileUtil = fileUtil
     )
 
@@ -305,7 +306,7 @@ class TopTenByPprScorer(
 
       val trainingSources = trainingTargetSources.getOrElse(npi.target, Set())
       val potentialSources = pprValues.getOrElse(npi.target, Map()).filterNot(pprValue => {
-        trainingTargets.contains(pprValue._1)
+        trainingSources.contains(pprValue._1)
       })
       val sources = potentialSources.toSeq.sortBy(-_._2).take(10).map(_._1)
       val voInstances = sources.par.map(s => new NodePairInstance(s, npi.target, true, npi.graph))
