@@ -71,12 +71,8 @@ object PipelineRunner {
     val experiment_spec_dir = pra_base + SPEC_DIR
     println(s"Running PRA from spec file $spec_file")
     val experiment = spec_file.getAbsolutePath().split(SPEC_DIR).last.replace(".json", "")
-    val result_dir = result_base_dir + experiment
-    if (new File(result_dir).exists) {
-      println(s"Result directory $result_dir already exists. Skipping...")
-      return
-    }
-    new FinalStep(params, pra_base, experiment, fileUtil).runPipeline()
+    val experimentDir = result_base_dir + experiment + "/"
+    new FinalStep(params, pra_base, experimentDir, fileUtil).runPipeline()
   }
 }
 
