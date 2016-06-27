@@ -12,6 +12,7 @@ import com.mattg.util.JsonHelper
 import com.typesafe.scalalogging.LazyLogging
 
 import org.json4s._
+import org.json4s.native.JsonMethods._
 
 import gnu.trove.{TIntObjectHashMap => TMap}
 import gnu.trove.{TIntArrayList => TList}
