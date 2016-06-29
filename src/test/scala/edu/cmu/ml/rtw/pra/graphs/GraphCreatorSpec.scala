@@ -134,7 +134,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.addExpectedFileWritten(edgeDictionaryFile, expectedEdgeDictionaryFileContents)
     fileUtil.addExpectedFileWritten(edgesFile, expectedEdgeFileContents)
 
-    new GraphCreator("", params, fileUtil)._runStep()
+    new GraphCreator("/", params, fileUtil)._runStep()
     fileUtil.expectFilesWritten()
   }
 
@@ -147,7 +147,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       ("deduplicate edges" -> true) ~
       ("create matrices" -> false)
     ) merge defaultGraphParams
-    new GraphCreator("", params, fileUtil)._runStep()
+    new GraphCreator("/", params, fileUtil)._runStep()
     fileUtil.expectFilesWritten()
   }
 
@@ -157,7 +157,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       new RelationSet(defaultRelSetParams merge embeddingsParams1),
       new RelationSet(defaultRelSetParams merge embeddingsParams2))
 
-    val prefixes = new GraphCreator("", defaultGraphParams, getFileUtil).getSvoPrefixes(relationSets)
+    val prefixes = new GraphCreator("/", defaultGraphParams, getFileUtil).getSvoPrefixes(relationSets)
     prefixes(relationSets(0)) should be("1-")
     prefixes(relationSets(1)) should be("1-")
     prefixes(relationSets(2)) should be("2-")
@@ -169,7 +169,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
       new RelationSet(defaultRelSetParams merge embeddingsParams1))
 
     // If there's no ambiguity about the embeddings, the prefix map should return null.
-    val null_prefixes = new GraphCreator("", defaultGraphParams, getFileUtil).getSvoPrefixes(relationSets)
+    val null_prefixes = new GraphCreator("/", defaultGraphParams, getFileUtil).getSvoPrefixes(relationSets)
     null_prefixes(relationSets(0)) should be(null)
     null_prefixes(relationSets(1)) should be(null)
   }
@@ -182,7 +182,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
   // break a test, so that the person changing it will stop and think a bit about whether the
   // change is good.  And then change the test to reflect the better shard numbers.
   "getNumShards" should "return correct shard numbers" in {
-    val creator = new GraphCreator("", defaultGraphParams, getFileUtil)
+    val creator = new GraphCreator("/", defaultGraphParams, getFileUtil)
     creator.getNumShards(4999999) should be(2)
     creator.getNumShards(5000000) should be(3)
     creator.getNumShards(9999999) should be(3)
@@ -208,7 +208,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.addExpectedFileWritten(matrixFile1, expectedMatrixFile1Contents)
     fileUtil.addExpectedFileWritten(matrixFile2, expectedMatrixFile2Contents)
 
-    new GraphCreator("", defaultGraphParams, fileUtil).createMatrices(edgesFile, 4)
+    new GraphCreator("/", defaultGraphParams, fileUtil).createMatrices(edgesFile, 4)
     fileUtil.expectFilesWritten()
   }
 
@@ -220,7 +220,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.addExpectedFileWritten("/test graph/matrices/3-4", "Relation 3\n3\t3\nRelation 4\n4\t4\n")
     fileUtil.addExpectedFileWritten("/test graph/matrices/5", "Relation 5\n5\t5\n")
 
-    new GraphCreator("", defaultGraphParams, fileUtil).createMatrices(edgesFile, 2)
+    new GraphCreator("/", defaultGraphParams, fileUtil).createMatrices(edgesFile, 2)
     fileUtil.expectFilesWritten()
   }
 
@@ -230,7 +230,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.addFileToBeRead(edgesFile, expectedEdgeFileContents)
     fileUtil.addExpectedFileWritten(matrixFile12, expectedMatrixFile12Contents)
 
-    new GraphCreator("", defaultGraphParams, fileUtil).createMatrices(edgesFile, 40)
+    new GraphCreator("/", defaultGraphParams, fileUtil).createMatrices(edgesFile, 40)
     fileUtil.expectFilesWritten()
   }
 
@@ -252,7 +252,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     ("num_noise_relation_instances" -> 14) ~
     ("rule_prob_mean" -> 0.6) ~
     ("rule_prob_stddev" -> 0.2)
-  val data_file = "synthetic_relation_sets/generated/data.tsv"
+  val data_file = "/synthetic_relation_sets/generated/data.tsv"
 
   "generateSyntheticRelationSet" should "create a dataset when one doesn't exist" in {
     val instances = Seq((1, "rel", 2))
@@ -260,7 +260,7 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     fileUtil.onlyAllowExpectedFiles()
     fileUtil.addExpectedFileWritten(data_file, "1\trel\t2\t1\n")
 
-    val creator = new GraphCreator("", defaultGraphParams, fileUtil)
+    val creator = new GraphCreator("/", defaultGraphParams, fileUtil)
     creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(instances)
     creator.generateSyntheticRelationSet(rel_set_params)
     fileUtil.expectFilesWritten
@@ -268,11 +268,11 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
 
   it should "not create a dataset when one already exists" in {
     val fileUtil = getFileUtil
-    fileUtil.addExistingFile("synthetic_relation_sets/generated/")
-    fileUtil.addFileToBeRead("synthetic_relation_sets/generated/params.json", compact(render(rel_set_params)))
+    fileUtil.addExistingFile("/synthetic_relation_sets/generated/")
+    fileUtil.addFileToBeRead("/synthetic_relation_sets/generated/params.json", compact(render(rel_set_params)))
     fileUtil.onlyAllowExpectedFiles()
 
-    val creator = new GraphCreator("", defaultGraphParams, fileUtil)
+    val creator = new GraphCreator("/", defaultGraphParams, fileUtil)
     creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(Seq())
     creator.generateSyntheticRelationSet(rel_set_params)
     fileUtil.expectFilesWritten
@@ -282,9 +282,9 @@ class GraphCreatorSpec extends FlatSpecLike with Matchers {
     val random_param: JValue = ("num_entities" -> 1000)
     val params = rel_set_params merge random_param
     val fileUtil = getFileUtil
-    fileUtil.addExistingFile("synthetic_relation_sets/generated/")
-    fileUtil.addFileToBeRead("synthetic_relation_sets/generated/params.json", compact(render(params)))
-    val creator = new GraphCreator("", defaultGraphParams, fileUtil)
+    fileUtil.addExistingFile("/synthetic_relation_sets/generated/")
+    fileUtil.addFileToBeRead("/synthetic_relation_sets/generated/params.json", compact(render(params)))
+    val creator = new GraphCreator("/", defaultGraphParams, fileUtil)
     creator.synthetic_data_creator_factory = new FakeSyntheticDataCreatorFactory(Seq())
     TestUtil.expectError(classOf[IllegalStateException], "parameters don't match", new Function() {
       def call() {

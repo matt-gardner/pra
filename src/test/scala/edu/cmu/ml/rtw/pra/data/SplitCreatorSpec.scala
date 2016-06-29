@@ -102,8 +102,6 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   "createSplit" should "correctly create a split" in {
     // TODO(matt): if these tests are run out of order, or another one is added after this, this
     // could easily break.  The fileUtil needs to be reset.
-    fakeFileUtil.addExpectedFileWritten("/splits/split_name/in_progress", "")
-    fakeFileUtil.addExpectedFileWritten("/splits/split_name/params.json", pretty(render(params)))
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/relations_to_run.tsv", "rel/1\n")
     val trainingFile = "node1\tnode1\t1\nnode2\tnode2\t-1\n"
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/training.tsv", trainingFile)
