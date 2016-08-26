@@ -53,7 +53,7 @@ that license).  You can find the text of that license
 
 # Changelog
 
-Version 3.4 (current snapshot):
+Version 3.4 (released on 8/26/2016):
 
 - Migrated the graph creation code to using the pipeline architecture from my util library.
 
