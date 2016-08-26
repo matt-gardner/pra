@@ -19,7 +19,7 @@ import com.mattg.util.TestUtil;
 import com.mattg.util.Vector;
 
 public class VectorClusteringPathTypeSelectorTest extends TestCase {
-    private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(false, new FileUtil());
+    private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(new FileUtil());
     private GraphInMemory graph = new GraphInMemory(new Node[0], null, edgeDict);
     private Map<Integer, Vector> embeddings = Maps.newHashMap();
     private VectorPathTypeFactory factory = new VectorPathTypeFactory(graph, embeddings, 1, .5);

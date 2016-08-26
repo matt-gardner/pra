@@ -19,7 +19,7 @@ public class VectorPathTypeFactoryTest extends TestCase {
     private Vector vector2 = new Vector(new double[]{-1,-2,-3});
     private Vector vector3 = new Vector(new double[]{1,3,3});
     private Map<Integer, Vector> embeddings = Maps.newHashMap();
-    private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(false, new FileUtil());
+    private MutableConcurrentDictionary edgeDict = new MutableConcurrentDictionary(new FileUtil());
     private GraphInMemory graph = new GraphInMemory(new Node[0], null, edgeDict);
 
     @Override
@@ -64,7 +64,6 @@ public class VectorPathTypeFactoryTest extends TestCase {
         FakeRandom random = new FakeRandom();
 
         int hopNum = 0;
-        int sourceId = 0;
 
         PathTypeVertexCache cache = pathType.cacheVertexInformation(vertex, hopNum);
 

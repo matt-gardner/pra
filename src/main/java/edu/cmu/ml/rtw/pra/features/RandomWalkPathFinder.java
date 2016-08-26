@@ -64,7 +64,6 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
   private final List<NodePairInstance> instances;
   private final EdgeExcluder edgeExcluder;
   private final VertexIdTranslate vertexIdTranslate;
-  private final Object printLock = new Object();
 
   private double resetProbability = 0.35;
 
@@ -94,7 +93,7 @@ public class RandomWalkPathFinder implements WalkUpdateFunction<EmptyType, Integ
       origSources.add(instance.source());
       origTargets.add(instance.target());
     }
-    this.pathDict = new MutableConcurrentIndex<PathType>(pathTypeFactory, false, new FileUtil());
+    this.pathDict = new MutableConcurrentIndex<PathType>(pathTypeFactory, new FileUtil());
     // We add these to a set first, so we don't start twice as many walks from a node that shows up
     // twice in the training data.  You could argue that those nodes should have more influence on
     // the resultant paths, and that's fair, but it also slows down the computation by quite a bit,
