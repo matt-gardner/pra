@@ -52,7 +52,7 @@ class SplitCreator(
         createSplitFromMetadata()
       }
       case "add negatives to split" => {
-        addNegativeToSplit()
+        addNegativesToSplit()
       }
       case other => throw new IllegalStateException("Unrecognized split type!")
     }
@@ -90,7 +90,9 @@ class SplitCreator(
       val data = if (negativeExampleSelector == null) {
         all_instances
       } else {
-        addNegativeExamples(all_instances, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
+        all_instances.merge(
+          selectNegativeExamples(all_instances, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
+        )
       }
       outputter.info("Splitting data")
       val (training, testing) = data.splitData(percentTraining)
@@ -102,7 +104,7 @@ class SplitCreator(
     fileUtil.deleteFile(inProgressFile)
   }
 
-  def addNegativeToSplit() {
+  def addNegativesToSplit() {
     outputter.info(s"Creating split at $splitDir")
     fileUtil.mkdirOrDie(splitDir)
     fileUtil.touchFile(inProgressFile)
@@ -142,7 +144,7 @@ class SplitCreator(
 
       if (fileUtil.fileExists(training_file)) {
         val negative_training_instances = if (generateNegativesFor.contains("training")) {
-          addNegativeExamples(training_data, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
+          selectNegativeExamples(training_data, Seq(), relation, domains.toMap, ranges.toMap, graph.nodeDict)
         } else {
           new Dataset[NodePairInstance](Seq())
         }
@@ -162,7 +164,7 @@ class SplitCreator(
           .filterNot(i => i.source == -1 || i.target == -1)
         val testing_data = new Dataset[NodePairInstance](filtered_testing_instances)
         val negative_testing_instances = if (generateNegativesFor.contains("testing")) {
-          addNegativeExamples(testing_data, training_data.instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
+          selectNegativeExamples(testing_data, training_data.instances, relation, domains.toMap, ranges.toMap, graph.nodeDict)
         } else {
           new Dataset[NodePairInstance](Seq())
         }
@@ -178,7 +180,7 @@ class SplitCreator(
     fileUtil.deleteFile(inProgressFile)
   }
 
-  def addNegativeExamples(
+  def selectNegativeExamples(
       data: Dataset[NodePairInstance],
       other_positive_instances: Seq[NodePairInstance],
       relation: String,

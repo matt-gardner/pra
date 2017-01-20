@@ -40,22 +40,15 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
   fakeFileUtil.addFileToBeRead("/relation_metadata/nell/domains.tsv", "rel/1\tc1\n")
   fakeFileUtil.addFileToBeRead("/relation_metadata/nell/ranges.tsv", "rel/1\tc2\n")
   fakeFileUtil.addFileToBeRead("/relation_metadata/nell/relations/rel_1", "node1\tnode2\n")
-  fakeFileUtil.addFileToBeRead("/graphs/nell/node_dict.tsv", "1\tnode1\n2\tnode2\n")
+  fakeFileUtil.addFileToBeRead("/graphs/nell/node_dict.tsv", "1\tnode1\n2\tnode2\n3\tnode3\n")
   fakeFileUtil.addFileToBeRead("/graphs/nell/edge_dict.tsv", "1\trel/1\n")
   fakeFileUtil.onlyAllowExpectedFiles()
   val splitCreator = new SplitCreator(params, praBase, splitDir, outputter, fakeFileUtil)
   val graph = new GraphOnDisk("/graphs/nell/", outputter, fakeFileUtil)
 
-  val positiveInstances = Seq(new NodePairInstance(1, 1, true, graph), new NodePairInstance(1, 2, true, graph))
-  val negativeInstances = Seq(new NodePairInstance(2, 2, false, graph), new NodePairInstance(1, 2, false, graph))
-  val goodData = new Dataset[NodePairInstance](positiveInstances ++ negativeInstances) {
-    override def splitData(percent: Double) = {
-      println("Splitting fake data")
-      val training = new Dataset[NodePairInstance](positiveInstances.take(1) ++ negativeInstances.take(1))
-      val testing = new Dataset[NodePairInstance](positiveInstances.drop(1) ++ negativeInstances.drop(1))
-      (training, testing)
-    }
-  }
+  val positiveInstances = Seq(new NodePairInstance(3, 3, true, graph), new NodePairInstance(3, 2, true, graph))
+  val negativeInstances = Seq(new NodePairInstance(1, 3, false, graph), new NodePairInstance(3, 1, false, graph))
+  val goodData = new Dataset[NodePairInstance](positiveInstances ++ negativeInstances)
   val badData = new Dataset[NodePairInstance](Seq())
 
   "createNegativeExampleSelector" should "return null with no input" in {
@@ -70,32 +63,32 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     graph.numShards should be(1)
   }
 
-  "addNegativeExampels" should "read domains and ranges correctly" in {
+  "selectNegativeExamples" should "read domains and ranges correctly" in {
     val relation = "rel1"
     val domains = Map(relation -> "c1")
     val ranges = Map(relation -> "c2")
     var creator = splitCreatorWithFakeNegativeSelector(Some(Set(1)), Some(Set(2)))
-    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(goodData)
+    creator.selectNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(goodData)
     // Adding a test with the wrong sources and targets, just to be sure the test is really // working.
     creator = splitCreatorWithFakeNegativeSelector(Some(Set(2)), Some(Set(1)))
-    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(badData)
+    creator.selectNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(badData)
   }
 
   it should "handle null domains and ranges" in {
     val creator = splitCreatorWithFakeNegativeSelector(None, None)
-    creator.addNegativeExamples(goodData, Seq(), "rel1", null, null, graph.nodeDict) should be(goodData)
+    creator.selectNegativeExamples(goodData, Seq(), "rel1", null, null, graph.nodeDict) should be(goodData)
   }
 
   it should "throw an error if the relation is missing from domain or range" in {
     val creator = splitCreatorWithFakeNegativeSelector(None, None)
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, Seq(), "rel1", Map(), null, graph.nodeDict) should be(goodData)
+        creator.selectNegativeExamples(goodData, Seq(), "rel1", Map(), null, graph.nodeDict) should be(goodData)
       }
     })
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, Seq(), "rel1", null, Map(), graph.nodeDict) should be(goodData)
+        creator.selectNegativeExamples(goodData, Seq(), "rel1", null, Map(), graph.nodeDict) should be(goodData)
       }
     })
   }
@@ -106,9 +99,13 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/in_progress", "")
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/params.json", pretty(render(params)))
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/relations_to_run.tsv", "rel/1\n")
-    val trainingFile = "node1\tnode1\t1\nnode2\tnode2\t-1\n"
-    fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/training.tsv", trainingFile)
-    val testingFile = "node1\tnode2\t1\nnode1\tnode2\t-1\n"
+    // Because percentTraining is low, there will be no examples that actually end up in the
+    // training set.  This is actually easier for us to test.  And these nodes look funny because
+    // of the fake negative example selector.  We have the one positive instance from the relation
+    // file above, plus all of the instances from `goodData`, positive and negative.
+    fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/training.tsv", "")
+    val testingFile = "node1\tnode2\t1\nnode3\tnode3\t1\nnode3\tnode2\t1\n" +
+                      "node1\tnode3\t-1\nnode3\tnode1\t-1\n"
     fakeFileUtil.addExpectedFileWritten("/splits/split_name/rel_1/testing.tsv", testingFile)
     var creator = splitCreatorWithFakeNegativeSelector(Some(Set(1)), Some(Set(2)))
     creator.createSplit()
