@@ -70,32 +70,32 @@ class SplitCreatorSpec extends FlatSpecLike with Matchers {
     graph.numShards should be(1)
   }
 
-  "addNegativeExampels" should "read domains and ranges correctly" in {
+  "selectNegativeExamples" should "read domains and ranges correctly" in {
     val relation = "rel1"
     val domains = Map(relation -> "c1")
     val ranges = Map(relation -> "c2")
     var creator = splitCreatorWithFakeNegativeSelector(Some(Set(1)), Some(Set(2)))
-    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(goodData)
+    creator.selectNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(goodData)
     // Adding a test with the wrong sources and targets, just to be sure the test is really // working.
     creator = splitCreatorWithFakeNegativeSelector(Some(Set(2)), Some(Set(1)))
-    creator.addNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(badData)
+    creator.selectNegativeExamples(goodData, Seq(), relation, domains, ranges, graph.nodeDict) should be(badData)
   }
 
   it should "handle null domains and ranges" in {
     val creator = splitCreatorWithFakeNegativeSelector(None, None)
-    creator.addNegativeExamples(goodData, Seq(), "rel1", null, null, graph.nodeDict) should be(goodData)
+    creator.selectNegativeExamples(goodData, Seq(), "rel1", null, null, graph.nodeDict) should be(goodData)
   }
 
   it should "throw an error if the relation is missing from domain or range" in {
     val creator = splitCreatorWithFakeNegativeSelector(None, None)
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, Seq(), "rel1", Map(), null, graph.nodeDict) should be(goodData)
+        creator.selectNegativeExamples(goodData, Seq(), "rel1", Map(), null, graph.nodeDict) should be(goodData)
       }
     })
     TestUtil.expectError(classOf[NoSuchElementException], new Function() {
       def call() {
-        creator.addNegativeExamples(goodData, Seq(), "rel1", null, Map(), graph.nodeDict) should be(goodData)
+        creator.selectNegativeExamples(goodData, Seq(), "rel1", null, Map(), graph.nodeDict) should be(goodData)
       }
     })
   }
