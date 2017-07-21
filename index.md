@@ -39,7 +39,7 @@ If you are using maven, you can include the PRA code by putting the following un
 
 ```
 <dependency>
-  <groupId>edu.cmu.ml.rtw</groupdId>
+  <groupId>edu.cmu.ml.rtw</groupId>
   <artifactId>pra_2.11</artifactId>
   <version>3.3</version>
 </dependency>
