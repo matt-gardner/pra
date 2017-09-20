@@ -33,7 +33,9 @@ abstract class BfsPathFinder[T <: Instance](
 )  extends PathFinder[T] {
   implicit val formats = DefaultFormats
 
-  val allowedKeys = Seq("type", "number of steps", "max fan out", "path type factory", "log level")
+  val allowedKeys = Seq("type", "number of steps", "max fan out",
+    "path type factory", "log level", "walks per source",
+    "path finding iterations", "path accept policy")
   JsonHelper.ensureNoExtras(params, "operation -> features -> path finder", allowedKeys)
 
   // This is number of steps from each side, so a 2 here means you can find paths up to length 4.

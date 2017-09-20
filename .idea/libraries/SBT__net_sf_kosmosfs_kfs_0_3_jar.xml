@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="SBT: net.sf.kosmosfs:kfs:0.3:jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/net.sf.kosmosfs/kfs/jars/kfs-0.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

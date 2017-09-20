@@ -78,7 +78,7 @@ class TrainAndTest[T <: Instance](
   outputter: Outputter,
   fileUtil: FileUtil
 ) extends Operation[T] {
-  val paramKeys = Seq("type", "features", "learning")
+  val paramKeys = Seq("mode", "type", "features", "learning")
   JsonHelper.ensureNoExtras(params, "operation", paramKeys)
 
   override def runRelation(relation: String) {

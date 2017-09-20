@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="SBT: org.mortbay.jetty:jsp-api-2.1:6.1.14:jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.mortbay.jetty/jsp-api-2.1/jars/jsp-api-2.1-6.1.14.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.mortbay.jetty/jsp-api-2.1/srcs/jsp-api-2.1-6.1.14-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
