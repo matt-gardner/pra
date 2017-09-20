@@ -38,7 +38,7 @@ abstract class SubgraphFeatureGenerator[T <: Instance](
 ) extends FeatureGenerator[T] {
   implicit val formats = DefaultFormats
   val featureParamKeys = Seq("type", "path finder", "feature extractors", "feature size",
-    "include bias", "log level", "path selector", "path follower")
+    "include bias", "log level")
   JsonHelper.ensureNoExtras(params, "operation -> features", featureParamKeys)
 
   val featureSize = JsonHelper.extractWithDefault(params, "feature size", -1)
