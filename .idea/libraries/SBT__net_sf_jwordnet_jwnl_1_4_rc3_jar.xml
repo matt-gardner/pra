@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="SBT: net.sf.jwordnet:jwnl:1.4_rc3:jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/net.sf.jwordnet/jwnl/jars/jwnl-1.4_rc3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/net.sf.jwordnet/jwnl/srcs/jwnl-1.4_rc3-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
