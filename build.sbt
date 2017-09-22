@@ -10,7 +10,7 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 javacOptions ++= Seq("-Xlint:unchecked")
 
-javaOptions in run ++= Seq("-Xmx5g")
+javaOptions in run ++= Seq("-Xmx140g")
 
 //javaOptions ++= Seq("-agentpath:/home/mattg/clone/yjp-2015-build-15084/bin/linux-x86-64/libyjpagent.so=delay=10000")
 
