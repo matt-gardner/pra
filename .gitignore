@@ -3,6 +3,7 @@
 .classpath
 .settings
 .cache-main
+.idea
 target/
 walkmanager.log
 /bin

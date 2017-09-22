@@ -1,7 +1,6 @@
 package edu.cmu.ml.rtw.pra.features
 
-import edu.cmu.ml.rtw.pra.data.Dataset
-import edu.cmu.ml.rtw.pra.data.NodePairInstance
+import edu.cmu.ml.rtw.pra.data.{Dataset, NodePairInstance, Instance}
 import edu.cmu.ml.rtw.pra.experiments.Outputter
 import edu.cmu.ml.rtw.pra.experiments.RelationMetadata
 import edu.cmu.ml.rtw.pra.graphs.GraphOnDisk
@@ -9,11 +8,9 @@ import com.mattg.util.FileUtil
 import com.mattg.util.JsonHelper
 import com.mattg.util.Pair
 import com.mattg.util.Vector
-
 import java.io.File
 
 import scala.collection.JavaConverters._
-
 import org.json4s._
 import org.json4s.native.JsonMethods._
 

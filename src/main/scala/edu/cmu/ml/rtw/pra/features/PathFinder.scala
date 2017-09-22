@@ -201,9 +201,10 @@ class GraphChiPathFinder(
     // and the rest of the columns make up the vector.
     fileUtil.readLinesFromFile(embeddingsFile).map(line => {
       val fields = line.split("\t");
-      val relationIndex = graph.getEdgeIndex(fields(0));
+      val relationIndex = if (graph.hasEdge(fields(0))) graph.getEdgeIndex(fields(0))
+        else -1
       val vector = fields.drop(1).map(_.toDouble)
       (relationIndex, new Vector(vector))
-    }).toMap
+    }).filter(_._1 != -1).toMap
   }
 }

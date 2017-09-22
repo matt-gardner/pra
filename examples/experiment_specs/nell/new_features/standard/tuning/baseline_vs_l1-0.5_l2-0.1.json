@@ -2,28 +2,21 @@ load new_feature_experiment_base
 {
   "split": "nell_with_negatives",
   "operation": {
-    "mode": "learn models",
+    
     "features": {
+	"type": "pra",
       "path finder": {
+	"type": "RandomWalkPathFinder",
         "path type factory": {
-  "name": "VectorPathTypeFactory",
-  "spikiness": 3,
-  "reset weight": 0.25,
-  "embeddings": "pca_svo"
-},
-
-        "walks per source": 100,
-        "path finding iterations": 3,
-        "path accept policy": "paired-only"
-      },
-      "path selector": {
-        "number of paths to keep": 1000
-      },
-      "path follower": {
-        "walks per path": 50,
-        "matrix accept policy": "paired-targets-only"
+	  "name": "VectorPathTypeFactory",
+	  "spikiness": 3,
+	  "reset weight": 0.25,
+	  "embeddings": "/tienan/pra/examples/embeddings/pca_svo/embeddings.tsv"
+	} 
       }
-    }
+      
+      
+    },
     "learning": {
       "l1 weight": 0.5,
       "l2 weight": 0.1

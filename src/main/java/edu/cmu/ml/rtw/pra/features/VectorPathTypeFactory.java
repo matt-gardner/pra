@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.cmu.ml.rtw.pra.graphs.Graph;
 import com.mattg.util.Vector;
 
+
 /**
  * Represents a path type as a sequence of (edge, vector) pairs.  We assume that each edge type has
  * a vector representation that captures some amount of its semantic meaning.  The vector is used
